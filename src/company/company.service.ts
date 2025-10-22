@@ -69,27 +69,17 @@ export class CompanyService {
     return `This action removes a #${id} company`;
   }
 
-
-
-
   // Пошук користувачів
-  async searchCompanyByName() {
-    // Виконання SQL запиту для пошуку користувачів
- 
-    const companies = await this.dbservice.callProcedure(
-      'company_list',
+  public async searchCompanyByName(name: string) {
+    const query = `
+    SELECT * 
+    FROM company 
+    WHERE company_name ILIKE $1
+  `;
 
-      {
-        pagination: {
-          page_num: 1,
-          page_rows: 10,
-        },
-      },
+    const values = [`%${name}%`];
 
-      {},
-    );
-
-    return companies;
+    const result = await this.pool.query(query, values);
+    return result.rows;
   }
-
 }

@@ -33,20 +33,12 @@ export class CompanyController {
   @Get('all')
   findAll() {
     console.log('dsdsd');
-    
+
     return this.companyService.findAll();
   }
   @Get('all-stuff')
   findAllStuff() {
     return this.companyService.findAll();
-  }
-  @Get('noris')
-  findAllStufff() {
-    return this.companyService.findAll();
-  }
-  @Get('my-company')
-  findMyCompany(@Req() req: Request) {
-    return this.companyService.findMyCompany(req);
   }
 
   @Get(':id')
@@ -64,4 +56,8 @@ export class CompanyController {
     return this.companyService.remove(+id);
   }
 
+  @Get('name/:name')
+   searchCompanyByName(@Param('name') name: string) {
+    return  this.companyService.searchCompanyByName(name);
+  }
 }
