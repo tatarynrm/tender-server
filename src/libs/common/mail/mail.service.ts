@@ -12,7 +12,13 @@ export class MailService {
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
   ) {}
-
+  private sendMail(email: string, subject: string, html: string) {
+    return this.mailerService.sendMail({
+      to: email,
+      subject: subject,
+      html,
+    });
+  }
   public async sendConfirmationEmail(email: string, token: string) {
     const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
 
@@ -32,12 +38,13 @@ export class MailService {
     const html = await render(TwoFactorAuthTemplate({ token }));
     return this.sendMail(email, 'Підтвердження особистості', html);
   }
+  // public async sendRegisterFromCompanyEmail(email: string, token: string) {
+  //   const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+   
 
-  private sendMail(email: string, subject: string, html: string) {
-    return this.mailerService.sendMail({
-      to: email,
-      subject: subject,
-      html,
-    });
-  }
+  //   const html = await render(TwoFactorAuthTemplate({ token }));
+  //   return this.sendMail(email, 'Підтвердження особистості', html);
+  // }
+
+
 }

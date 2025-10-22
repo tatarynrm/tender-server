@@ -35,6 +35,7 @@ export class UserService {
         'Користувача не знайдено.Перевірте авторизаційні дані.',
       );
     }
+    console.log(user, 'user 1111');
 
     return user;
   }
@@ -90,7 +91,6 @@ export class UserService {
 
       {},
     );
-    console.log(result, 'result ---------');
 
     return result;
   }

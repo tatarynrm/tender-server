@@ -68,4 +68,28 @@ export class CompanyService {
   remove(id: number) {
     return `This action removes a #${id} company`;
   }
+
+
+
+
+  // Пошук користувачів
+  async searchCompanyByName() {
+    // Виконання SQL запиту для пошуку користувачів
+ 
+    const companies = await this.dbservice.callProcedure(
+      'company_list',
+
+      {
+        pagination: {
+          page_num: 1,
+          page_rows: 10,
+        },
+      },
+
+      {},
+    );
+
+    return companies;
+  }
+
 }

@@ -135,7 +135,7 @@ export class AuthService {
   public async saveSession(req: Request, user: IUser) {
     return new Promise((resolve, reject) => {
       req.session.userId = user.id;
-      req.session.ict = user.ict;
+      req.session.ict = user.is_ict;
       req.session.id_company = user.id_company;
       console.log(user, 'USER ------------- ');
 

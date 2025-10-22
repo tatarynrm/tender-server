@@ -19,49 +19,78 @@ async function bootstrap() {
 
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')));
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-    }),
-  );
+  // app.useGlobalPipes(
+  //   new ValidationPipe({
+  //     transform: true,
+  //   }),
+  // );
 
+  // app.use(
+  //   session({
+  //     secret: config.getOrThrow<string>('SESSION_SECRET'),
+  //     name: config.getOrThrow<string>('SESSION_NAME'),
+  //     resave: false,
+  //     saveUninitialized: false,
+  //     cookie: {
+  //       domain: config.getOrThrow<string>('SESSION_DOMAIN'),
+  //       maxAge: ms(config.getOrThrow<StringValue>('SESSION_MAX_AGE')),
+  //       httpOnly: parseBoolean(config.getOrThrow<string>('SESSION_HTTP_ONLY')),
+  //       secure: parseBoolean(config.getOrThrow<string>('SESSION_SECURE')),
+  //       sameSite: 'lax',
+  //     },
+
+  //     store: new RedisStore({
+  //       client: redisClient, // Підключення через redis.createClient
+  //       prefix: config.getOrThrow<string>('SESSION_FOLDER'),
+  //     }),
+  //   }),
+  // );
+
+  // app.enableCors({
+  //   origin: config.getOrThrow<string>('ALLOWED_ORIGIN'),
+  //   credentials: true,
+  //   exposedHeaders: ['set-cookies'],
+  // });
+  app.enableCors({
+    origin: 'http://localhost:3000',
+    credentials: true,
+  });
+
+  // LOCAL!!!!
   app.use(
     session({
       secret: config.getOrThrow<string>('SESSION_SECRET'),
-      name: config.getOrThrow<string>('SESSION_NAME'),
-      resave: true,
+      name: config.getOrThrow<string>('SESSION_NAME'), // centrifuge
+      resave: false,
       saveUninitialized: false,
       cookie: {
-        domain: config.getOrThrow<string>('SESSION_DOMAIN'),
-        maxAge: ms(config.getOrThrow<StringValue>('SESSION_MAX_AGE')),
-        httpOnly: parseBoolean(config.getOrThrow<string>('SESSION_HTTP_ONLY')),
-        secure: parseBoolean(config.getOrThrow<string>('SESSION_SECURE')),
+        httpOnly: true,
+        secure: false, // бо без HTTPS
         sameSite: 'lax',
+        maxAge: 1000 * 60 * 60 * 24,
+        domain: undefined,
       },
-
       store: new RedisStore({
-        client: redisClient, // Підключення через redis.createClient
+        client: redisClient,
         prefix: config.getOrThrow<string>('SESSION_FOLDER'),
+        ttl: 60 * 60 * 24,
       }),
     }),
   );
 
-  app.enableCors({
-    origin: config.getOrThrow<string>('ALLOWED_ORIGIN'),
-    credentials: true,
-    exposedHeaders: ['set-cookies'],
-  });
+
+  // TEST!!!!
 
   // Налаштування Swagger
-  const configSwagger = new DocumentBuilder()
-    .setTitle('Help Desk API')
-    .setDescription('Документація REST API для Help Desk')
-    .setVersion('1.0')
-    .addBearerAuth() // якщо є JWT авторизація
-    .build();
+  // const configSwagger = new DocumentBuilder()
+  //   .setTitle('Help Desk API')
+  //   .setDescription('Документація REST API для Help Desk')
+  //   .setVersion('1.0')
+  //   .addBearerAuth() // якщо є JWT авторизація
+  //   .build();
 
-  const document = SwaggerModule.createDocument(app, configSwagger);
-  SwaggerModule.setup('api', app, document); // доступ за URL: /api
+  // const document = SwaggerModule.createDocument(app, configSwagger);
+  // SwaggerModule.setup('api', app, document); // доступ за URL: /api
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'));
 }
 

@@ -21,11 +21,10 @@ export class AuthGuard implements CanActivate {
     }
 
     const user = await this.userService.findById(request.session.userId);
-    
+
     if (!user) {
       throw new UnauthorizedException('Користувач не знайдений');
     }
-    console.log(user, 'USER --- in auth guard');
 
     request.user = user;
     return true;

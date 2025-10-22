@@ -14,6 +14,6 @@ export interface IUser {
   method: AuthMethod;
   createdAt: Date;
   updatedAt: Date;
-  ict?:boolean;
+  is_ict?:boolean;
   id_company?:number;
 }
