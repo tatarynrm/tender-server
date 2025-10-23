@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { PrismaService } from 'src/prisma/prisma.service';
+
 import { hash } from 'argon2';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Pool, QueryResult } from 'pg';

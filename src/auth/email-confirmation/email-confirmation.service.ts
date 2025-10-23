@@ -5,8 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TokenType, User } from 'prisma/__generated__';
-import { PrismaService } from 'src/prisma/prisma.service';
+
 
 import { v4 as uuidv4 } from 'uuid';
 import { ConfirmationDto } from './dto/confirmation.dto';
@@ -19,7 +18,7 @@ import { Pool } from 'pg';
 @Injectable()
 export class EmailConfirmationService {
   public constructor(
-    private readonly prismaService: PrismaService,
+
     private readonly mailService: MailService,
     private readonly userService: UserService,
     @Inject(forwardRef(() => AuthService))

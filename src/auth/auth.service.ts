@@ -15,7 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { verify, hash } from 'argon2';
 import { ConfigService } from '@nestjs/config';
 import { ProviderService } from './provider/provider.service';
-import { PrismaService } from 'src/prisma/prisma.service';
+
 import { EmailConfirmationService } from './email-confirmation/email-confirmation.service';
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service';
 import * as useragent from 'useragent';
@@ -29,7 +29,7 @@ import { RegisterIctUserDto } from './dto/register-ict-user.dto';
 @Injectable()
 export class AuthService {
   public constructor(
-    private readonly prismaService: PrismaService,
+  
     private readonly userService: UserService,
     private readonly configService: ConfigService,
     private readonly providerService: ProviderService,

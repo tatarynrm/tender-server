@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { IS_DEV_ENV } from './libs/common/utils/is-dev.util';
-import { PrismaModule } from './prisma/prisma.module';
+// import { PrismaModule } fro./dqswqewqeqweweq/prisma.moduleule';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { ProviderModule } from './auth/provider/provider.module';
@@ -27,7 +27,7 @@ import { OraIctModule } from './ora-ict/ora-ict.module';
       throttlers: [{ limit: 4, ttl: 10 }],
       errorMessage: 'Почекайте 10 секунд.Занадто багато спроб',
     }),
-    PrismaModule,
+    
     AuthModule,
     UserModule,
     RedisModule,

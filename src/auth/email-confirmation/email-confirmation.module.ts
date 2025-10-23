@@ -7,10 +7,10 @@ import { MailModule } from 'src/libs/common/mail/mail.module';
 
 
 import { UserModule } from 'src/user/user.module';
-import { PrismaModule } from 'src/prisma/prisma.module';
+
 
 @Module({
-  imports: [MailModule, UserModule, PrismaModule, forwardRef(() => AuthModule)],
+  imports: [MailModule, UserModule, forwardRef(() => AuthModule)],
   controllers: [EmailConfirmationController],
   providers: [EmailConfirmationService],
   exports: [EmailConfirmationService],

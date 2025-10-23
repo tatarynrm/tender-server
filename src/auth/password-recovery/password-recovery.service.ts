@@ -4,9 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TokenType } from 'prisma/__generated__';
+
 import { MailService } from 'src/libs/common/mail/mail.service';
-import { PrismaService } from 'src/prisma/prisma.service';
+
 import { UserService } from 'src/user/user.service';
 import { v4 as uuidv4 } from 'uuid';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -17,7 +17,7 @@ import { Pool } from 'pg';
 @Injectable()
 export class PasswordRecoveryService {
   public constructor(
-    private readonly prismaService: PrismaService,
+
     private readonly userService: UserService,
     private readonly mailService: MailService,
     @Inject('PG_POOL') private readonly pool: Pool,

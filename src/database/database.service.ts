@@ -5,7 +5,7 @@ import {
   NotFoundException,
   Scope,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+
 import { Pool } from 'pg';
 import { REQUEST } from '@nestjs/core';
 import type { Request } from 'express';
@@ -29,7 +29,6 @@ interface AuthObject {
 @Injectable({ scope: Scope.REQUEST }) // 👈 обов’язково request-scoped
 export class DatabaseService {
   constructor(
-    private readonly prismaService: PrismaService,
     @Inject('PG_POOL') private readonly pool: Pool,
     @Inject(REQUEST)
     private readonly request: Request & {
