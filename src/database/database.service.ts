@@ -46,7 +46,10 @@ export class DatabaseService {
       id_usr: this.request.user?.id ?? null,
       id_company: this.request.user?.id_company ?? null,
     };
-    console.log(authObject, 'AUTH OBJECT IN CALL PROCDERUE FUNCTION');
+    console.log(
+      authObject,
+      'AUTH OBJECT IN CALL PROCDERUE FUNCTION database service 49 line',
+    );
 
     const query = `CALL run($1, $2, $3, $4)`;
 

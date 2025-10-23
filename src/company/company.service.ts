@@ -26,21 +26,20 @@ export class CompanyService {
     return newCompany;
   }
 
-  public async findAll() {
-    const companies = await this.dbservice.callProcedure(
-      'company_list',
+  async findAll(params: {
+    pagination: { page_num: number; page_rows: number };
+    filter?: any[];
+    sort?: any;
+  }) {
+    const { pagination, filter = [], sort = null } = params;
 
-      {
-        pagination: {
-          page_num: 1,
-          page_rows: 10,
-        },
-      },
+    const result = await this.dbservice.callProcedure('company_list', {
+      pagination,
+      filter,
+      sort,
+    });
 
-      {},
-    );
-
-    return companies;
+    return result;
   }
   public async findMyCompany(req: Request) {
     const userCompany = await this.pool.query(

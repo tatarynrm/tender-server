@@ -1,6 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-
 import { hash } from 'argon2';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Pool, QueryResult } from 'pg';
@@ -157,16 +156,29 @@ export class UserService {
     return usersPreRegister;
   }
 
-
-
-
-    public async adminCreateUser(
+  public async adminCreateUser(
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
     console.log(dto, 'DTO in service');
 
     // створення нового користувача
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
+    return result;
+  }
+
+  async getAllUsers(params: {
+    pagination: { page_num: number; page_rows: number };
+    filter?: any[];
+    sort?: any;
+  }) {
+    const { pagination, filter = [], sort = null } = params;
+
+    const result = await this.dbservice.callProcedure('usr_list', {
+      pagination,
+      filter,
+      sort,
+    });
+
     return result;
   }
 }

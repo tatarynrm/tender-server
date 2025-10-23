@@ -31,16 +31,19 @@ export class CompanyController {
     return this.companyService.create(createCompanyDto);
   }
 
-  @Get('all')
-  findAll() {
-    console.log('dsdsd');
+  @Post('all')
+  findAll(@Body() body: any) {
+   const pagination = body.pagination || {
+      page_num: 1,
+      page_rows: 10,
+    };
 
-    return this.companyService.findAll();
+    const filter = body.filter || [];
+    const sort = body.sort || null;
+
+    return this.companyService.findAll({ pagination, filter, sort });
   }
-  @Get('all-stuff')
-  findAllStuff() {
-    return this.companyService.findAll();
-  }
+
 
   @Get(':id')
   findOne(@Param('id') id: string) {

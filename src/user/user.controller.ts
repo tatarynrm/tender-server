@@ -60,8 +60,16 @@ export class UserController {
   // ADMIN КОНТРАГЕТНТА
   // Список усії працівників компанії
   @Post('all')
-  public async getAllUsersForCompany(@Req() req: Request) {
-    return this.userService.getAllUsersFromCompany();
+  public async getAllUsersFromCompany(@Body() body: any) {
+    const pagination = body.pagination || {
+      page_num: 1,
+      page_rows: 10,
+    };
+
+    const filter = body.filter || [];
+    const sort = body.sort || null;
+
+    return this.userService.getAllUsers({ pagination, filter, sort });
   }
   // Компанія реєструє свого працівника !!!!!!!!!!!!!!!!!!!
   @Post('register-from-company')
