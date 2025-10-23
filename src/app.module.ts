@@ -15,6 +15,7 @@ import { DatabaseModule } from './database/database.module';
 import { APP_GUARD } from '@nestjs/core';
 import { CompanyModule } from './company/company.module';
 
+import { OraIctModule } from './ora-ict/ora-ict.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { CompanyModule } from './company/company.module';
 
     CompanyModule,
 
+    OraIctModule,
   ],
   controllers: [],
   providers: [

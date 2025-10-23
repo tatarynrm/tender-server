@@ -17,6 +17,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import type { Request, Response } from 'express';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
+import { AdminCreateCompanyDto } from './dto/admin-create-company.dto copy';
 
 @Authorization()
 @Controller('company')
@@ -57,7 +58,12 @@ export class CompanyController {
   }
 
   @Get('name/:name')
-   searchCompanyByName(@Param('name') name: string) {
-    return  this.companyService.searchCompanyByName(name);
+  searchCompanyByName(@Param('name') name: string) {
+    return this.companyService.searchCompanyByName(name);
+  }
+
+  @Post('admin/create')
+  adminCreate(@Body() dto: AdminCreateCompanyDto) {
+    return this.companyService.adminCreate(dto);
   }
 }

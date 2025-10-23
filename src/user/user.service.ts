@@ -156,4 +156,17 @@ export class UserService {
 
     return usersPreRegister;
   }
+
+
+
+
+    public async adminCreateUser(
+    dto: CreateUserFromCompany & { id_company: number; id?: number },
+  ) {
+    console.log(dto, 'DTO in service');
+
+    // створення нового користувача
+    const result = await this.dbservice.callProcedure('usr_register', dto, {});
+    return result;
+  }
 }

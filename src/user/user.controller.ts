@@ -70,7 +70,6 @@ export class UserController {
     @Body() dto: CreateUserFromCompany,
   ) {
     const idCompany = req.session.id_company;
-  
 
     if (!idCompany) {
       throw new BadRequestException('Company ID not found in session');
@@ -90,7 +89,10 @@ export class UserController {
   }
   // Створити користувача з форми PreRegister
   @Post('pre-register-user-create')
-  public async createPreRegisterUser(@Req() req: Request,@Body() dto:UserRegisterFromPreDto) {
+  public async createPreRegisterUser(
+    @Req() req: Request,
+    @Body() dto: UserRegisterFromPreDto,
+  ) {
     return this.userService.createPreRegisterUser(dto);
   }
 
@@ -105,5 +107,16 @@ export class UserController {
     console.log(dto, 'DTO');
 
     return this.userService.companyFillFromUsrPreRegister(dto);
+  }
+  @Authorization()
+  @Post('admin/create-user')
+  public async adminCreateUser(
+    @Req() req: Request,
+    @Body()
+    dto: CreateUserFromCompany & { id_company: number },
+  ) {
+    console.log(dto);
+
+    return this.userService.adminCreateUser(dto);
   }
 }

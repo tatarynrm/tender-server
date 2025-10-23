@@ -4,6 +4,7 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { Pool } from 'pg';
 import { DatabaseService } from 'src/database/database.service';
 import { Request } from 'express';
+import { AdminCreateCompanyDto } from './dto/admin-create-company.dto copy';
 
 @Injectable()
 export class CompanyService {
@@ -81,5 +82,17 @@ export class CompanyService {
 
     const result = await this.pool.query(query, values);
     return result.rows;
+  }
+
+  public async adminCreate(dto: AdminCreateCompanyDto) {
+    const newCompany = await this.dbservice.callProcedure(
+      'company_save',
+
+      dto,
+
+      {},
+    );
+
+    return newCompany;
   }
 }
