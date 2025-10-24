@@ -47,13 +47,13 @@ export class AuthController {
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType, // ✅ типізація
   ) {}
 
-  @Recaptcha()
+  // @Recaptcha()
   @Post('register')
   @HttpCode(HttpStatus.OK)
   public async register(@Req() req: Request, @Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
-  @Recaptcha()
+  // @Recaptcha()
   @Post('pre-register')
   @HttpCode(HttpStatus.OK)
   public async preRegister(@Req() req: Request, @Body() dto: PreRegisterDto) {
@@ -69,7 +69,7 @@ export class AuthController {
 
     return this.authService.registerIctUser(dto);
   }
-  @Recaptcha()
+  // @Recaptcha()
   @Post('login')
   @Throttle({ default: { limit: 3, ttl: 10000 } }) // 5 requests per 10 seconds
   @HttpCode(HttpStatus.OK)

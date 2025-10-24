@@ -17,13 +17,13 @@ export class PasswordRecoveryController {
     private readonly passwordRecoveryService: PasswordRecoveryService,
   ) {}
 
-  @Recaptcha()
+  // @Recaptcha()
   @Post('reset')
   @HttpCode(HttpStatus.OK)
   public async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.passwordRecoveryService.resetPassword(dto);
   }
-  @Recaptcha()
+  // @Recaptcha()
   @Post('new/:token')
   @HttpCode(HttpStatus.OK)
   public async newPassword(
