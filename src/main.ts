@@ -79,18 +79,7 @@ async function bootstrap() {
   );
 
 
-  // TEST!!!!
 
-  // Налаштування Swagger
-  // const configSwagger = new DocumentBuilder()
-  //   .setTitle('Help Desk API')
-  //   .setDescription('Документація REST API для Help Desk')
-  //   .setVersion('1.0')
-  //   .addBearerAuth() // якщо є JWT авторизація
-  //   .build();
-
-  // const document = SwaggerModule.createDocument(app, configSwagger);
-  // SwaggerModule.setup('api', app, document); // доступ за URL: /api
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'));
 }
 
