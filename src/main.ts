@@ -29,8 +29,8 @@ async function bootstrap() {
     origin: process.env.ALLOWED_ORIGIN!,
     credentials: true,
   });
-const IS_DEV = process.env.NODE_ENV!
-console.log(IS_DEV,'IS DEV');
+  const IS_DEV = process.env.NODE_ENV!;
+  console.log(IS_DEV, 'IS DEV');
 
   // LOCAL!!!!
   app.use(
@@ -44,6 +44,7 @@ console.log(IS_DEV,'IS DEV');
         secure: process.env.NODE_ENV! === 'production', // для продакшн HTTPS
         sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 24,
+        domain: IS_DEV ? undefined : '.dragan-tataryn.site', // доступне на всіх субдоменах
       },
       store: new RedisStore({
         client: redisClient,
