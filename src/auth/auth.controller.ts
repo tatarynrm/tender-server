@@ -187,33 +187,33 @@ export class AuthController {
     return { ok: true };
   }
 
-  // @Get('me')
-  // async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
-  //   const sessionUser = req.session?.userId;
-  //   console.log(sessionUser, 'sessionUser');
+  @Get('me')
+  async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
+    const sessionUser = req.session?.userId;
+    console.log(sessionUser, 'sessionUser 193 line get me controller auth');
 
-  //   if (!sessionUser) {
-  //     // Видалення cookie
-  //     res.cookie('centrifuge', '', { maxAge: 0, path: '/', httpOnly: true });
+    if (!sessionUser) {
+      // Видалення cookie
+      res.cookie('centrifuge', '', { maxAge: 0, path: '/', httpOnly: true });
 
-  //     return res.status(401).json({ message: 'authorized', status: 401 });
-  //   }
+      return res.status(401).json({ message: 'authorized', status: 401 });
+    }
 
-  //   // Отримуємо актуальні дані з бази
-  //   const user = await this.userService.findById(sessionUser);
+    // Отримуємо актуальні дані з бази
+    const user = await this.userService.findById(sessionUser);
 
-  //   return res.json({
-  //     id: user.id,
-  //     name: user.name,
-  //     email: user.email,
-  //     is_admin: user.is_admin,
-  //     is_manager: user.is_manager,
-  //     is_director: user.is_director,
-  //     ict: user.ict,
-  //     is_ict: user.is_ict,
-  //     is_blocked: user.is_blocked,
-  //   });
-  // }
+    return res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      is_admin: user.is_admin,
+      is_manager: user.is_manager,
+      is_director: user.is_director,
+      ict: user.ict,
+      is_ict: user.is_ict,
+      is_blocked: user.is_blocked,
+    });
+  }
 
   //   @Get('me')
   //   async getProfile(@Req() req: Request, @Headers('cookies') cookie: string) {
@@ -243,29 +243,29 @@ export class AuthController {
   //     };
   //   }
 
-  @Get('me')
-  async getProfile(@Req() req: Request) {
-    const sessionUserId = req.session?.userId;
+  // @Get('me')
+  // async getProfile(@Req() req: Request) {
+  //   const sessionUserId = req.session?.userId;
 
-    console.log('Session:', req.session); // тут має бути userId
+  //   console.log('Session:', req.session); // тут має бути userId
 
-    if (!sessionUserId) {
-      req.session?.destroy((err: any) => err && console.error(err));
-      return { message: 'Unauthorized', status: 401 };
-    }
+  //   if (!sessionUserId) {
+  //     req.session?.destroy((err: any) => err && console.error(err));
+  //     return { message: 'Unauthorized', status: 401 };
+  //   }
 
-    const user = await this.userService.findById(sessionUserId);
+  //   const user = await this.userService.findById(sessionUserId);
 
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      is_admin: user.is_admin,
-      is_manager: user.is_manager,
-      is_director: user.is_director,
-      ict: user.ict,
-      is_ict: user.is_ict,
-      is_blocked: user.is_blocked,
-    };
-  }
+  //   return {
+  //     id: user.id,
+  //     name: user.name,
+  //     email: user.email,
+  //     is_admin: user.is_admin,
+  //     is_manager: user.is_manager,
+  //     is_director: user.is_director,
+  //     ict: user.ict,
+  //     is_ict: user.is_ict,
+  //     is_blocked: user.is_blocked,
+  //   };
+  // }
 }
