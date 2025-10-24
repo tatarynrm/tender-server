@@ -216,19 +216,18 @@ export class AuthController {
   // }
 
   @Get('me')
-  async getProfile(@Req() req: Request, @Headers('cookies') cookie: string) {
-    const sessionUser = req.session?.userId;
-    console.log('Cookies:', req.cookies); // повинен бути centrifuge
-    console.log('Session:', req.session);
- console.log(cookie,' HEADERS COOKIE'); // тут буде centrifuge=...
-    if (!sessionUser) {
-      req.session.destroy((err) => {
-        if (err) console.error(err);
-      });
+  async getProfile(@Req() req: Request) {
+    const sessionUserId = req.session?.userId;
+
+    console.log('Cookies:', req.cookies);        // тут має бути centrifuge
+    console.log('Session:', req.session);        // тут має бути userId
+
+    if (!sessionUserId) {
+      req.session?.destroy((err: any) => err && console.error(err));
       return { message: 'Unauthorized', status: 401 };
     }
 
-    const user = await this.userService.findById(sessionUser);
+    const user = await this.userService.findById(sessionUserId);
 
     return {
       id: user.id,
