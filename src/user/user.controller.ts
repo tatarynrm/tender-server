@@ -69,7 +69,7 @@ export class UserController {
     const filter = body.filter || [];
     const sort = body.sort || null;
 
-    return this.userService.getAllUsers({ pagination, filter, sort });
+    return this.userService.getAllUsers({ pagination, sort, filter });
   }
   // Компанія реєструє свого працівника !!!!!!!!!!!!!!!!!!!
   @Post('register-from-company')

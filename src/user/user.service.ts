@@ -35,7 +35,6 @@ export class UserService {
       );
     }
 
-
     return user;
   }
   public async findByEmail(email: string) {
@@ -175,25 +174,11 @@ export class UserService {
 
     const result = await this.dbservice.callProcedure('usr_list', {
       pagination,
-      filter,
-      sort,
+      // pagination: { page_num: number; page_rows: number };
+  
     });
 
     return result;
   }
-  async getAllUsers222222(params: {
-    pagination: { page_num: number; page_rows: number };
-    filter?: any[];
-    sort?: any;
-  }) {
-    const { pagination, filter = [], sort = null } = params;
 
-    const result = await this.dbservice.callProcedure('usr_list', {
-      pagination,
-      filter,
-      sort,
-    });
-
-    return result;
-  }
 }
