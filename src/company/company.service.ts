@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { UpdateCompanyDto } from './dto/update-company.dto';
+
 import { Pool } from 'pg';
 import { DatabaseService } from 'src/database/database.service';
 import { Request } from 'express';
@@ -61,9 +61,9 @@ export class CompanyService {
     return `This action returns a #${id} company`;
   }
 
-  update(id: number, updateCompanyDto: UpdateCompanyDto) {
-    return `This action updates a #${id} company`;
-  }
+  // update(id: number, updateCompanyDto: UpdateCompanyDto) {
+  //   return `This action updates a #${id} company`;
+  // }
 
   remove(id: number) {
     return `This action removes a #${id} company`;

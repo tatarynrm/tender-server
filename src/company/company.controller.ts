@@ -6,16 +6,10 @@ import {
   Patch,
   Param,
   Delete,
-  Req,
-  Query,
-  ParseIntPipe,
-  Res,
-  HttpStatus,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
-import { UpdateCompanyDto } from './dto/update-company.dto';
-import type { Request, Response } from 'express';
+
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 import { AdminCreateCompanyDto } from './dto/admin-create-company.dto copy';
 
@@ -33,7 +27,7 @@ export class CompanyController {
 
   @Post('all')
   findAll(@Body() body: any) {
-   const pagination = body.pagination || {
+    const pagination = body.pagination || {
       page_num: 1,
       page_rows: 10,
     };
@@ -44,16 +38,15 @@ export class CompanyController {
     return this.companyService.findAll({ pagination, filter, sort });
   }
 
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.companyService.findOne(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
-    return this.companyService.update(+id, updateCompanyDto);
-  }
+  // @Patch(':id')
+  // update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
+  //   return this.companyService.update(+id, updateCompanyDto);
+  // }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
