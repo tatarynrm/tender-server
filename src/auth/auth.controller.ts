@@ -215,28 +215,20 @@ export class AuthController {
   // }
 
   @Get('me')
-  async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
+  async getProfile(@Req() req: Request) {
     const sessionUser = req.session?.userId;
-    console.log(sessionUser, 'sessionUser');
-
+    console.log(sessionUser,'sessionUser');
+    
     if (!sessionUser) {
-      // Видалення сесії та cookies, якщо користувач не авторизований
-      req.session.destroy((err: any) => {
-        if (err) {
-          console.error('Session destroy error:', err);
-        }
-
-        // Видалення cookies з браузера
-        res.clearCookie('centrifuge', { path: '/' });
-
-        return res.status(401).json({ message: 'authorized', status: 401 });
+      req.session.destroy((err) => {
+        if (err) console.error(err);
       });
+      return { message: 'Unauthorized', status: 401 };
     }
 
-    // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
 
-    return res.json({
+    return {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -246,6 +238,6 @@ export class AuthController {
       ict: user.ict,
       is_ict: user.is_ict,
       is_blocked: user.is_blocked,
-    });
+    };
   }
 }

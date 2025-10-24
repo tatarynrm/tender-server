@@ -81,10 +81,7 @@ export class AuthService {
       {},
     );
 
-    console.log(
-      checkUserExist.data,
-      'CHECK USER EXIST ------------------------ TARAS 08.10',
-    );
+
     const user = checkUserExist.data;
 
     if (!user) {
