@@ -22,9 +22,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   app.enableCors({
-    origin: isDev
-      ? 'http://localhost:3000'
-      : 'https://dragan-tataryn.site',
+    origin: isDev ? 'http://localhost:3000' : 'https://dragan-tataryn.site',
     credentials: true,
   });
 
@@ -39,13 +37,13 @@ async function bootstrap() {
         httpOnly: true,
         secure: !isDev, // ✅ тільки через HTTPS у продакшні
         sameSite: isDev ? 'lax' : 'none',
-        maxAge: 1000 * 60 * 60 * 24,
+        maxAge: 1000 * 60 * 60 * 24 * 30,
         domain: isDev ? undefined : '.dragan-tataryn.site',
       },
       store: new RedisStore({
         client: redisClient,
         prefix: config.getOrThrow<string>('SESSION_FOLDER'),
-        ttl: 60 * 60 * 24,
+        ttl: 60 * 60 * 24 * 30,
       }),
     }),
   );
