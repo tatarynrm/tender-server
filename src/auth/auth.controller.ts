@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Inject,
@@ -215,11 +216,11 @@ export class AuthController {
   // }
 
   @Get('me')
-  async getProfile(@Req() req: Request) {
+  async getProfile(@Req() req: Request, @Headers('cookies') cookie: string) {
     const sessionUser = req.session?.userId;
     console.log('Cookies:', req.cookies); // повинен бути centrifuge
     console.log('Session:', req.session);
-
+ console.log(cookie,' HEADERS COOKIE'); // тут буде centrifuge=...
     if (!sessionUser) {
       req.session.destroy((err) => {
         if (err) console.error(err);
