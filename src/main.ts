@@ -80,7 +80,7 @@ async function bootstrap() {
 
 
 
-  await app.listen(config.getOrThrow<number>('APPLICATION_PORT'));
+  await app.listen(config.getOrThrow<number>('APPLICATION_PORT'),'0.0.0.0');
 }
 
 bootstrap();
