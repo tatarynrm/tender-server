@@ -217,9 +217,8 @@ export class AuthController {
   @Get('me')
   async getProfile(@Req() req: Request) {
     const sessionUser = req.session?.userId;
-    console.log(req.cookies, 'COOKIKES');
-
-    console.log(req.headers.cookie,'REQ HEADERS COOKIE');
+    console.log('Cookies:', req.cookies); // повинен бути centrifuge
+    console.log('Session:', req.session);
 
     if (!sessionUser) {
       req.session.destroy((err) => {
