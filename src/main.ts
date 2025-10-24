@@ -42,7 +42,7 @@ console.log(IS_DEV,'IS DEV');
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV! === 'production', // для продакшн HTTPS
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 1000 * 60 * 60 * 24,
       },
       store: new RedisStore({
