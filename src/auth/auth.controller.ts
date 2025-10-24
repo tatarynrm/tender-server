@@ -218,6 +218,7 @@ export class AuthController {
   async getProfile(@Req() req: Request) {
     const sessionUser = req.session?.userId;
     console.log(sessionUser,'sessionUser');
+    console.log(req.cookies,'REQ COOKIES IN FETCH');
     
     if (!sessionUser) {
       req.session.destroy((err) => {
