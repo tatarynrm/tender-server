@@ -217,7 +217,7 @@ export class AuthController {
   @Get('me')
   async getProfile(@Req() req: Request) {
     const sessionUser = req.session?.userId;
-    console.log(sessionUser,'sessionUser');
+    console.log(req.cookies,'COOKIKES');
 
     
     if (!sessionUser) {
