@@ -65,7 +65,7 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: false, // бо без HTTPS
+        secure: true, // бо без HTTPS
         sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 24,
         domain: undefined,
