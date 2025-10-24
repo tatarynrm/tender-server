@@ -42,7 +42,7 @@ async function bootstrap() {
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV! === 'production', // для продакшн HTTPS
-        sameSite: 'lax',
+        sameSite: IS_DEV ? 'lax' : 'none',
         maxAge: 1000 * 60 * 60 * 24,
         domain: IS_DEV ? undefined : '.dragan-tataryn.site', // доступне на всіх субдоменах
       },
