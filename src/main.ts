@@ -10,6 +10,10 @@ import { RedisStore } from 'connect-redis';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // ✅ Додаємо підтримку HTTPS через Nginx
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   const config = app.get(ConfigService);
   const redisClient = app.get<RedisClientType>('REDIS_CLIENT');
   const isDev = process.env.NODE_ENV === 'development';
@@ -20,19 +24,20 @@ async function bootstrap() {
   app.enableCors({
     origin: isDev
       ? 'http://localhost:3000'
-      : 'https://dragan-tataryn.site', // 👈 вкажи свій фронт
+      : 'https://dragan-tataryn.site',
     credentials: true,
   });
 
   app.use(
     session({
+      proxy: true, // ✅ дозволяє secure cookies за проксі
       secret: config.getOrThrow<string>('SESSION_SECRET'),
       name: config.getOrThrow<string>('SESSION_NAME'),
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: !isDev,
+        secure: !isDev, // ✅ тільки через HTTPS у продакшні
         sameSite: isDev ? 'lax' : 'none',
         maxAge: 1000 * 60 * 60 * 24,
         domain: isDev ? undefined : '.dragan-tataryn.site',
