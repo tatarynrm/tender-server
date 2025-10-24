@@ -4,7 +4,7 @@ import { AuthController } from './auth.controller';
 import { UserService } from 'src/user/user.service';
 import { GoogleRecaptchaModule } from '@nestlab/google-recaptcha';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { getRecaptchaConfig } from 'src/config/recaptcha.config';
+
 import { ProviderModule } from './provider/provider.module';
 import { getProvidersConfig } from 'src/config/providers.config';
 import { EmailConfirmationModule } from './email-confirmation/email-confirmation.module';
@@ -21,11 +21,7 @@ import { CompanyService } from 'src/company/company.service';
       useFactory: getProvidersConfig,
       inject: [ConfigService],
     }),
-    GoogleRecaptchaModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: getRecaptchaConfig,
-      inject: [ConfigService],
-    }),
+
   ],
   controllers: [AuthController],
   providers: [AuthService, UserService, MailService, TwoFactorAuthService,CompanyService],
