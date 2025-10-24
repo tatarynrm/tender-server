@@ -201,71 +201,8 @@ export class AuthController {
 
     // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
-
-    return res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      is_admin: user.is_admin,
-      is_manager: user.is_manager,
-      is_director: user.is_director,
-      ict: user.ict,
-      is_ict: user.is_ict,
-      is_blocked: user.is_blocked,
-    });
+    console.log(user, 'user');
+    const { password_hash, ...safeUser } = user;
+    return res.json(user);
   }
-
-  //   @Get('me')
-  //   async getProfile(@Req() req: Request, @Headers('cookies') cookie: string) {
-  //     const sessionUser = req.session?.userId;
-  //     console.log('Cookies:', req.cookies); // повинен бути centrifuge
-  //     console.log('Session:', req.session);
-  //  console.log(cookie,' HEADERS COOKIE'); // тут буде centrifuge=...
-  //     if (!sessionUser) {
-  //       req.session.destroy((err) => {
-  //         if (err) console.error(err);
-  //       });
-  //       return { message: 'Unauthorized', status: 401 };
-  //     }
-
-  //     const user = await this.userService.findById(sessionUser);
-
-  //     return {
-  //       id: user.id,
-  //       name: user.name,
-  //       email: user.email,
-  //       is_admin: user.is_admin,
-  //       is_manager: user.is_manager,
-  //       is_director: user.is_director,
-  //       ict: user.ict,
-  //       is_ict: user.is_ict,
-  //       is_blocked: user.is_blocked,
-  //     };
-  //   }
-
-  // @Get('me')
-  // async getProfile(@Req() req: Request) {
-  //   const sessionUserId = req.session?.userId;
-
-  //   console.log('Session:', req.session); // тут має бути userId
-
-  //   if (!sessionUserId) {
-  //     req.session?.destroy((err: any) => err && console.error(err));
-  //     return { message: 'Unauthorized', status: 401 };
-  //   }
-
-  //   const user = await this.userService.findById(sessionUserId);
-
-  //   return {
-  //     id: user.id,
-  //     name: user.name,
-  //     email: user.email,
-  //     is_admin: user.is_admin,
-  //     is_manager: user.is_manager,
-  //     is_director: user.is_director,
-  //     ict: user.ict,
-  //     is_ict: user.is_ict,
-  //     is_blocked: user.is_blocked,
-  //   };
-  // }
 }

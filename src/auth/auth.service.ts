@@ -29,7 +29,6 @@ import { RegisterIctUserDto } from './dto/register-ict-user.dto';
 @Injectable()
 export class AuthService {
   public constructor(
-  
     private readonly userService: UserService,
     private readonly configService: ConfigService,
     private readonly providerService: ProviderService,
@@ -81,7 +80,6 @@ export class AuthService {
       {},
     );
 
-
     const user = checkUserExist.data;
 
     if (!user) {
@@ -91,28 +89,29 @@ export class AuthService {
     if (!isValidPassword) {
       throw new UnauthorizedException('Невірний пароль');
     }
+    console.log(user, 'user in login service');
 
-    // if (!user.isVerified) {
-    //   await this.emailConfirmationService.sendVerificationToken(user.email);
-    //   throw new UnauthorizedException(
-    //     `Ваш емейл не підтверджений.Перевірте вашу пошту та підвердіть адресу електронної пошти`,
-    //   );
-    // }
+    if (!user.verified) {
+      await this.emailConfirmationService.sendVerificationToken(user.email);
+      throw new UnauthorizedException(
+        `Ваш емейл не підтверджений.Перевірте вашу пошту та підвердіть адресу електронної пошти`,
+      );
+    }
 
-    // if (user.isTwoFactorEnabled) {
-    //   if (!dto.code) {
-    //     await this.twoFactorAuthService.sendTwoFactorToken(user.email);
+    if (user.two_factor_enabled) {
+      if (!dto.code) {
+        await this.twoFactorAuthService.sendTwoFactorToken(user.email);
 
-    //     return {
-    //       message: `Перевірте вашу пошту.Потрібен код двухфакторної автентифікації`,
-    //     };
-    //   }
+        return {
+          message: `Перевірте вашу пошту.Потрібен код двухфакторної автентифікації`,
+        };
+      }
 
-    //   await this.twoFactorAuthService.validateTwoFactorToken(
-    //     user.email,
-    //     dto.code,
-    //   );
-    // }
+      await this.twoFactorAuthService.validateTwoFactorToken(
+        user.email,
+        dto.code,
+      );
+    }
     return this.saveSession(req, user);
   }
   public async logout(req: Request, res: Response): Promise<void> {

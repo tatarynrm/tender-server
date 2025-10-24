@@ -19,7 +19,7 @@ export class UserService {
 
   public async findById(id: string | number) {
     const existUser = await this.pool.query(
-      `select a.*,b.company_name
+      `select a.*,b.company_name,b.company_name_full
        from usr  a
        left join company b on a.id_company = b.id
 
@@ -175,10 +175,8 @@ export class UserService {
     const result = await this.dbservice.callProcedure('usr_list', {
       pagination,
       // pagination: { page_num: number; page_rows: number };
-  
     });
 
     return result;
   }
-
 }

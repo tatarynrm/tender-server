@@ -1,91 +1,87 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Pool } from 'pg';
 
 import { MailService } from 'src/libs/common/mail/mail.service';
 
-
 @Injectable()
 export class TwoFactorAuthService {
-  public constructor(
-
+  constructor(
     private readonly mailService: MailService,
+    @Inject('PG_POOL') private readonly pool: Pool,
   ) {}
 
-  // public async validateTwoFactorToken(email: string, code: string) {
-  //   const existingToken = await this.prismaService.token.findFirst({
-  //     where: {
-  //       email,
+  /**
+   * ✅ Надсилає токен на пошту
+   */
+  public async sendTwoFactorToken(email: string) {
+    const tokenRecord = await this.generateTwoFactorToken(email);
 
-  //       type: TokenType.TWO_FACTOR,
-  //     },
-  //   });
+    await this.mailService.sendTwoFactorTokenEmail(
+      tokenRecord.email,
+      tokenRecord.token,
+    );
 
-  //   if (!existingToken) {
-  //     throw new NotFoundException(
-  //       `Токен двухфакторної автентифікації не знайдений. Впевніться що ви запросили токен для даної адреси електронної пошти.`,
-  //     );
-  //   }
-  //   if (existingToken.token !== code) {
-  //     throw new BadRequestException(
-  //       'Токен не знайдено.Перевірте код та спробуйте знову',
-  //     );
-  //   }
-  //   const isExpired = new Date(existingToken.expiresIn) < new Date();
+    return true;
+  }
 
-  //   if (isExpired) {
-  //     throw new BadRequestException('Термін дії цього токену вичерпано');
-  //   }
+  /**
+   * ✅ Перевіряє код від користувача
+   */
+  public async validateTwoFactorToken(email: string, code: string) {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM usr_token 
+       WHERE email = $1 AND token_type = 'TWO_FACTOR'
+       ORDER BY created_at DESC
+       LIMIT 1;`,
+      [email],
+    );
 
-  //   await this.prismaService.token.delete({
-  //     where: {
-  //       id: existingToken.id,
-  //       type: TokenType.TWO_FACTOR,
-  //     },
-  //   });
-  //   return true;
-  // }
-  // public async sendTwoFactorToken(email: string) {
-  //   const twoFactorToken = await this.generateTwoFactorToken(email);
-  //   await this.mailService.sendTwoFactorTokenEmail(
-  //     twoFactorToken.email,
-  //     twoFactorToken.token,
-  //   );
-  //   return true;
-  // }
-  // private async generateTwoFactorToken(email: string) {
-  //   const token = Math.floor(
-  //     Math.random() * (100000 - 10000) + 100000,
-  //   ).toString();
+    const existingToken = rows[0];
 
-  //   const expiresIn = new Date(new Date().getTime() + 300000);
-  //   const existingToken = await this.prismaService.token.findFirst({
-  //     where: {
-  //       email,
-  //       type: TokenType.TWO_FACTOR,
-  //     },
-  //   });
+    if (!existingToken) {
+      throw new NotFoundException(
+        'Токен двухфакторної автентифікації не знайдений. Запросіть новий код.',
+      );
+    }
 
-  //   if (existingToken) {
-  //     await this.prismaService.token.delete({
-  //       where: {
-  //         id: existingToken.id,
-  //         type: TokenType.TWO_FACTOR,
-  //       },
-  //     });
-  //   }
+    if (existingToken.token !== code) {
+      throw new BadRequestException('Невірний код. Перевірте введені дані.');
+    }
 
-  //   const verificationToken = await this.prismaService.token.create({
-  //     data: {
-  //       email,
-  //       token,
-  //       expiresIn,
-  //       type: TokenType.TWO_FACTOR,
-  //     },
-  //   });
+    const isExpired = new Date(existingToken.expires_in) < new Date();
+    if (isExpired) {
+      throw new BadRequestException('Термін дії токена вичерпано.');
+    }
 
-  //   return verificationToken;
-  // }
+    await this.pool.query(
+      `DELETE FROM usr_token WHERE id = $1 AND token_type = 'TWO_FACTOR';`,
+      [existingToken.id],
+    );
+
+    return true;
+  }
+
+  /**
+   * 🛠 Генерує та зберігає новий код
+   */
+  private async generateTwoFactorToken(email: string) {
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresIn = new Date(Date.now() + 5 * 60 * 1000); // 5 хв
+
+    // Видаляємо старий токен
+    await this.pool.query(
+      `DELETE FROM usr_token WHERE email = $1 AND token_type = 'TWO_FACTOR';`,
+      [email],
+    );
+
+    // Створюємо новий
+    const insertQuery = `
+      INSERT INTO usr_token (email, token, token_type, expires_in, created_at, updated_at)
+      VALUES ($1, $2, 'TWO_FACTOR', $3, NOW(), NOW())
+      RETURNING *;
+    `;
+
+    const { rows } = await this.pool.query(insertQuery, [email, token, expiresIn]);
+    return rows[0];
+  }
 }

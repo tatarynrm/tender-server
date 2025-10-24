@@ -22,8 +22,8 @@ export class EmailConfirmationController {
     @Req() req: Request,
     @Body() dto: ConfirmationDto,
   ) {
-    console.log(dto,'DTO IN  CONTROLLER');
-    
+    console.log(dto, 'DTO IN  CONTROLLER');
+
     return this.emailConfirmationService.newVerification(req, dto);
   }
 }

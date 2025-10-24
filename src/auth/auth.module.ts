@@ -12,19 +12,28 @@ import { MailService } from 'src/libs/common/mail/mail.service';
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service';
 import { ProviderService } from './provider/provider.service';
 import { CompanyService } from 'src/company/company.service';
+import { EmailConfirmationService } from './email-confirmation/email-confirmation.service';
+import { DatabaseModule } from 'src/database/database.module';
 
 @Module({
   imports: [
     forwardRef(() => EmailConfirmationModule),
+    DatabaseModule,
     ProviderModule.registerAsync({
       imports: [ConfigModule],
       useFactory: getProvidersConfig,
       inject: [ConfigService],
     }),
-
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserService, MailService, TwoFactorAuthService,CompanyService],
+  providers: [
+    AuthService,
+    UserService,
+    MailService,
+    TwoFactorAuthService,
+    CompanyService,
+    EmailConfirmationService,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}
