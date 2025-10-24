@@ -3,36 +3,27 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
-import { createClient, RedisClientType } from 'redis'; // Використовуємо redis.createClient
+import { RedisClientType } from 'redis';
 import session from 'express-session';
-import { ms, StringValue } from './libs/common/utils/ms.util';
-import { parseBoolean } from './libs/common/utils/parse-boolean.util';
 import { RedisStore } from 'connect-redis';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const config = app.get(ConfigService);
-
-  // Підключення до Redis за допомогою бібліотеки redis
-  const redisClient = app.get<RedisClientType>('REDIS_CLIENT'); // 🔹 беремо з DI
+  const redisClient = app.get<RedisClientType>('REDIS_CLIENT');
+  const isDev = process.env.NODE_ENV === 'development';
 
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')));
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-    }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   app.enableCors({
-    origin: process.env.ALLOWED_ORIGIN!,
+    origin: isDev
+      ? 'http://localhost:3000'
+      : 'https://dragan-tataryn.site', // 👈 вкажи свій фронт
     credentials: true,
   });
-  const IS_DEV = process.env.NODE_ENV!;
-  console.log(IS_DEV, 'IS DEV');
 
-  // LOCAL!!!!
   app.use(
     session({
       secret: config.getOrThrow<string>('SESSION_SECRET'),
@@ -41,15 +32,15 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV! === 'production', // для продакшн HTTPS
-        sameSite: IS_DEV ? 'lax' : 'none',
+        secure: !isDev,
+        sameSite: isDev ? 'lax' : 'none',
         maxAge: 1000 * 60 * 60 * 24,
-        domain: IS_DEV ? undefined : '.dragan-tataryn.site', // доступне на всіх субдоменах
+        domain: isDev ? undefined : '.dragan-tataryn.site',
       },
       store: new RedisStore({
         client: redisClient,
         prefix: config.getOrThrow<string>('SESSION_FOLDER'),
-        ttl: 60 * 60 * 24, // Тривалість сесії в Redis
+        ttl: 60 * 60 * 24,
       }),
     }),
   );
