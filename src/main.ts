@@ -29,6 +29,8 @@ async function bootstrap() {
     origin: process.env.ALLOWED_ORIGIN!,
     credentials: true,
   });
+const IS_DEV = process.env.NODE_ENV!
+console.log(IS_DEV,'IS DEV');
 
   // LOCAL!!!!
   app.use(
@@ -39,7 +41,7 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // для продакшн HTTPS
+        secure: process.env.NODE_ENV! === 'production', // для продакшн HTTPS
         sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 24,
       },
