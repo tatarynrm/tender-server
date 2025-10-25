@@ -34,20 +34,22 @@ app.use(
     name: config.getOrThrow<string>('SESSION_NAME'),
     resave: false,
     saveUninitialized: false,
+    rolling: true, // 🟢 оновлює maxAge при кожному запиті
     cookie: {
       httpOnly: true,
-      secure: !isDev, // HTTPS only у проді
+      secure: !isDev,
       sameSite: isDev ? 'lax' : 'none',
-      maxAge: THIRTY_DAYS, // 🕒 30 днів
+      maxAge: THIRTY_DAYS,
       domain: isDev ? undefined : '.dragan-tataryn.site',
     },
     store: new RedisStore({
       client: redisClient,
       prefix: config.getOrThrow<string>('SESSION_FOLDER'),
-      ttl: THIRTY_DAYS_SECONDS, // 🕒 30 днів
+      ttl: THIRTY_DAYS_SECONDS,
     }),
   }),
 );
+
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }
 

@@ -132,39 +132,17 @@ export class AuthService {
     return new Promise((resolve, reject) => {
       req.session.userId = user.id;
       req.session.ict = user.is_ict;
-      req.session.id_company = user.id_company;
-      console.log(user, 'USER ------------- ');
-
-      // Парсимо User-Agent
+      req.session.id_company = user.id_company;      // Парсимо User-Agent
       const agent = useragent.parse(req.headers['user-agent'] || '');
 
       // Отримуємо IP користувача
-      const ip = req.ip;
-      let location = 'Unknown location';
-
-      // Якщо IP локальний (127.0.0.1 або ::1), не намагаємось отримувати геолокацію
-      if (ip !== '127.0.0.1' && ip !== '::1') {
-        // Використовуємо API для геолокації (наприклад, ipinfo.io)
-        axios
-          .get(`http://ipinfo.io/${ip}/json`)
-          .then((response) => {
-            const { city, region, country } = response.data;
-            location = `${city}, ${region}, ${country}`;
-          })
-          .catch((error) => {
-            console.error('Geo-location error:', error);
-            location = 'Geo-location not found';
-          });
-      }
 
       // Зберігаємо дані сесії
       req.session.meta = {
-        ip,
         userAgent: req.headers['user-agent'],
         browser: agent.family,
         os: agent.os.family,
         device: agent.device.family,
-        location,
         createdAt: new Date().toISOString(),
       };
 

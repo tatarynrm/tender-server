@@ -192,13 +192,16 @@ export class AuthController {
     const sessionUser = req.session?.userId;
     console.log(sessionUser, 'sessionUser 193 line get me controller auth');
 
+    // if (!sessionUser) {
+    //   // Видалення cookie
+    //   res.cookie('centrifuge', '', { maxAge: 0, path: '/', httpOnly: true });
+
+    //   return res.status(401).json({ message: 'authorized', status: 401 });
+    // }
     if (!sessionUser) {
-      // Видалення cookie
-      res.cookie('centrifuge', '', { maxAge: 0, path: '/', httpOnly: true });
-
-      return res.status(401).json({ message: 'authorized', status: 401 });
+      res.clearCookie('centrifuge', { path: '/' });
+      return res.status(401).json({ message: 'unauthorized', status: 401 });
     }
-
     // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
     console.log(user, 'user');
