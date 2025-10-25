@@ -6,7 +6,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { RedisClientType } from 'redis';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
-
+const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30; // 30 днів у мс
+const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30; // 30 днів у секундах
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -26,28 +27,27 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.use(
-    session({
-      proxy: true, // ✅ дозволяє secure cookies за проксі
-      secret: config.getOrThrow<string>('SESSION_SECRET'),
-      name: config.getOrThrow<string>('SESSION_NAME'),
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        secure: !isDev, // ✅ тільки через HTTPS у продакшні
-        sameSite: isDev ? 'lax' : 'none',
-        maxAge: 1000 * 60 * 60 * 24 * 30,
-        domain: isDev ? undefined : '.dragan-tataryn.site',
-      },
-      store: new RedisStore({
-        client: redisClient,
-        prefix: config.getOrThrow<string>('SESSION_FOLDER'),
-        ttl: 60 * 60 * 24 * 30,
-      }),
+app.use(
+  session({
+    proxy: true,
+    secret: config.getOrThrow<string>('SESSION_SECRET'),
+    name: config.getOrThrow<string>('SESSION_NAME'),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: !isDev, // HTTPS only у проді
+      sameSite: isDev ? 'lax' : 'none',
+      maxAge: THIRTY_DAYS, // 🕒 30 днів
+      domain: isDev ? undefined : '.dragan-tataryn.site',
+    },
+    store: new RedisStore({
+      client: redisClient,
+      prefix: config.getOrThrow<string>('SESSION_FOLDER'),
+      ttl: THIRTY_DAYS_SECONDS, // 🕒 30 днів
     }),
-  );
-
+  }),
+);
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }
 
