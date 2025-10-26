@@ -205,21 +205,13 @@ export class AuthController {
   @Get('me')
   async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
     const sessionUser = req.session?.userId;
-    console.log(sessionUser, 'sessionUser 193 line get me controller auth');
 
-    // if (!sessionUser) {
-    //   // Видалення cookie
-    //   res.cookie('centrifuge', '', { maxAge: 0, path: '/', httpOnly: true });
-
-    //   return res.status(401).json({ message: 'authorized', status: 401 });
-    // }
     if (!sessionUser) {
       res.clearCookie('centrifuge', { path: '/' });
       return res.status(401).json({ message: 'unauthorized', status: 401 });
     }
     // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
-    console.log(user, 'user');
     const { password_hash, ...safeUser } = user;
     return res.json(user);
   }
