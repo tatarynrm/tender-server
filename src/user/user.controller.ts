@@ -98,7 +98,7 @@ export class UserController {
   @Get('test-deploy')
   public async testDeploy() {
     return {
-      message:'DEPLOY SUCCESFULL'
+      message:'DEPLOY SUCCESFULLsss'
     }
   }
   // Створити користувача з форми PreRegister
