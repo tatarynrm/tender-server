@@ -14,7 +14,7 @@ import { createClient } from 'redis';
         // await client.connect();
         // return client;
 
-                const user = configService.get<string>('REDIS_USER');
+        const user = configService.get<string>('REDIS_USER');
         const password = configService.get<string>('REDIS_PASSWORD');
         const host = configService.get<string>('REDIS_HOST');
         const port = configService.get<string>('REDIS_PORT');

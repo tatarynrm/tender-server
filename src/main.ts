@@ -27,28 +27,28 @@ async function bootstrap() {
     credentials: true,
   });
 
-app.use(
-  session({
-    proxy: true,
-    secret: config.getOrThrow<string>('SESSION_SECRET'),
-    name: config.getOrThrow<string>('SESSION_NAME'),
-    resave: false,
-    saveUninitialized: false,
-    rolling: true, // 🟢 оновлює maxAge при кожному запиті
-    cookie: {
-      httpOnly: true,
-      secure: !isDev,
-      sameSite: isDev ? 'lax' : 'none',
-      maxAge: THIRTY_DAYS,
-      domain: isDev ? undefined : '.dragan-tataryn.site',
-    },
-    store: new RedisStore({
-      client: redisClient,
-      prefix: config.getOrThrow<string>('SESSION_FOLDER'),
-      ttl: THIRTY_DAYS_SECONDS,
+  app.use(
+    session({
+      proxy: true,
+      secret: config.getOrThrow<string>('SESSION_SECRET'),
+      name: config.getOrThrow<string>('SESSION_NAME'),
+      resave: true,
+      saveUninitialized: false,
+      rolling: true, // 🟢 оновлює maxAge при кожному запиті
+      cookie: {
+        httpOnly: true,
+        secure: !isDev,
+        sameSite: isDev ? 'lax' : 'none',
+        maxAge: THIRTY_DAYS,
+        domain: isDev ? undefined : '.dragan-tataryn.site',
+      },
+      store: new RedisStore({
+        client: redisClient,
+        prefix: config.getOrThrow<string>('SESSION_FOLDER'),
+        ttl: THIRTY_DAYS_SECONDS,
+      }),
     }),
-  }),
-);
+  );
 
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }
