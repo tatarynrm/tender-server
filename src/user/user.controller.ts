@@ -95,6 +95,12 @@ export class UserController {
   public async getAllPreRegisterUsers(@Req() req: Request) {
     return this.userService.getAllPreRegisterUsers(req);
   }
+  @Get('test-deploy')
+  public async testDeploy() {
+    return {
+      message:'DEPLOY SUCCESFULL'
+    }
+  }
   // Створити користувача з форми PreRegister
   @Post('pre-register-user-create')
   public async createPreRegisterUser(
