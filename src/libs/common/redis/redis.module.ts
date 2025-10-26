@@ -1,31 +1,26 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 
 @Global()
 @Module({
   providers: [
     {
       provide: 'REDIS_CLIENT',
-      useFactory: async (configService: ConfigService) => {
-        // const client = createClient({
-        //   url: configService.getOrThrow<string>('REDIS_URI'),
-        // });
-        // await client.connect();
-        // return client;
-
+      useFactory: async (configService: ConfigService): Promise<RedisClientType> => {
         const user = configService.get<string>('REDIS_USER');
         const password = configService.get<string>('REDIS_PASSWORD');
         const host = configService.get<string>('REDIS_HOST');
         const port = configService.get<string>('REDIS_PORT');
 
-        const url = password
-          ? `redis://${user}:${password}@${host}:${port}`
-          : `redis://${host}:${port}`;
+        const url = `redis://${user}:${password}@${host}:${port}`;
+        console.log('✅ Redis URL:', url); // для перевірки
 
-        console.log('✅ Redis URL:', url); // тимчасово для перевірки
+        const client: RedisClientType = createClient({ url });
 
-        const client = createClient({ url });
+        client.on('error', (err) => console.error('Redis Client Error:', err));
+        client.on('connect', () => console.log('✅ Redis connected successfully'));
+
         await client.connect();
         return client;
       },
