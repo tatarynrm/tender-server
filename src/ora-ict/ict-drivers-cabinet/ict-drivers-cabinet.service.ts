@@ -8,7 +8,7 @@ export class IctDriversCabinetService {
     const { data } = await api5.post('/user', {
       KOD_UR: kod || 203531,
     });
-    console.log(data, 'DATA');
+    
 
     return data;
   }
