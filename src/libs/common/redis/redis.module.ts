@@ -7,7 +7,9 @@ import { createClient, RedisClientType } from 'redis';
   providers: [
     {
       provide: 'REDIS_CLIENT',
-      useFactory: async (configService: ConfigService): Promise<RedisClientType> => {
+      useFactory: async (
+        configService: ConfigService,
+      ): Promise<RedisClientType> => {
         const user = configService.get<string>('REDIS_USER');
         const password = configService.get<string>('REDIS_PASSWORD');
         const host = configService.get<string>('REDIS_HOST');
@@ -19,7 +21,9 @@ import { createClient, RedisClientType } from 'redis';
         const client: RedisClientType = createClient({ url });
 
         client.on('error', (err) => console.error('Redis Client Error:', err));
-        client.on('connect', () => console.log('✅ Redis connected successfully'));
+        client.on('connect', () =>
+          console.log('✅ Redis connected successfully'),
+        );
 
         await client.connect();
         return client;

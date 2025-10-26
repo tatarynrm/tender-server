@@ -124,16 +124,6 @@ export class AuthController {
     return this.authService.logout(req, res);
   }
 
-  @Get('check-session')
-  public async checkSession(@Req() req: Request) {
-    if (!req.session?.userId) {
-      throw new UnauthorizedException('Сесія не знайдена або закінчилась');
-    }
-    console.log(req.session.userId, 'USER ID ----- 129  line auth controller');
-
-    return { ok: true };
-  }
-
   @Get('sessions')
   async getUserSessions(@Req() req: Request) {
     const sessionPrefix =
@@ -166,24 +156,49 @@ export class AuthController {
     };
   }
 
-  @Delete('sessions/:id')
-  async deleteSession(@Req() req: Request, @Param('id') id: string) {
+  @Delete('sessions/current')
+  async deleteCurrentSession(@Req() req: Request) {
     const sessionPrefix =
       this.configService.get<string>('SESSION_FOLDER') || '';
-    const fullKey = `${sessionPrefix}${id}`;
-    const raw = await this.redisClient.get(fullKey);
-
-    if (!raw) {
-      return { ok: false, message: 'Сесія не знайдена' };
-    }
-
-    const session = JSON.parse(raw);
-    console.log(session, 'SESSION');
-    if (session.userId !== req.session.userId) {
-      return { ok: false, message: 'Доступ заборонено' };
-    }
-
+    const fullKey = `${sessionPrefix}${req.sessionID}`;
     await this.redisClient.del(fullKey);
+    req.session.destroy(() => {});
+    return { ok: true };
+  }
+
+  @Post('sessions/logout-others')
+  async logoutOtherSessions(@Req() req: Request) {
+    const sessionPrefix =
+      this.configService.get<string>('SESSION_FOLDER') || '';
+    const currentSessionId = req.sessionID;
+    const userId = req.session.userId;
+    console.log(currentSessionId, 'CURRENT');
+
+    const keys = await this.redisClient.keys(`${sessionPrefix}*`);
+    const allSessions = await Promise.all(
+      keys.map(async (key) => {
+        const raw = await this.redisClient.get(key);
+        if (!raw) return null;
+        const session = JSON.parse(raw);
+        return { key, session };
+      }),
+    );
+
+    // Знаходимо сесії поточного користувача (крім поточної)
+    const userSessions = allSessions.filter(
+      (item) =>
+        item &&
+        item.session.userId === userId &&
+        item.session.id !== currentSessionId,
+    );
+
+    // Видаляємо інші
+    await Promise.all(
+      userSessions
+        .filter((s): s is { key: string; session: any } => s !== null)
+        .map((s) => this.redisClient.del(s.key)),
+    );
+
     return { ok: true };
   }
 
