@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout frontend code
+      - name: Checkout Server code
         uses: actions/checkout@v3
 
       - name: Deploy via SSH
