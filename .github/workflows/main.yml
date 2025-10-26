@@ -22,6 +22,7 @@ jobs:
             export NVM_DIR="/root/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd /dragantataryn/ict/tender-server
+            git pull origin main
             npm install --production
             npm run build
             pm2 restart tender-server || pm2 start npm --name tender-server -- run start
