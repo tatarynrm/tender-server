@@ -95,7 +95,7 @@ export class UserController {
   public async getAllPreRegisterUsers(@Req() req: Request) {
     return this.userService.getAllPreRegisterUsers(req);
   }
-  @Get('test-deploy')
+  @Get('deploy')
   public async testDeploy() {
     return {
       message: 'DEPLOY SUCCESFULLssssss',
