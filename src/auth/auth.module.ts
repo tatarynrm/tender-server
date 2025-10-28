@@ -14,6 +14,7 @@ import { ProviderService } from './provider/provider.service';
 import { CompanyService } from 'src/company/company.service';
 import { EmailConfirmationService } from './email-confirmation/email-confirmation.service';
 import { DatabaseModule } from 'src/database/database.module';
+import { AuthGuard } from './guards/auth.guard';
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { DatabaseModule } from 'src/database/database.module';
     TwoFactorAuthService,
     CompanyService,
     EmailConfirmationService,
+    AuthGuard
   ],
-  exports: [AuthService],
+  exports: [AuthService,AuthGuard],
 })
 export class AuthModule {}

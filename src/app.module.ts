@@ -17,6 +17,8 @@ import { CompanyModule } from './company/company.module';
 
 import { OraIctModule } from './ora-ict/ora-ict.module';
 import { CrmModule } from './crm/crm.module';
+import { ExternalServicesModule } from './external-services/external-services.module';
+import { NominatimModule } from './external-services/nominatim/nominatim.module';
 
 @Module({
   imports: [
@@ -28,7 +30,7 @@ import { CrmModule } from './crm/crm.module';
       throttlers: [{ limit: 4, ttl: 10 }],
       errorMessage: 'Почекайте 10 секунд.Занадто багато спроб',
     }),
-    
+
     AuthModule,
     UserModule,
     RedisModule,
@@ -49,6 +51,10 @@ import { CrmModule } from './crm/crm.module';
     OraIctModule,
 
     CrmModule,
+
+    ExternalServicesModule,
+    NominatimModule,
+    ExternalServicesModule,
   ],
   controllers: [],
   providers: [
