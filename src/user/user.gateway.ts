@@ -1,37 +1,3 @@
-// import {
-//   WebSocketGateway,
-//   WebSocketServer,
-//   OnGatewayConnection,
-//   OnGatewayDisconnect,
-// } from '@nestjs/websockets';
-// import { Server, Socket } from 'socket.io';
-
-// @WebSocketGateway({ namespace: '/user', cors: { origin: '*' } })
-// export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
-//   @WebSocketServer() server: Server;
-//   private activeUsers = new Map<number, string>();
-
-//   handleConnection(client: Socket) {
-//     const userId = client.handshake.query.userId as string;
-//     console.log(userId, 'USER ID');
-
-//     if (userId) this.activeUsers.set(+userId, client.id);
-//   }
-
-//   handleDisconnect(client: Socket) {
-//     for (const [userId, socketId] of this.activeUsers.entries()) {
-//       if (socketId === client.id) this.activeUsers.delete(userId);
-//     }
-//   }
-
-//   blockUser(userId: number) {
-//     const socketId = this.activeUsers.get(userId);
-//     if (socketId)
-//       this.server
-//         .to(socketId)
-//         .emit('USER_BLOCKED', { message: 'You are blocked!' });
-//   }
-// }
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -87,4 +53,7 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
         .emit('USER_BLOCKED', { message: 'You are blocked!' });
     }
   }
+
+
+  
 }

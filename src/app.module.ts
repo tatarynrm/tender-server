@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { IS_DEV_ENV } from './libs/common/utils/is-dev.util';
-// import { PrismaModule } fro./dqswqewqeqweweq/prisma.moduleule';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { ProviderModule } from './auth/provider/provider.module';
@@ -14,13 +13,15 @@ import { seconds, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
 import { APP_GUARD } from '@nestjs/core';
 import { CompanyModule } from './company/company.module';
-
 import { OraIctModule } from './ora-ict/ora-ict.module';
 import { CrmModule } from './crm/crm.module';
 import { ExternalServicesModule } from './external-services/external-services.module';
 import { NominatimModule } from './external-services/nominatim/nominatim.module';
 import { UserGateway } from './user/user.gateway';
 import { AdminModule } from './admin/admin.module';
+import { TelegramModule } from './telegram/telegram.module';
+import { Telegram } from 'telegraf';
+import { TelegramTokenModule } from './telegram/telegram-token/telegram-token.module';
 
 @Module({
   imports: [
@@ -58,6 +59,8 @@ import { AdminModule } from './admin/admin.module';
     NominatimModule,
     ExternalServicesModule,
     AdminModule,
+    TelegramModule,
+    TelegramTokenModule,
   ],
   controllers: [],
   providers: [

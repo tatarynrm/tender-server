@@ -6,8 +6,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { RedisClientType } from 'redis';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
+import * as express from 'express';
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30; // 30 днів у мс
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30; // 30 днів у секундах
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -50,9 +52,9 @@ async function bootstrap() {
     }),
   );
 
-
+  app.use(express.json());
   console.log('NORIS PRODUCTION');
-  
+
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }
 

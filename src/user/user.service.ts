@@ -190,6 +190,38 @@ export class UserService {
     return blockUSer;
   }
 
+  async linkTelegram(telegramId: number, token: string) {
+    const user = await this.pool.query(
+      `SELECT * FROM users WHERE telegram_token = $1`,
+      [token],
+    );
+
+    if (!user.rows[0]) throw new Error('Токен недійсний');
+
+    await this.pool.query(
+      `UPDATE users SET telegram_id = $1, telegram_token = NULL WHERE id = $2`,
+      [telegramId, user.rows[0].id],
+    );
+  }
+
+  /**
+   * Генерація одноразового токена для прив'язки Telegram
+   */
+  async generateTelegramToken(userId: number) {
+    const token = Math.floor(100000 + Math.random() * 900000).toString(); // 6-значний код
+
+    const client = await this.pool.connect();
+    try {
+      await client.query(`UPDATE usr SET telegram_token = $1 WHERE id = $2`, [
+        token,
+        userId,
+      ]);
+      return token;
+    } finally {
+      client.release();
+    }
+  }
+
   // public async unblockUser(userId: number) {
   //   return this.prisma.user.update({
   //     where: { id: userId },

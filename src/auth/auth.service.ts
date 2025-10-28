@@ -132,7 +132,7 @@ export class AuthService {
     return new Promise((resolve, reject) => {
       req.session.userId = user.id;
       req.session.ict = user.is_ict;
-      req.session.id_company = user.id_company;      // Парсимо User-Agent
+      req.session.id_company = user.id_company; // Парсимо User-Agent
       const agent = useragent.parse(req.headers['user-agent'] || '');
 
       // Отримуємо IP користувача
