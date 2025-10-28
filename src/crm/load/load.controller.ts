@@ -10,14 +10,20 @@ import {
 import { LoadService } from './load.service';
 import { CreateLoadDto } from './dto/create-load.dto';
 import { UpdateLoadDto } from './dto/update-load.dto';
+import { Authorization } from 'src/auth/decorators/auth.decorator';
 
+@Authorization()
 @Controller('crm/load')
 export class LoadController {
   constructor(private readonly loadService: LoadService) {}
 
-  @Post()
-  create(@Body() createLoadDto: CreateLoadDto) {
-    return this.loadService.create(createLoadDto);
+  @Post('create')
+  create(@Body() dto: any) {
+    return this.loadService.create(dto);
+  }
+  @Get('get-one')
+  getOne(@Body() dto: any) {
+    return this.loadService.getOne(dto);
   }
 
   @Get()

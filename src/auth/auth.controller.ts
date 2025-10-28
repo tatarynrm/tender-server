@@ -213,6 +213,8 @@ export class AuthController {
     // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
     const { password_hash, ...safeUser } = user;
-    return res.json(user);
+    console.log(safeUser, 'SAFE USER', new Date());
+
+    return res.json(safeUser);
   }
 }

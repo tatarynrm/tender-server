@@ -179,4 +179,21 @@ export class UserService {
 
     return result;
   }
+
+  // --- додаємо метод блокування ---
+  public async blockUser(userId: number) {
+    const blockUSer = this.pool.query(
+      `update usr set is_blocked = true where id = $1`,
+      [userId],
+    );
+
+    return blockUSer;
+  }
+
+  // public async unblockUser(userId: number) {
+  //   return this.prisma.user.update({
+  //     where: { id: userId },
+  //     data: { is_blocked: false },
+  //   });
+  // }
 }

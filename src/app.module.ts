@@ -19,6 +19,8 @@ import { OraIctModule } from './ora-ict/ora-ict.module';
 import { CrmModule } from './crm/crm.module';
 import { ExternalServicesModule } from './external-services/external-services.module';
 import { NominatimModule } from './external-services/nominatim/nominatim.module';
+import { UserGateway } from './user/user.gateway';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -55,6 +57,7 @@ import { NominatimModule } from './external-services/nominatim/nominatim.module'
     ExternalServicesModule,
     NominatimModule,
     ExternalServicesModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [
@@ -63,6 +66,7 @@ import { NominatimModule } from './external-services/nominatim/nominatim.module'
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    UserGateway,
   ],
   exports: [DatabaseModule],
 })
