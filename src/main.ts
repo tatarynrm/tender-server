@@ -50,6 +50,9 @@ async function bootstrap() {
     }),
   );
 
+
+  console.log('NORIS PRODUCTION');
+  
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }
 
