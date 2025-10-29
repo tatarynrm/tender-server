@@ -9,10 +9,6 @@ export class FormDataService {
     @Inject('PG_POOL') private readonly pool: Pool,
   ) {}
 
-
-
-
-
   public async getPreAddCargoData() {
     const result = await this.dbservice.callProcedure(
       'crm_load_form_data',

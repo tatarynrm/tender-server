@@ -9,7 +9,7 @@ import { EmailConfirmationModule } from './auth/email-confirmation/email-confirm
 import { PasswordRecoveryModule } from './auth/password-recovery/password-recovery.module';
 import { TwoFactorAuthModule } from './auth/two-factor-auth/two-factor-auth.module';
 import { RedisModule } from './libs/common/redis/redis.module';
-import { seconds, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
 import { APP_GUARD } from '@nestjs/core';
 import { CompanyModule } from './company/company.module';
@@ -20,8 +20,10 @@ import { NominatimModule } from './external-services/nominatim/nominatim.module'
 import { UserGateway } from './user/user.gateway';
 import { AdminModule } from './admin/admin.module';
 import { TelegramModule } from './telegram/telegram.module';
-import { Telegram } from 'telegraf';
 import { TelegramTokenModule } from './telegram/telegram-token/telegram-token.module';
+import { TelegramUpdate } from './telegram/telegram.update';
+import { TelegrafModule } from 'nestjs-telegraf';
+import { session } from 'telegraf';
 
 @Module({
   imports: [
@@ -29,10 +31,14 @@ import { TelegramTokenModule } from './telegram/telegram-token/telegram-token.mo
       ignoreEnvFile: !IS_DEV_ENV,
       isGlobal: true,
     }),
-    ThrottlerModule.forRoot({
-      throttlers: [{ limit: 4, ttl: 10 }],
-      errorMessage: 'Почекайте 10 секунд.Занадто багато спроб',
-    }),
+    // ThrottlerModule.forRoot({
+    //   throttlers: [{ limit: 4, ttl: 10 }],
+    //   errorMessage: 'Почекайте 10 секунд.Занадто багато спроб',
+    // }),
+    // TelegrafModule.forRoot({
+    //   middlewares: [session()],
+    //   token: process.env.TELEGRAM_BOT_TOKEN!,
+    // }),
 
     AuthModule,
     UserModule,
@@ -59,17 +65,20 @@ import { TelegramTokenModule } from './telegram/telegram-token/telegram-token.mo
     NominatimModule,
     ExternalServicesModule,
     AdminModule,
-    TelegramModule,
+
     TelegramTokenModule,
+
+    TelegramModule,
   ],
   controllers: [],
   providers: [
     DatabaseModule,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
     UserGateway,
+    TelegramUpdate,
   ],
   exports: [DatabaseModule],
 })

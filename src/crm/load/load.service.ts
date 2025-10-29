@@ -6,18 +6,18 @@ import { DatabaseService } from 'src/database/database.service';
 @Injectable()
 export class LoadService {
   public constructor(private readonly dbservice: DatabaseService) {}
-  public async create(dto: any) {
-    const object = {
-      id: 1,
-    };
+  public async save(dto: any) {
+
+console.log(dto,'SAVE LOAD SERVICE 11 line');
 
     const result = await this.dbservice.callProcedure(
-      'crm_load_one',
+      'crm_load_save',
 
-      object,
+      dto,
 
       {},
     );
+
 
     return result;
   }

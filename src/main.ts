@@ -53,7 +53,7 @@ async function bootstrap() {
   );
 
   app.use(express.json());
-  console.log('NORIS PRODUCTION');
+
 
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }

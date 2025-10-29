@@ -17,9 +17,9 @@ import { Authorization } from 'src/auth/decorators/auth.decorator';
 export class LoadController {
   constructor(private readonly loadService: LoadService) {}
 
-  @Post('create')
+  @Post('save')
   create(@Body() dto: any) {
-    return this.loadService.create(dto);
+    return this.loadService.save(dto);
   }
   @Get('get-one')
   getOne(@Body() dto: any) {

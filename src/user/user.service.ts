@@ -19,9 +19,13 @@ export class UserService {
 
   public async findById(id: string | number) {
     const existUser = await this.pool.query(
-      `select a.*,b.company_name,b.company_name_full
+      `select a.*,
+      b.company_name,b.company_name_full,
+      c.first_name as telegram_first_name, c.telegram_id,c.username as telegram_user_name
+
        from usr  a
        left join company b on a.id_company = b.id
+       left join usr_telegram c on a.id = c.id_usr
 
       where a.id = $1`,
       [id],
