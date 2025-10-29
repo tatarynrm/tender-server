@@ -23,7 +23,7 @@ import { TelegramController } from './telegram.controller';
         webhook: {
           domain: process.env.TELEGRAM_WEBHOOK_DOMAIN!, // наприклад, https://yourdomain.com
           hookPath: '/telegram/telegram-webhook', // шлях для webhook
-          port: 4001,
+          port: 5007,
         },
       },
     }),
