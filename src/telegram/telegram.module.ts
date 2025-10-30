@@ -23,8 +23,8 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
         webhook: {
           domain: process.env.TELEGRAM_WEBHOOK_DOMAIN!, // наприклад, https://yourdomain.com
           hookPath: '/telegram/telegram-webhook', // шлях для webhook
-          // port: 4001,
-          port: 4000,
+          port: 4001,
+        
         },
       },
     }),
