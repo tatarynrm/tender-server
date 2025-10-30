@@ -6,7 +6,7 @@ import { UserGateway } from 'src/user/user.gateway';
 
 @Module({
   controllers: [AdminController],
-  providers: [AdminService,UserService,UserGateway],
+  providers: [AdminService,UserService],
   exports: [AdminService],
 })
 export class AdminModule {}

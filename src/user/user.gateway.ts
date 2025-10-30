@@ -3,57 +3,56 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Inject } from '@nestjs/common';
 import type { RedisClientType } from 'redis';
 
-@WebSocketGateway({ namespace: '/user', cors: { origin: '*' } })
+@WebSocketGateway({ namespace: '/user', cors: true })
 export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
-
-  private activeUsers = new Map<number, string>();
 
   constructor(
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
   ) {}
 
-  async handleConnection(client: Socket) {
-    const userId = Number(client.handshake.query.userId);
-    if (!userId) return;
+  // Користувач підключився
+  async handleConnection(@ConnectedSocket() client: Socket) {
+    const userId = client.handshake.query.userId as string;
+    if (!userId) {
+      return client.disconnect();
+    }
 
-    this.activeUsers.set(userId, client.id);
-
-    // Зберігаємо сокет в Redis
-    await this.redisClient.set(`user_socket:${userId}`, client.id, {
+    // Додаємо сокет користувача у Redis (підтримка кількох вкладок)
+    await this.redisClient.sAdd(`user_sockets:${userId}`, client.id);
+    await this.redisClient.set(`socket_user:${client.id}`, userId, {
       EX: 3600,
     });
 
-    console.log(`User ${userId} connected: ${client.id}`);
-  }
-
-  async handleDisconnect(client: Socket) {
-    const entry = [...this.activeUsers.entries()].find(
-      ([, socketId]) => socketId === client.id,
+    console.log(
+      `[UserGateway] User ${userId} connected with socket ${client.id}`,
     );
-    if (entry) {
-      const [userId] = entry;
-      this.activeUsers.delete(userId);
-      await this.redisClient.del(`user_socket:${userId}`);
-      console.log(`User ${userId} disconnected`);
+  }
+
+  // Користувач відключився
+  async handleDisconnect(@ConnectedSocket() client: Socket) {
+    const userId = await this.redisClient.get(`socket_user:${client.id}`);
+    if (userId) {
+      await this.redisClient.sRem(`user_sockets:${userId}`, client.id);
+      await this.redisClient.del(`socket_user:${client.id}`);
+      console.log(
+        `[UserGateway] User ${userId} disconnected from socket ${client.id}`,
+      );
     }
   }
 
-  async blockUser(userId: number) {
-    // Отримуємо сокет з Redis
-    const socketId = await this.redisClient.get(`user_socket:${userId}`);
-    if (socketId) {
-      this.server
-        .to(socketId)
-        .emit('USER_BLOCKED', { message: 'You are blocked!' });
+  // Відправка події користувачу (усім його сокетам)
+  async emitToUser(userId: string, event: string, payload: any) {
+    const socketIds = await this.redisClient.sMembers(`user_sockets:${userId}`);
+    for (const id of socketIds) {
+      const targetSocket = this.server.sockets.sockets.get(id);
+      targetSocket?.emit(event, payload);
     }
   }
-
-
-  
 }

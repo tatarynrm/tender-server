@@ -6,7 +6,7 @@ import { UserService } from 'src/user/user.service';
 export class AdminController {
   constructor(
     private readonly usersService: UserService,
-    private readonly userGateway: UserGateway,
+    // private readonly userGateway: UserGateway,
   ) {}
 
   @Post('block/:id')
@@ -17,7 +17,7 @@ export class AdminController {
     await this.usersService.blockUser(userId);
 
     // --- відправляємо подію через сокет ---
-    this.userGateway.blockUser(userId);
+    // this.userGateway.blockUser(userId);
 
     return { status: 'ok', message: `User ${userId} blocked` };
   }

@@ -7,6 +7,7 @@ import { RedisClientType } from 'redis';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
 import * as express from 'express';
+import { RedisIoAdapter } from './libs/common/adapters/redis-io.adapter';
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30; // 30 днів у мс
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30; // 30 днів у секундах
 
@@ -53,7 +54,10 @@ async function bootstrap() {
   );
 
   app.use(express.json());
-
+  // Створюємо Redis адаптер та підключаємо його
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }

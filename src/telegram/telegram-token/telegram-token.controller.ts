@@ -18,11 +18,13 @@ export class TelegramTokenController {
     return { token };
   }
 
-  @Post('get')
+  @Post('get-token')
   async createOrUpdateTelegramConnectToken(
     @Req() req: Request,
     @Body() dto: { email: string },
   ) {
+    console.log(dto.email, 'email');
+
     return this.telegramTokenService.createOrUpdateTelegramConnectToken(
       dto.email,
     );
@@ -32,7 +34,7 @@ export class TelegramTokenController {
     @Req() req: Request,
     @Body() dto: { telegram_id: number },
   ) {
-   
+    console.log(dto, 'DTO');
 
     return this.telegramTokenService.disconnectTelegram(dto.telegram_id);
   }

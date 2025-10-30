@@ -28,22 +28,16 @@ RETURNING *;
 
     const result = await this.pool.query(query, [email, token, tokenType]);
 
-
     return result.rows[0].token;
   }
   // Новий метод для відключення Telegram
-  public async disconnectTelegram(telegram_id: number) {
-    const query = `
-       delete from usr_telegram where telegram_id = $1
-    `;
-    const result = await this.pool.query(query, [telegram_id]);
+public async disconnectTelegram(telegram_id: number) {
+  const query = `DELETE FROM usr_telegram WHERE telegram_id = $1`;
+  await this.pool.query(query, [telegram_id]);
 
-    if (result.rowCount === 0) {
-      throw new Error(`Користувача з email ${telegram_id} не знайдено`);
-    }
-
-    return {
-      success: true,
-    };
-  }
+  return {
+    success: true,
+    telegram_id: null, // щоб фронтенд міг оновити profile.telegram_id
+  };
+}
 }

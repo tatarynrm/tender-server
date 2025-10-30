@@ -6,11 +6,13 @@ import { TelegramGateway } from './telegram.gateway';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
 
+
 @Injectable()
 export class TelegramService implements OnModuleInit {
   constructor(
     @Inject('PG_POOL') private readonly pool: Pool,
     private readonly telegramGateway: TelegramGateway,
+
     @InjectBot() private readonly bot: Telegraf<any>,
   ) {}
   async onModuleInit() {
@@ -47,8 +49,8 @@ left join usr_token b on a.email = b.email
 
   // Оновити telegramId користувача
   async updateTelegramId(
-    userId: number | string,
-    telegramId: number | string,
+    userId: number ,
+    telegramId: number ,
     username: string,
     first_name: string,
   ) {
@@ -63,11 +65,11 @@ left join usr_token b on a.email = b.email
       [userId, telegramId, username, first_name],
     );
 
-    await this.telegramGateway.notifyTelegramConnected(Number(userId));
+    // await this.telegramGateway.notifyTelegramConnected(Number(userId));
   }
 
-  async deleteTelegramToken(token: string) {
-    await this.pool.query(`DELETE FROM usr_token WHERE token = $1`, [token]);
-    await this.telegramGateway.notifyTelegramDisonnected(0);
-  }
+  // async deleteTelegramToken(token: string) {
+  //   await this.pool.query(`DELETE FROM usr_token WHERE token = $1`, [token]);
+  //   await this.telegramGateway.notifyTelegramDisonnected(0);
+  // }
 }

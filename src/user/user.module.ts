@@ -4,10 +4,11 @@ import { UserController } from './user.controller';
 
 import { AuthModule } from 'src/auth/auth.module';
 
+
 @Module({
   imports: [forwardRef(() => AuthModule)],
   controllers: [UserController],
-  providers: [UserService],
-  exports: [UserService],
+  providers: [UserService,],
+  exports: [UserService,],
 })
 export class UserModule {}

@@ -8,7 +8,7 @@ import { MailModule } from './libs/common/mail/mail.module';
 import { EmailConfirmationModule } from './auth/email-confirmation/email-confirmation.module';
 import { PasswordRecoveryModule } from './auth/password-recovery/password-recovery.module';
 import { TwoFactorAuthModule } from './auth/two-factor-auth/two-factor-auth.module';
-import { RedisModule } from './libs/common/redis/redis.module';
+// import { RedisModule } from './libs/common/redis/redis.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
 import { APP_GUARD } from '@nestjs/core';
@@ -24,6 +24,7 @@ import { TelegramTokenModule } from './telegram/telegram-token/telegram-token.mo
 import { TelegramUpdate } from './telegram/telegram.update';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -42,7 +43,7 @@ import { session } from 'telegraf';
 
     AuthModule,
     UserModule,
-    RedisModule,
+    // RedisModule,
     ProviderModule,
 
     MailModule,
@@ -69,6 +70,8 @@ import { session } from 'telegraf';
     TelegramTokenModule,
 
     TelegramModule,
+
+    ChatModule,
   ],
   controllers: [],
   providers: [

@@ -10,7 +10,9 @@ import type { RedisClientType } from 'redis';
 
 @WebSocketGateway({ namespace: '/telegram', cors: { origin: '*' } })
 @Injectable()
-export class TelegramGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class TelegramGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer() server: Server;
   private activeSockets = new Map<number, string>(); // userId → socketId
 
@@ -27,7 +29,9 @@ export class TelegramGateway implements OnGatewayConnection, OnGatewayDisconnect
       EX: 3600,
     });
 
-    console.log(`📲 Telegram socket connected for user ${userId}: ${client.id}`);
+    console.log(
+      `📲 Telegram socket connected for user ${userId}: ${client.id}`,
+    );
   }
 
   async handleDisconnect(client: Socket) {
@@ -43,26 +47,26 @@ export class TelegramGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   // 🟢 Метод для повідомлення про успішне підключення
-  async notifyTelegramConnected(userId: number) {
-    const socketId = await this.redisClient.get(`telegram_socket:${userId}`);
-    if (socketId) {
-      this.server.to(socketId).emit('TELEGRAM_CONNECTED', {
-        message: '✅ Telegram успішно підключено!',
-      });
-      console.log(`📨 Sent TELEGRAM_CONNECTED to user ${userId}`);
-    } else {
-      console.log(`⚠️ No active Telegram socket for user ${userId}`);
-    }
-  }
-  async notifyTelegramDisonnected(userId: number) {
-    const socketId = await this.redisClient.get(`telegram_socket:${userId}`);
-    if (socketId) {
-      this.server.to(socketId).emit('TELEGRAM_DISCONNECTED', {
-        message: '✅ Telegram успішно підключено!',
-      });
-      console.log(`📨 Sent TELEGRAM_DISCONNECTED from user ${userId}`);
-    } else {
-      console.log(`⚠️ No active Telegram socket for user ${userId}`);
-    }
-  }
+  // async notifyTelegramConnected(userId: number) {
+  //   const socketId = await this.redisClient.get(`telegram_socket:${userId}`);
+  //   if (socketId) {
+  //     this.server.to(socketId).emit('TELEGRAM_CONNECTED', {
+  //       message: '✅ Telegram успішно підключено!',
+  //     });
+  //     console.log(`📨 Sent TELEGRAM_CONNECTED to user ${userId}`);
+  //   } else {
+  //     console.log(`⚠️ No active Telegram socket for user ${userId}`);
+  //   }
+  // }
+  // async notifyTelegramDisonnected(userId: number) {
+  //   const socketId = await this.redisClient.get(`telegram_socket:${userId}`);
+  //   if (socketId) {
+  //     this.server.to(socketId).emit('TELEGRAM_DISCONNECTED', {
+  //       message: '✅ Telegram успішно підключено!',
+  //     });
+  //     console.log(`📨 Sent TELEGRAM_DISCONNECTED from user ${userId}`);
+  //   } else {
+  //     console.log(`⚠️ No active Telegram socket for user ${userId}`);
+  //   }
+  // }
 }

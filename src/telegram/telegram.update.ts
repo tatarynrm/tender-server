@@ -7,6 +7,7 @@ import {
 } from './common/telegram.keyboards';
 import { BUTTON_NAMES } from './common/telegra.buttons-text';
 import { MESSAGES } from './common/telegram.messages';
+
 @Update()
 export class TelegramUpdate {
   constructor(
@@ -33,7 +34,7 @@ export class TelegramUpdate {
             ctx.message.from.first_name ?? '',
           );
 
-          await this.telegramService.deleteTelegramToken(token);
+          // await this.telegramService.deleteTelegramToken(token);
 
           ctx.reply('✅ Telegram успішно підключено!', PREMIUM_KEYBOARD);
           return;

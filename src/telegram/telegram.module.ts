@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
-import { UserService } from '../user/user.service';
 import { ConfigModule } from '@nestjs/config';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
@@ -8,6 +7,7 @@ import { TelegramUpdate } from './telegram.update';
 import { DatabaseModule } from 'src/database/database.module';
 import { TelegramGateway } from './telegram.gateway';
 import { TelegramController } from './telegram.controller';
+import { RedisModule } from 'src/libs/common/redis/redis.module';
 
 @Module({
   controllers: [TelegramController],
@@ -23,11 +23,12 @@ import { TelegramController } from './telegram.controller';
         webhook: {
           domain: process.env.TELEGRAM_WEBHOOK_DOMAIN!, // наприклад, https://yourdomain.com
           hookPath: '/telegram/telegram-webhook', // шлях для webhook
-          port: 5007,
+          port: 4001,
         },
       },
     }),
     DatabaseModule,
+    RedisModule,
   ],
   providers: [TelegramService, TelegramUpdate, TelegramGateway],
   exports: [TelegramService],
