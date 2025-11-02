@@ -74,12 +74,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Підписка на подію 'send_message_to_user_group' для надсилання повідомлень користувачам з однаковим userId
   @SubscribeMessage('send_message_to_user_group')
   async handleMessageToUserGroup(
-    @MessageBody() data: { text: string; userId: string },
+    @MessageBody()
+    data: { text: string; userId: string; fromName?: string; usr_id: number },
     @ConnectedSocket() socket: Socket,
   ) {
-    const { text, userId } = data;
+    const { text, userId, fromName, usr_id } = data;
     const timestamp = new Date().toISOString();
-    const message = { text, timestamp, fromUserId: socket.id };
+    const message = {
+      text,
+      timestamp,
+      fromUserId: socket.id,
+      fromName,
+      usr_id,
+    };
 
     // Відправляємо всім socketId окрім того, що відправив
     const socketIds = await this.redisClient.sMembers(`chat_user:${userId}`);
@@ -89,23 +96,76 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(socketId).emit('message_to_user_group', message);
       }
     }
-
+    console.log(data, 'PAYLOAD');
     // Підтвердження для відправника
     socket.emit('message_received', message);
   }
   @SubscribeMessage('send_message_to_all')
   async handleMessageToAll(
-    @MessageBody() data: { text: string }, // Текст повідомлення
+    @MessageBody()
+    data: { text: string; userId: string; fromName?: string; usr_id: number }, // Текст повідомлення
     @ConnectedSocket() socket: Socket, // Підключений сокет
   ) {
-    const { text } = data;
+    const { text, userId, fromName, usr_id } = data;
     const timestamp = new Date().toISOString(); // Отримуємо timestamp для повідомлення
-    const message = { text, timestamp, fromUserId: socket.id }; // Створюємо повідомлення
+    const message = {
+      text,
+      timestamp,
+      fromUserId: socket.id,
+      fromName,
+      usr_id,
+    }; // Створюємо повідомлення
 
     // Відправляємо повідомлення всім підключеним користувачам
-    socket.broadcast.emit('message_to_all', message);
+    // socket.broadcast.emit('message_to_all', message);
 
+    socket.emit('message_to_all', message); // для себе
+    socket.broadcast.emit('message_to_all', message); // для всіх інших
     // Підтвердження для відправника
     // socket.emit('message_received', message); // Підтвердження для того, хто відправив
+  }
+
+  // Підписка на подію створення кімнати
+  @SubscribeMessage('join_room')
+  async handleJoinRoom(
+    @MessageBody() data: { roomName: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const { roomName } = data;
+    socket.join(roomName); // приєднати до кімнати
+    console.log(`Socket ${socket.id} joined room ${roomName}`);
+
+    // Можна сповіщати учасників, що новий користувач приєднався
+    this.server.to(roomName).emit('room_notification', {
+      message: `User ${socket.id} joined the room ${roomName}`,
+    });
+  }
+
+  // Вихід з кімнати
+  @SubscribeMessage('leave_room')
+  async handleLeaveRoom(
+    @MessageBody() data: { roomName: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const { roomName } = data;
+    socket.leave(roomName);
+    console.log(`Socket ${socket.id} left room ${roomName}`);
+    this.server.to(roomName).emit('room_notification', {
+      message: `User ${socket.id} left the room ${roomName}`,
+    });
+  }
+
+  @SubscribeMessage('send_message_to_room')
+  async handleMessageToRoom(
+    @MessageBody()
+    data: { roomName: string; text: string; fromName?: string; usr_id: number },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const { roomName, text, fromName, usr_id } = data;
+    const timestamp = new Date().toISOString();
+    const message = { text, timestamp, fromName, usr_id };
+
+    // Відправити всім у кімнаті
+    this.server.to(roomName).emit('message_to_room', message);
   }
 }

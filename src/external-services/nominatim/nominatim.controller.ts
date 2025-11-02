@@ -16,7 +16,7 @@ export class NominatimController {
 
     try {
       const result = await this.nominatimService.search(query);
-      console.log(result, 'RESULT');
+      console.log(result, 'RESULT 19 nominatim .controoler ');
       return result; // Повертаємо результат пошуку
     } catch (error) {
       throw new Error('Failed to fetch search results');

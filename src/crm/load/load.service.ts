@@ -7,8 +7,7 @@ import { DatabaseService } from 'src/database/database.service';
 export class LoadService {
   public constructor(private readonly dbservice: DatabaseService) {}
   public async save(dto: any) {
-
-console.log(dto,'SAVE LOAD SERVICE 11 line');
+    console.log(dto, 'SAVE LOAD SERVICE 11 line');
 
     const result = await this.dbservice.callProcedure(
       'crm_load_save',
@@ -18,19 +17,13 @@ console.log(dto,'SAVE LOAD SERVICE 11 line');
       {},
     );
 
-
     return result;
   }
-  public async getOne(dto: any) {
-    const object = {
-      id: 1,
-    };
-    console.log('TEST');
-
+  public async getList(dto: any) {
     const result = await this.dbservice.callProcedure(
-      'crm_load_one',
+      'crm_load_list',
 
-      object,
+      {},
 
       {},
     );
@@ -39,12 +32,31 @@ console.log(dto,'SAVE LOAD SERVICE 11 line');
     return result;
   }
 
-  findAll() {
-    return `This action returns all load`;
-  }
+  public async getOneLoad(id: number) {
+    const result = await this.dbservice.callProcedure(
+      'crm_load_one',
+      {
+        id: id,
+      },
+      {},
+    );
 
-  findOne(id: number) {
-    return `This action returns a #${id} load`;
+    console.log(result, 'result data get one line 54 load service');
+
+    return result;
+  }
+  public async findOne(id: number) {
+    // return `This action returns a #${id} load`;
+    const result = await this.dbservice.callProcedure(
+      'crm_load_one',
+
+      { id: id },
+
+      {},
+    );
+    console.log(result, 'result data get one line 36 load service');
+
+    return result;
   }
 
   update(id: number, updateLoadDto: UpdateLoadDto) {

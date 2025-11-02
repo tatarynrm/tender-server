@@ -17,17 +17,17 @@ export class TelegramService implements OnModuleInit {
   ) {}
   async onModuleInit() {
     // Задаємо команди при старті
-    await this.setCommands();
+    // await this.setCommands();
   }
 
-  async setCommands() {
-    await this.bot.telegram.setMyCommands([
-      { command: 'start', description: '🚀 Запустити бота' },
-      { command: 'help', description: '🆘 Допомога по командам' },
-      { command: 'profile', description: '✅ Показати профіль' },
-    ]);
-    console.log('Команди телеграм бота встановлені! ✅✅✅');
-  }
+  // async setCommands() {
+  //   await this.bot.telegram.setMyCommands([
+  //     { command: 'start', description: '🚀 Запустити бота' },
+  //     { command: 'help', description: '🆘 Допомога по командам' },
+  //     { command: 'profile', description: '✅ Показати профіль' },
+  //   ]);
+  //   console.log('Команди телеграм бота встановлені! ✅✅✅');
+  // }
   public async checkIfUserExist(telegramId: number) {
     const result = await this.pool.query(
       `SELECT * FROM usr_telegram WHERE telegram_id = $1`,
