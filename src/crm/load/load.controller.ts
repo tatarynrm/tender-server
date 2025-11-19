@@ -26,8 +26,7 @@ export class LoadController {
     return this.loadService.save(dto);
   }
 
-
-  @Get(':id')
+  @Get('edit/:id')
   findOne(@Param('id') id: string) {
     return this.loadService.findOne(+id);
   }

@@ -25,7 +25,11 @@ import { TelegramUpdate } from './telegram/telegram.update';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
 import { ChatModule } from './chat/chat.module';
-
+import { LoadGateway } from './crm/load/load.gateway';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CurrencyModule } from './currency/currency.module';
+import { FormDataModule } from './tender/form-data/form-data.module';
+import { TenderModule } from './tender/tender.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -40,7 +44,7 @@ import { ChatModule } from './chat/chat.module';
     //   middlewares: [session()],
     //   token: process.env.TELEGRAM_BOT_TOKEN!,
     // }),
-
+    ScheduleModule.forRoot(),
     AuthModule,
     UserModule,
     // RedisModule,
@@ -72,6 +76,12 @@ import { ChatModule } from './chat/chat.module';
     TelegramModule,
 
     ChatModule,
+
+    CurrencyModule,
+
+    FormDataModule,
+
+    TenderModule,
   ],
   controllers: [],
   providers: [
@@ -82,6 +92,7 @@ import { ChatModule } from './chat/chat.module';
     // },
     UserGateway,
     TelegramUpdate,
+    LoadGateway,
   ],
   exports: [DatabaseModule],
 })

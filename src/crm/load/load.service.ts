@@ -7,8 +7,6 @@ import { DatabaseService } from 'src/database/database.service';
 export class LoadService {
   public constructor(private readonly dbservice: DatabaseService) {}
   public async save(dto: any) {
-    console.log(dto, 'SAVE LOAD SERVICE 11 line');
-
     const result = await this.dbservice.callProcedure(
       'crm_load_save',
 
@@ -27,7 +25,6 @@ export class LoadService {
 
       {},
     );
-    console.log(result, 'result data get one line 36 load service');
 
     return result;
   }
@@ -41,8 +38,6 @@ export class LoadService {
       {},
     );
 
-    console.log(result, 'result data get one line 54 load service');
-
     return result;
   }
   public async findOne(id: number) {
@@ -54,7 +49,6 @@ export class LoadService {
 
       {},
     );
-    console.log(result, 'result data get one line 36 load service');
 
     return result;
   }

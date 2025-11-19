@@ -17,7 +17,6 @@ import type { RedisClientType } from 'redis';
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server; // Сервер для надсилання подій
-
   constructor(
     @Inject('REDIS_CLIENT') private redisClient: RedisClientType, // Інжекція Redis-клієнта
   ) {}
