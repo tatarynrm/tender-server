@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { TenderService } from './tender.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 
@@ -12,19 +12,16 @@ export class TenderController {
   getList(@Body() dto: any) {
     return this.tenderService.getList(dto);
   }
+  @Post('save')
+  save(@Body() dto: any) {
+    return this.tenderService.save(dto);
+  }
   @Get(':id')
   getOne(@Param('id') id: string) {
     console.log(id,'IDDDDDDDDDDDD');
     
     return this.tenderService.getOne(id);
   }
-
-
-
-
-
-
-
 
 
 

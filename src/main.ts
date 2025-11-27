@@ -8,6 +8,7 @@ import session from 'express-session';
 import { RedisStore } from 'connect-redis';
 import * as express from 'express';
 import { RedisIoAdapter } from './libs/common/adapters/redis-io.adapter';
+import axios from 'axios';
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30; // 30 днів у мс
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30; // 30 днів у секундах
 
@@ -60,6 +61,26 @@ async function bootstrap() {
   app.useWebSocketAdapter(redisIoAdapter);
 
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
+
+  const getCity = async () => {
+    const city = 'київ';
+    const url = `https://wft-geo-db.p.rapidapi.com/v1/geo/cities?namePrefix=${encodeURIComponent(city)}&languageCode=uk`;
+
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          'x-rapidapi-key':
+            '5203b52542msh41f497b06481e9ep119c84jsn2af45a8153fb',
+          'x-rapidapi-host': 'wft-geo-db.p.rapidapi.com',
+        },
+      });
+      console.log(response.data);
+    } catch (error) {
+      console.error(error.response?.data || error.message);
+    }
+  };
+
+  getCity();
 }
 
 bootstrap();

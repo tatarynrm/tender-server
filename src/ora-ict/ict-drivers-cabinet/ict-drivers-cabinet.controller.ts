@@ -8,11 +8,11 @@ export class IctDriversCabinetController {
   ) {}
 
   @Post('main')
-  async getMainPageInfo(@Body() kod:number) {
+  async getMainPageInfo(@Body() kod: number) {
     return this.ictDriversCabinetService.getMainPageInfo(kod);
   }
   @Get('test')
-  async testDeploy(@Body() kod:number) {
+  async testDeploy(@Body() kod: number) {
     return this.ictDriversCabinetService.getMainPageInfo(kod);
   }
 }

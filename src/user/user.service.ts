@@ -10,11 +10,14 @@ import { DatabaseService } from 'src/database/database.service';
 import { CompanyFillPreRegister } from './dto/company-fill-pre-register.dto';
 import { CreateUserFromCompany } from './dto/create-user-from-company.dto';
 import { UserRegisterFromPreDto } from './dto/user-register-from-pre.dto';
+import { MailService } from 'src/libs/common/mail/mail.service';
 @Injectable()
 export class UserService {
   public constructor(
     private readonly dbservice: DatabaseService,
+
     @Inject('PG_POOL') private readonly pool: Pool,
+    private readonly mailService: MailService,
   ) {}
 
   public async findById(id: string | number) {
@@ -139,7 +142,7 @@ export class UserService {
 
       {},
     );
-
+    this.mailService.sendPreRegisterSuccessGreeting(dto.email);
     return usersPreRegister;
   }
   public async companyFillFromUsrPreRegister(dto: CompanyFillPreRegister) {

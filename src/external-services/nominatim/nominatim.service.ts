@@ -9,10 +9,19 @@ export class NominatimService {
   async search(query: string) {
     try {
       // 1. Формуємо запит до Nominatim
-      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(
-        query,
-      )}`;
+      // const url = `https://nominatim.openstreetmap.org/search?format=json&accept-language=uk&addressdetails=1&limit=5&q=${encodeURIComponent(
+      //   query,
+      // )}`;
 
+      const url =
+        `https://nominatim.openstreetmap.org/search?` +
+        `format=json&` +
+        `addressdetails=1&` +
+        `limit=5&` +
+        `accept-language=uk&` + // повертає назви українською
+        `featuretype=city&` + // тільки міста
+        `dedupe=1&` + // уникнути дублікатів
+        `q=${encodeURIComponent(query)}`;
       const searchResults = await this.httpService
         .get(url)
         .pipe(map((res) => res.data))

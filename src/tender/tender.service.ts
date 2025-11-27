@@ -17,6 +17,18 @@ export class TenderService {
 
     return result;
   }
+  public async save(dto: any) {
+    const result = await this.dbservice.callProcedure(
+      'tender_save',
+
+      dto,
+
+      {},
+    );
+    console.log(result, 'TENDERS');
+
+    return result;
+  }
   public async getOne(id: string) {
     console.log(id,'ID IN SERVICE');
     

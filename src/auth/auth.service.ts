@@ -25,6 +25,7 @@ import { Pool } from 'pg';
 import { PreRegisterDto } from './dto/pre-register.dto';
 import { DatabaseService } from 'src/database/database.service';
 import { RegisterIctUserDto } from './dto/register-ict-user.dto';
+import { MailService } from 'src/libs/common/mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -34,6 +35,7 @@ export class AuthService {
     private readonly providerService: ProviderService,
     private readonly emailConfirmationService: EmailConfirmationService,
     private readonly twoFactorAuthService: TwoFactorAuthService,
+    private readonly mailService: MailService,
     @Inject('PG_POOL') private readonly pool: Pool,
     private readonly dbservice: DatabaseService,
   ) {}
@@ -64,7 +66,7 @@ export class AuthService {
 
       {},
     );
-
+    this.mailService.sendPreRegisterGreetings(safeData.email);
     return result;
   }
 

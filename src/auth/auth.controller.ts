@@ -86,34 +86,7 @@ export class AuthController {
     return this.authService.registerFormData();
   }
 
-  // @Get('/oauth/callback/:provider')
-  // @UseGuards(AuthProviderGuard)
-  // public async callback(
-  //   @Req() req: Request,
-  //   @Res({ passthrough: true }) res: Response,
-  //   @Query('code') code: string,
-  //   @Param('provider') provider: string,
-  // ) {
-  //   if (!code) {
-  //     throw new BadRequestException('Немає коду авторизації');
-  //   }
 
-  //   await this.authService.extractProfileFromCode(req, provider, code);
-
-  //   return res.redirect(
-  //     `${this.configService.getOrThrow<string>('ALLOWED_ORIGIN')}/dashboard`,
-  //   );
-  // }
-
-  // @UseGuards(AuthProviderGuard)
-  // @Get('/oauth/connect/:provider')
-  // @HttpCode(HttpStatus.OK)
-  // public async connect(@Param('provider') provider: string) {
-  //   const providerInstance = this.providerService.findByService(provider);
-  //   return {
-  //     url: providerInstance?.getAuthUrl(),
-  //   };
-  // }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)

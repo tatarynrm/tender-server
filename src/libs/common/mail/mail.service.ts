@@ -5,6 +5,8 @@ import { render } from '@react-email/components';
 import { ConfirmationTemplate } from './templates/confirmation.template';
 import { ResetPasswordTemplate } from './templates/reset-password.template';
 import { TwoFactorAuthTemplate } from './templates/two-factor-auth.template';
+import { SuccessfulPreRegistrationTemplate } from './templates/pre-register-greeting';
+import { SuccessfulPreRegistrationAccountTemplate } from './templates/pre-register-success-greeting';
 
 @Injectable()
 export class MailService {
@@ -38,13 +40,26 @@ export class MailService {
     const html = await render(TwoFactorAuthTemplate({ token }));
     return this.sendMail(email, 'Підтвердження особистості', html);
   }
+  public async sendPreRegisterGreetings(email: string) {
+    // const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+
+    console.log('PRE REGISTER EMAIL SEND');
+
+    const html = await render(SuccessfulPreRegistrationTemplate());
+    return this.sendMail(email, 'Підтвердження особистості', html);
+  }
+  public async sendPreRegisterSuccessGreeting(email: string) {
+    // const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+
+    console.log('PRE REGISTER EMAIL SEND');
+
+    const html = await render(SuccessfulPreRegistrationAccountTemplate());
+    return this.sendMail(email, 'Успішно зареєстровані нашими менеджерами', html);
+  }
   // public async sendRegisterFromCompanyEmail(email: string, token: string) {
   //   const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
-   
 
   //   const html = await render(TwoFactorAuthTemplate({ token }));
   //   return this.sendMail(email, 'Підтвердження особистості', html);
   // }
-
-
 }

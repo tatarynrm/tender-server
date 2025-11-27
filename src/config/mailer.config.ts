@@ -36,9 +36,9 @@ export const getMailerConfig = async (
 //     tls: {
 //       rejectUnauthorized: false,
 //     },
-//     defaults: {
-//       // from: `"NORIS_DEVELOPER TEAM" ${configService.getOrThrow<string>('ICT_MAIL_LOGIN')}`,
-//       from: `tender@ict.lviv.ua`,
-//     },
+//     // defaults: {
+//     //   // from: `"NORIS_DEVELOPER TEAM" ${configService.getOrThrow<string>('ICT_MAIL_LOGIN')}`,
+//     //   from: `tender@ict.lviv.ua`,
+//     // },
 //   },
 // });

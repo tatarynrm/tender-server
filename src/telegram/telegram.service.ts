@@ -6,7 +6,6 @@ import { TelegramGateway } from './telegram.gateway';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
 
-
 @Injectable()
 export class TelegramService implements OnModuleInit {
   constructor(
@@ -49,8 +48,8 @@ left join usr_token b on a.email = b.email
 
   // Оновити telegramId користувача
   async updateTelegramId(
-    userId: number ,
-    telegramId: number ,
+    userId: number,
+    telegramId: number,
     username: string,
     first_name: string,
   ) {
