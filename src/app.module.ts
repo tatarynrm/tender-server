@@ -30,6 +30,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CurrencyModule } from './currency/currency.module';
 import { FormDataModule } from './tender/form-data/form-data.module';
 import { TenderModule } from './tender/tender.module';
+import { TransportModule } from './transport/transport.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -82,6 +83,8 @@ import { TenderModule } from './tender/tender.module';
     FormDataModule,
 
     TenderModule,
+
+    TransportModule,
   ],
   controllers: [],
   providers: [
