@@ -7,7 +7,7 @@ import { Authorization } from 'src/auth/decorators/auth.decorator';
 export class TenderController {
   constructor(private readonly tenderService: TenderService) {}
 
-// Тендер CRM
+  // Тендер CRM
   @Get('list')
   getList(@Body() dto: any) {
     return this.tenderService.getList(dto);
@@ -18,13 +18,7 @@ export class TenderController {
   }
   @Get(':id')
   getOne(@Param('id') id: string) {
-    console.log(id,'IDDDDDDDDDDDD');
-    
     return this.tenderService.getOne(id);
   }
-
-
-
-
- // Тендер CRM
+  // Тендер CRM
 }
