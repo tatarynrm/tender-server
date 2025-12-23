@@ -4,12 +4,18 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   ConnectedSocket,
+  SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Inject } from '@nestjs/common';
 import type { RedisClientType } from 'redis';
 
-@WebSocketGateway({ namespace: '/user', cors: true })
+@WebSocketGateway({
+  namespace: '/user',
+  cors: true,
+  pingInterval: 25000,
+  pingTimeout: 60000,
+})
 export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
@@ -19,12 +25,13 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Користувач підключився
   async handleConnection(@ConnectedSocket() client: Socket) {
-    const userId = client.handshake.query.userId as string;
+    const userId = client.handshake.auth?.userId as string;
+    console.log(userId, 'USER ID');
     if (!userId) {
-      return client.disconnect();
+      client.disconnect(true);
+      return;
     }
 
-    // Додаємо сокет користувача у Redis (підтримка кількох вкладок)
     await this.redisClient.sAdd(`user_sockets:${userId}`, client.id);
     await this.redisClient.set(`socket_user:${client.id}`, userId, {
       EX: 3600,
@@ -34,7 +41,6 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
       `[UserGateway] User ${userId} connected with socket ${client.id}`,
     );
   }
-
   // Користувач відключився
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     const userId = await this.redisClient.get(`socket_user:${client.id}`);
@@ -54,5 +60,19 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const targetSocket = this.server.sockets.sockets.get(id);
       targetSocket?.emit(event, payload);
     }
+  }
+  emitToAll(event: string, payload: any) {
+    console.log('EMIT IS WORKING');
+
+    this.server.emit(event, payload);
+  }
+
+  @SubscribeMessage('heartbeat')
+  async handleHeartbeat(@ConnectedSocket() client: Socket) {
+    const userId = await this.redisClient.get(`socket_user:${client.id}`);
+    if (!userId) return;
+
+    // Оновлюємо TTL — юзер "живий"
+    await this.redisClient.expire(`socket_user:${client.id}`, 3600);
   }
 }

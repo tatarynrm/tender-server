@@ -13,7 +13,7 @@ import type { Request } from 'express';
 export type DbResponse<T = any> =
   | {
       status: 'ok';
-      data: T;
+      content: T;
     }
   | {
       status: 'error';
@@ -48,7 +48,7 @@ export class DatabaseService {
     };
     console.log(
       authObject,
-      'AUTH OBJECT IN CALL PROCDERUE FUNCTION database service 49 line',
+      'AUTH OBJECT IN CALL PROCDERUE FUNCTION database service 49 line test',
     );
 
     const query = `CALL run($1, $2, $3, $4)`;

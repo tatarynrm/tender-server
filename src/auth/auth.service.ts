@@ -81,8 +81,8 @@ export class AuthService {
 
       {},
     );
-
-    const user = checkUserExist.data;
+    console.log(checkUserExist, 'USERRR----------------');
+    const user = checkUserExist.content;
 
     if (!user) {
       throw new NotFoundException('Користувач не знайдений.');
@@ -114,6 +114,7 @@ export class AuthService {
         dto.code,
       );
     }
+
     return this.saveSession(req, user);
   }
   public async logout(req: Request, res: Response): Promise<void> {

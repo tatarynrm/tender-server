@@ -12,13 +12,27 @@ export class TenderController {
   getList(@Body() dto: any) {
     return this.tenderService.getList(dto);
   }
+
+  // DASHBOARD
+  @Get('client-list')
+  getClientsList() {
+    return this.tenderService.getClientList();
+  }
   @Post('save')
   save(@Body() dto: any) {
     return this.tenderService.save(dto);
+  }
+
+  // Тендер CRM
+
+  @Post('set-rate')
+  tenderSetRate(@Body() dto: any) {
+    console.log('dto',dto,'dto----');
+    
+    return this.tenderService.tenderSetRate(dto);
   }
   @Get(':id')
   getOne(@Param('id') id: string) {
     return this.tenderService.getOne(id);
   }
-  // Тендер CRM
 }
