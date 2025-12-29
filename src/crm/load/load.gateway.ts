@@ -77,6 +77,7 @@
 // }
 
 // }
+import { Inject } from '@nestjs/common';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -85,30 +86,55 @@ import {
   ConnectedSocket,
   SubscribeMessage,
 } from '@nestjs/websockets';
+import type { RedisClientType } from 'redis';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({ namespace: '/load', cors: true })
 export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server!: Server;
+  constructor(
+    @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
+  ) {}
 
   // Обробка підключень
+  // Користувач підключився
   async handleConnection(@ConnectedSocket() client: Socket) {
-    console.log(`Client connected: ${client.id}`);
-  }
+    const userId = client.handshake.auth?.userId as string;
+    console.log(userId, 'USER ID');
+    if (!userId) {
+      client.disconnect(true);
+      return;
+    }
 
-  // Обробка відключень
+    await this.redisClient.sAdd(`load_sockets:${userId}`, client.id);
+    await this.redisClient.set(`socket_load:${client.id}`, userId, {
+      EX: 3600,
+    });
+
+    console.log(
+      `[UserGateway] User ${userId} connected with socket ${client.id}`,
+    );
+  }
+  // Користувач відключився
   async handleDisconnect(@ConnectedSocket() client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
+    const userId = await this.redisClient.get(`socket_load:${client.id}`);
+    if (userId) {
+      await this.redisClient.sRem(`load_sockets:${userId}`, client.id);
+      await this.redisClient.del(`socket_load:${client.id}`);
+      console.log(
+        `[UserGateway] User ${userId} disconnected from socket ${client.id}`,
+      );
+    }
   }
 
   // Обробка події "send_update"
   @SubscribeMessage('send_update')
   async handleSendUpdate(@ConnectedSocket() socket: Socket, payload: any) {
-    console.log("Received update from client:", payload);
-    
+    console.log('Received update from client:', payload);
+
     // Відправка події всім клієнтам
-    this.server.emit("update_from_server", payload);
- 
-      // socket.broadcast.emit('message_to_all'); // для всіх інших
+    this.server.emit('update_from_server', payload);
+
+    // socket.broadcast.emit('message_to_all'); // для всіх інших
   }
 }

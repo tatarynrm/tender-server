@@ -31,6 +31,7 @@ import { CurrencyModule } from './currency/currency.module';
 import { FormDataModule } from './tender/form-data/form-data.module';
 import { TenderModule } from './tender/tender.module';
 import { TransportModule } from './transport/transport.module';
+import { LocationModule } from './location/location.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -85,6 +86,8 @@ import { TransportModule } from './transport/transport.module';
     TenderModule,
 
     TransportModule,
+
+    LocationModule,
   ],
   controllers: [],
   providers: [

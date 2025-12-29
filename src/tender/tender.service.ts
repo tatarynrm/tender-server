@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { UserGateway } from 'src/user/user.gateway';
+
+import { TenderGateway } from './tender.gateway';
 
 @Injectable()
 export class TenderService {
   public constructor(
     private readonly dbservice: DatabaseService,
-    private readonly userGateway: UserGateway,
+    private readonly tenderGateway: TenderGateway,
   ) {}
 
   public async getList(dto: any) {
@@ -21,7 +22,33 @@ export class TenderService {
 
     return result;
   }
-  public async getClientList() {
+  public async getClientList(query: any) {
+    const { loadFrom, loadTo } = query;
+
+
+
+  //   let sql = `
+   
+  // `;
+  //   const values: any[] = [];
+  //   let i = 1;
+
+  //   if (search) {
+  //     sql += `
+  //     AND (
+  //       title ILIKE $${i}
+  //       OR city ILIKE $${i}
+  //     )
+  //   `;
+  //     values.push(`%${search}%`);
+  //     i++;
+  //   }
+
+  //   if (status) {
+  //     sql += ` AND status = $${i} `;
+  //     values.push(status);
+  //     i++;
+  //   }
     const result = await this.dbservice.callProcedure(
       'tender_list_client',
 
@@ -29,7 +56,6 @@ export class TenderService {
 
       {},
     );
-
 
     return result;
   }
@@ -41,8 +67,9 @@ export class TenderService {
 
       {},
     );
-    console.log(result, 'TENDERS');
+    console.log(result.content, 'RESULT CONTENT');
 
+    this.tenderGateway.emitToAll('saveTender', result.content[0]);
     return result;
   }
   public async getOne(id: string) {
@@ -71,9 +98,7 @@ export class TenderService {
       {},
     );
 
- 
-
-    this.userGateway.emitToAll('new_bid', result.content[0]);
+    this.tenderGateway.emitToAll('new_bid', result.content[0]);
     return result;
   }
 }
