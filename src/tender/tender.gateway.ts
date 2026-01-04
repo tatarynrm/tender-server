@@ -35,7 +35,9 @@ export class TenderGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Зберігаємо всі сокети користувача
     await this.redisClient.sAdd(`tender_sockets:${userId}`, client.id);
-    await this.redisClient.set(`socket_user:${client.id}`, userId, { EX: 3600 });
+    await this.redisClient.set(`socket_user:${client.id}`, userId, {
+      EX: 3600,
+    });
   }
 
   // Користувач відключився
@@ -50,7 +52,9 @@ export class TenderGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Відправка події користувачу (усім його сокетам)
   async emitToUser(userId: string, event: string, payload: any) {
-    const socketIds = await this.redisClient.sMembers(`tender_sockets:${userId}`);
+    const socketIds = await this.redisClient.sMembers(
+      `tender_sockets:${userId}`,
+    );
     for (const id of socketIds) {
       const targetSocket = this.server.sockets.sockets.get(id);
       targetSocket?.emit(event, payload);

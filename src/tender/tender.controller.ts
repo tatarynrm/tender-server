@@ -15,8 +15,12 @@ export class TenderController {
 
   // DASHBOARD
   @Get('client-list')
-  getClientsList(@Query() query:any) {
+  getClientsList(@Query() query: any) {
     return this.tenderService.getClientList(query);
+  }
+  @Get('client-list-form-data')
+  getClientsListFormData(@Query() query: any) {
+    return this.tenderService.getClientListFormData(query);
   }
   @Post('save')
   save(@Body() dto: any) {
@@ -27,8 +31,8 @@ export class TenderController {
 
   @Post('set-rate')
   tenderSetRate(@Body() dto: any) {
-    console.log('dto',dto,'dto----');
-    
+    console.log('dto', dto, 'dto----');
+
     return this.tenderService.tenderSetRate(dto);
   }
   @Get(':id')

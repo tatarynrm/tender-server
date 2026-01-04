@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 
 import { TenderGateway } from './tender.gateway';
+import {
+  buildFiltersFromQuery,
+  FilterItem,
+} from 'src/shared/utils/build-filters';
 
 @Injectable()
 export class TenderService {
@@ -23,34 +27,32 @@ export class TenderService {
     return result;
   }
   public async getClientList(query: any) {
-    const { loadFrom, loadTo } = query;
+    console.log(query,'Q?UERY');
+    
+    const filters: FilterItem[] = buildFiltersFromQuery(query);
+    console.log(filters);
 
-
-
-  //   let sql = `
-   
-  // `;
-  //   const values: any[] = [];
-  //   let i = 1;
-
-  //   if (search) {
-  //     sql += `
-  //     AND (
-  //       title ILIKE $${i}
-  //       OR city ILIKE $${i}
-  //     )
-  //   `;
-  //     values.push(`%${search}%`);
-  //     i++;
-  //   }
-
-  //   if (status) {
-  //     sql += ` AND status = $${i} `;
-  //     values.push(status);
-  //     i++;
-  //   }
     const result = await this.dbservice.callProcedure(
       'tender_list_client',
+
+      {
+        pagination: {
+          page_rows: 20,
+          page_num: 1,
+        },
+        filter: filters,
+      },
+
+      {},
+    );
+    // console.log(result,'RESULT KYIV');
+    
+
+    return result;
+  }
+  public async getClientListFormData(query: any) {
+    const result = await this.dbservice.callProcedure(
+      'tender_list_client_form_data',
 
       {},
 
