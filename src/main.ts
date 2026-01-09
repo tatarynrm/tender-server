@@ -36,18 +36,12 @@ async function bootstrap() {
   //     'X-Requested-With',
   //   ],
   // });
-
   app.enableCors({
-    origin: (origin, callback) => {
-      // Якщо origin порожній (наприклад, Postman), або ви хочете дозволити всім
-      if (!origin || isDev) {
-        callback(null, true);
-      } else {
-        // Тут можна додати логіку перевірки білого списку
-        callback(null, true); // Це фактично працює як '*', але сумісно з credentials
-      }
-    },
-    credentials: true,
+    origin: [
+      'https://tender.ict.lviv.ua',
+      'http://localhost:3000', // для розробки
+    ],
+    credentials: true, // ОБОВ'ЯЗКОВО для сесій
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
       'Content-Type',
@@ -56,6 +50,10 @@ async function bootstrap() {
       'X-Requested-With',
     ],
   });
+
+  // ✅ Довіряємо Nginx (оскільки він на іншому IP)
+  expressApp.set('trust proxy', 1);
+
   app.use(
     session({
       proxy: true,
