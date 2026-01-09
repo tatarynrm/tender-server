@@ -37,19 +37,17 @@ async function bootstrap() {
   //   ],
   // });
   app.enableCors({
-    origin: [
-      'https://tender.ict.lviv.ua',
-      'http://localhost:3000', // для розробки
-    ],
-    credentials: true, // ОБОВ'ЯЗКОВО для сесій
+    origin: ['https://tender.ict.lviv.ua', 'http://localhost:3000'],
+    credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
       'Content-Type',
       'Authorization',
       'Accept',
       'X-Requested-With',
-      'Pragma', // 👈 Додайте це
-      'Cache-Control', // 👈 Бажано додати і це
+      'Pragma', // 👈 Додано
+      'Cache-Control', // 👈 Додано
+      'Expires', // 👈 Додано (про всяк випадок)
     ],
   });
 
