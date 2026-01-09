@@ -86,8 +86,6 @@ export class AuthController {
     return this.authService.registerFormData();
   }
 
-
-
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   public async logout(

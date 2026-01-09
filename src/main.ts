@@ -25,13 +25,28 @@ async function bootstrap() {
 
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')));
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
-
   // app.enableCors({
   //   origin: isDev ? 'http://localhost:3000' : 'https://tender.ict.lviv.ua',
   //   credentials: true,
+  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  //   allowedHeaders: [
+  //     'Content-Type',
+  //     'Authorization',
+  //     'Accept',
+  //     'X-Requested-With',
+  //   ],
   // });
+
   app.enableCors({
-    origin: isDev ? 'http://localhost:3000' : 'https://tender.ict.lviv.ua',
+    origin: (origin, callback) => {
+      // Якщо origin порожній (наприклад, Postman), або ви хочете дозволити всім
+      if (!origin || isDev) {
+        callback(null, true);
+      } else {
+        // Тут можна додати логіку перевірки білого списку
+        callback(null, true); // Це фактично працює як '*', але сумісно з credentials
+      }
+    },
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
