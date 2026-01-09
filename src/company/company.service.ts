@@ -5,6 +5,10 @@ import { Pool } from 'pg';
 import { DatabaseService } from 'src/database/database.service';
 import { Request } from 'express';
 import { AdminCreateCompanyDto } from './dto/admin-create-company.dto copy';
+import {
+  buildFiltersFromQuery,
+  FilterItem,
+} from 'src/shared/utils/build-filters';
 
 @Injectable()
 export class CompanyService {
@@ -26,17 +30,16 @@ export class CompanyService {
     return newCompany;
   }
 
-  async findAll(params: {
-    pagination: { page_num: number; page_rows: number };
-    filter?: any[];
-    sort?: any;
-  }) {
-    const { pagination, filter = [], sort = null } = params;
+  async findAll(query: any) {
+    const filters: FilterItem[] = buildFiltersFromQuery(query);
+console.log(filters,'FILTERS');
 
     const result = await this.dbservice.callProcedure('company_list', {
-      pagination,
-      filter,
-      sort,
+      pagination: {
+        per_page: query.limit ?? 50,
+        page: query.page ?? 1,
+      },
+      filter: filters,
     });
 
     return result;

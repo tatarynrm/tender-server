@@ -18,7 +18,11 @@ export class TenderService {
     const result = await this.dbservice.callProcedure(
       'tender_list',
 
-      {},
+      {
+        pagination: {
+          per_page: 10,
+        },
+      },
 
       {},
     );
@@ -27,18 +31,18 @@ export class TenderService {
     return result;
   }
   public async getClientList(query: any) {
-    console.log(query,'Q?UERY');
-    
+    console.log(query, 'Q?UERY');
+
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-    console.log(filters);
+
 
     const result = await this.dbservice.callProcedure(
       'tender_list_client',
 
       {
         pagination: {
-          page_rows: 20,
-          page_num: 1,
+          per_page: query.limit ?? 10,
+          page: query.page ?? 1,
         },
         filter: filters,
       },
@@ -46,7 +50,6 @@ export class TenderService {
       {},
     );
     // console.log(result,'RESULT KYIV');
-    
 
     return result;
   }
@@ -101,6 +104,7 @@ export class TenderService {
     );
 
     this.tenderGateway.emitToAll('new_bid', result.content[0]);
+
     return result;
   }
 }

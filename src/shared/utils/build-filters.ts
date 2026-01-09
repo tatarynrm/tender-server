@@ -4,54 +4,58 @@ export interface FilterItem {
   value: string;
 }
 
-export function buildFiltersFromQuery(query: any): FilterItem[] {
+/**
+ * Динамічно будує масив фільтрів з будь-якого об'єкта query.
+ * Виключає технічні поля на кшталт 'page', 'limit' тощо.
+ */
+// export function buildFiltersFromQuery(
+//   query: Record<string, any>,
+// ): FilterItem[] {
+//   const filters: FilterItem[] = [];
+
+//   // Поля, які НЕ потрібно відображати як "бейджи" або фільтри (технічні параметри)
+//   const excludedKeys = ['page', 'limit', 'sort'];
+
+//   Object.entries(query).forEach(([key, value]) => {
+//     // Пропускаємо порожні значення та технічні ключі
+//     if (!value || excludedKeys.includes(key)) return;
+
+//     // Якщо значення - рядок, пробуємо розбити його по комі
+//     if (typeof value === 'string') {
+//       const values = value
+//         .split(',')
+//         .map((s) => s.trim())
+//         .filter(Boolean);
+
+//       values.forEach((v) => {
+//         filters.push({ type: 'query', key, value: v });
+//       });
+//     } else {
+//       // Для чисел або інших типів просто додаємо як є
+//       filters.push({ type: 'query', key, value: String(value) });
+//     }
+//   });
+
+//   return filters;
+// }
+export function buildFiltersFromQuery(
+  query: Record<string, any>,
+): FilterItem[] {
   const filters: FilterItem[] = [];
-  console.log(query, 'QUERY IN BUILDER');
-  // Приклад: для search → city_from
-  if (query.city_from) {
-    const cities = query.city_from
-      .split(',') // розбиваємо по комі
-      .map((s: string) => s.trim())
-      .filter(Boolean); // видаляємо пусті
 
-    cities.forEach((city: any) => {
-      filters.push({ type: 'query', key: 'city_from', value: city });
+  const excludedKeys = ['page', 'limit', 'sort'];
+
+  Object.entries(query).forEach(([key, value]) => {
+    // Пропускаємо порожні значення та технічні ключі
+    if (!value || excludedKeys.includes(key)) return;
+
+    // Просто додаємо значення як один рядок, незалежно від того, чи є там коми
+    filters.push({ 
+      type: 'query', 
+      key, 
+      value: String(value).trim() 
     });
-  }
-  if (query.city_to) {
-    const cities = query.city_to
-      .split(',') // розбиваємо по комі
-      .map((s: string) => s.trim())
-      .filter(Boolean); // видаляємо пусті
-
-    cities.forEach((city: any) => {
-      filters.push({ type: 'query', key: 'city_to', value: city });
-    });
-  }
-
-  // Можна додати інші ключі
-  if (query.country_from) {
-    filters.push({
-      type: 'query',
-      key: 'country_from',
-      value: query.country_from,
-    });
-  }
-
-  if (query.country_to) {
-    filters.push({ type: 'query', key: 'country_to', value: query.country_to });
-  }
-
-  if (query.trailer) {
-    const trailers = query.trailer
-      .split(',')
-      .map((s: string) => s.trim())
-      .filter(Boolean);
-
-    trailers.forEach((trailer: any) => {
-      filters.push({ type: 'query', key: 'trailer', value: trailer });
-    });
-  }
+  });
 
   return filters;
 }

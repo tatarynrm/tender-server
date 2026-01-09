@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -25,17 +26,14 @@ export class CompanyController {
     return this.companyService.create(createCompanyDto);
   }
 
-  @Post('all')
-  findAll(@Body() body: any) {
-    const pagination = body.pagination || {
-      page_num: 1,
-      page_rows: 10,
-    };
-
-    const filter = body.filter || [];
-    const sort = body.sort || null;
-
-    return this.companyService.findAll({ pagination, filter, sort });
+  @Get('all')
+  async findAll(@Query() query: any) {
+    console.log('1111');
+    
+    console.log(query,'QUERY');
+    
+    // query тепер містить всі ваші фільтри та пагінацію
+    return this.companyService.findAll(query);
   }
 
   @Get(':id')
