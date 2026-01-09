@@ -27,7 +27,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   app.enableCors({
-    origin: isDev ? 'http://localhost:3000' : 'https://dragan-tataryn.site',
+    origin: isDev ? 'http://localhost:3000' : 'https://tender.ict.lviv.ua',
     credentials: true,
   });
 
@@ -44,7 +44,7 @@ async function bootstrap() {
         secure: !isDev,
         sameSite: isDev ? 'lax' : 'none',
         maxAge: THIRTY_DAYS,
-        domain: isDev ? undefined : '.dragan-tataryn.site',
+        domain: isDev ? undefined : '.tender.ict.lviv.ua',
       },
       store: new RedisStore({
         client: redisClient,
