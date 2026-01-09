@@ -26,11 +26,21 @@ async function bootstrap() {
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')));
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
+  // app.enableCors({
+  //   origin: isDev ? 'http://localhost:3000' : 'https://tender.ict.lviv.ua',
+  //   credentials: true,
+  // });
   app.enableCors({
     origin: isDev ? 'http://localhost:3000' : 'https://tender.ict.lviv.ua',
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+    ],
   });
-
   app.use(
     session({
       proxy: true,
