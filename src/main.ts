@@ -67,7 +67,7 @@ async function bootstrap() {
         secure: !isDev,
         sameSite: isDev ? 'lax' : 'none',
         maxAge: THIRTY_DAYS,
-        domain: isDev ? undefined : '.tender.ict.lviv.ua',
+        domain: isDev ? undefined : '.ict.lviv.ua',
       },
       store: new RedisStore({
         client: redisClient,
