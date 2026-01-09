@@ -62,13 +62,22 @@ async function bootstrap() {
       resave: true,
       saveUninitialized: false,
       rolling: true, // 🟢 оновлює maxAge при кожному запиті
+      // cookie: {
+      //   httpOnly: true,
+      //   secure: !isDev,
+      //   sameSite: isDev ? 'lax' : 'none',
+      //   maxAge: THIRTY_DAYS,
+      //   domain: isDev ? undefined : '.ict.lviv.ua',
+      // },
+
       cookie: {
         httpOnly: true,
-        secure: !isDev,
-        sameSite: isDev ? 'lax' : 'none',
+        secure: true,
+        sameSite: 'none', // Обов'язково для крос-піддоменних запитів з credentials
+        domain: '.ict.lviv.ua', // Обов'язково, щоб кука була спільна для обох піддоменів
         maxAge: THIRTY_DAYS,
-        domain: isDev ? undefined : '.ict.lviv.ua',
       },
+
       store: new RedisStore({
         client: redisClient,
         prefix: config.getOrThrow<string>('SESSION_FOLDER'),
