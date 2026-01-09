@@ -48,6 +48,8 @@ async function bootstrap() {
       'Authorization',
       'Accept',
       'X-Requested-With',
+      'Pragma', // 👈 Додайте це
+      'Cache-Control', // 👈 Бажано додати і це
     ],
   });
 
