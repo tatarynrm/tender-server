@@ -16,8 +16,8 @@ export class TenderService {
 
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-    console.log(filters,'FILTERS');
-    
+    console.log(filters, 'FILTERS');
+
     const result = await this.dbservice.callProcedure(
       'tender_list',
 
@@ -37,6 +37,7 @@ export class TenderService {
   }
   public async getClientList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
+    console.log(filters, 'FILTERS');
 
     const result = await this.dbservice.callProcedure(
       'tender_list_client',

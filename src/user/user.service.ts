@@ -178,7 +178,7 @@ export class UserService {
     sort?: any;
   }) {
     const { pagination, filter = [], sort = null } = params;
-console.log(pagination,'PAGINATION');
+    console.log(pagination, 'PAGINATION');
 
     const result = await this.dbservice.callProcedure('usr_list', {
       pagination,
