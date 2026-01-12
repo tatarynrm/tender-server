@@ -14,14 +14,19 @@ export class TenderService {
     private readonly tenderGateway: TenderGateway,
   ) {}
 
-  public async getList(dto: any) {
+  public async getList(query: any) {
+    const filters: FilterItem[] = buildFiltersFromQuery(query);
+    console.log(filters,'FILTERS');
+    
     const result = await this.dbservice.callProcedure(
       'tender_list',
 
       {
         pagination: {
-          per_page: 10,
+          per_page: query.limit ?? 10,
+          page: query.page ?? 1,
         },
+        filter: filters,
       },
 
       {},
@@ -31,10 +36,7 @@ export class TenderService {
     return result;
   }
   public async getClientList(query: any) {
-    console.log(query, 'Q?UERY');
-
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-
 
     const result = await this.dbservice.callProcedure(
       'tender_list_client',
@@ -56,6 +58,18 @@ export class TenderService {
   public async getClientListFormData(query: any) {
     const result = await this.dbservice.callProcedure(
       'tender_list_client_form_data',
+
+      {},
+
+      {},
+    );
+
+    return result;
+  }
+  // FOR MANAGERS
+  public async getListFormData(query: any) {
+    const result = await this.dbservice.callProcedure(
+      'tender_list_form_data',
 
       {},
 

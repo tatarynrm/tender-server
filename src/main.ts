@@ -62,21 +62,21 @@ async function bootstrap() {
       resave: true,
       saveUninitialized: false,
       rolling: true, // 🟢 оновлює maxAge при кожному запиті
-      // cookie: {
-      //   httpOnly: true,
-      //   secure: !isDev,
-      //   sameSite: isDev ? 'lax' : 'none',
-      //   maxAge: THIRTY_DAYS,
-      //   domain: isDev ? undefined : '.ict.lviv.ua',
-      // },
-
       cookie: {
         httpOnly: true,
-        secure: true,
-        sameSite: 'none', // Обов'язково для крос-піддоменних запитів з credentials
-        domain: '.ict.lviv.ua', // Обов'язково, щоб кука була спільна для обох піддоменів
+        secure: !isDev,
+        sameSite: isDev ? 'lax' : 'none',
         maxAge: THIRTY_DAYS,
+        domain: isDev ? undefined : '.ict.lviv.ua',
       },
+
+      // cookie: {
+      //   httpOnly: true,
+      //   secure: true,
+      //   sameSite: 'none', // Обов'язково для крос-піддоменних запитів з credentials
+      //   domain: '.ict.lviv.ua', // Обов'язково, щоб кука була спільна для обох піддоменів
+      //   maxAge: THIRTY_DAYS,
+      // },
 
       store: new RedisStore({
         client: redisClient,
@@ -91,15 +91,7 @@ async function bootstrap() {
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
-  app.use(function (req, res, next) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT');
-    res.header(
-      'Access-Control-Allow-Headers',
-      'Origin, X-Requested-With, Content-Type, Accept, Authorization',
-    );
-    next();
-  });
+
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 
   const getCity = async () => {

@@ -3,7 +3,27 @@ export interface FilterItem {
   key: string;
   value: string;
 }
+export function buildFiltersFromQuery(
+  query: Record<string, any>,
+): FilterItem[] {
+  const filters: FilterItem[] = [];
 
+  const excludedKeys = ['page', 'limit', 'sort'];
+
+  Object.entries(query).forEach(([key, value]) => {
+    // Пропускаємо порожні значення та технічні ключі
+    if (!value || excludedKeys.includes(key)) return;
+
+    // Просто додаємо значення як один рядок, незалежно від того, чи є там коми
+    filters.push({
+      type: 'query',
+      key,
+      value: String(value).trim(),
+    });
+  });
+
+  return filters;
+}
 /**
  * Динамічно будує масив фільтрів з будь-якого об'єкта query.
  * Виключає технічні поля на кшталт 'page', 'limit' тощо.
@@ -38,24 +58,3 @@ export interface FilterItem {
 
 //   return filters;
 // }
-export function buildFiltersFromQuery(
-  query: Record<string, any>,
-): FilterItem[] {
-  const filters: FilterItem[] = [];
-
-  const excludedKeys = ['page', 'limit', 'sort'];
-
-  Object.entries(query).forEach(([key, value]) => {
-    // Пропускаємо порожні значення та технічні ключі
-    if (!value || excludedKeys.includes(key)) return;
-
-    // Просто додаємо значення як один рядок, незалежно від того, чи є там коми
-    filters.push({ 
-      type: 'query', 
-      key, 
-      value: String(value).trim() 
-    });
-  });
-
-  return filters;
-}

@@ -9,8 +9,8 @@ export class TenderController {
 
   // Тендер CRM
   @Get('list')
-  getList(@Body() dto: any) {
-    return this.tenderService.getList(dto);
+  getList(@Query() query: any) {
+    return this.tenderService.getList(query);
   }
 
   // DASHBOARD
@@ -21,6 +21,10 @@ export class TenderController {
   @Get('client-list-form-data')
   getClientsListFormData(@Query() query: any) {
     return this.tenderService.getClientListFormData(query);
+  }
+  @Get('list-form-data')
+  getListFormData(@Query() query: any) {
+    return this.tenderService.getListFormData(query);
   }
   @Post('save')
   save(@Body() dto: any) {
