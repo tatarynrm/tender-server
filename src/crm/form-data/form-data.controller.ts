@@ -9,12 +9,13 @@ export class FormDataController {
 
   @Get('getCreateCargoFormData')
   async getPreAddCargoData() {
-    return this.formDataService.getPreAddCargoData()
+    return this.formDataService.getPreAddCargoData();
+  }
+  @Get('load-filters')
+  async getLoadFormData() {
+    return this.formDataService.getCrmLoadFilters();
   }
 
   @Get('get-currencies')
-  async getCurrencies() {
-
-
-  }
+  async getCurrencies() {}
 }

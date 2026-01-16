@@ -11,6 +11,7 @@ import { CompanyFillPreRegister } from './dto/company-fill-pre-register.dto';
 import { CreateUserFromCompany } from './dto/create-user-from-company.dto';
 import { UserRegisterFromPreDto } from './dto/user-register-from-pre.dto';
 import { MailService } from 'src/libs/common/mail/mail.service';
+import type { RedisClientType } from 'redis';
 @Injectable()
 export class UserService {
   public constructor(
@@ -18,6 +19,7 @@ export class UserService {
 
     @Inject('PG_POOL') private readonly pool: Pool,
     private readonly mailService: MailService,
+    @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
   ) {}
 
   public async findById(id: string | number) {
@@ -172,22 +174,54 @@ export class UserService {
     return result;
   }
 
-  async getAllUsers(params: {
-    pagination: { page_num: number; page_rows: number };
-    filter?: any[];
-    sort?: any;
-  }) {
-    const { pagination, filter = [], sort = null } = params;
-    console.log(pagination, 'PAGINATION');
+  // async getAllUsers(params: {
+  //   pagination: { page_num: number; page_rows: number };
+  //   filter?: any[];
+  //   sort?: any;
+  // }) {
+  //   const { pagination, filter = [], sort = null } = params;
+  //   console.log(pagination, 'PAGINATION');
 
-    const result = await this.dbservice.callProcedure('usr_list', {
-      pagination,
-      // pagination: { page_num: number; page_rows: number };
-    });
+  //   const result = await this.dbservice.callProcedure('usr_list', {
+  //     pagination,
+  //     // pagination: { page_num: number; page_rows: number };
+  //   });
 
-    return result;
-  }
+  //   return result;
+  // }
+async getAllUsers(params: {
+  pagination: { page_num: number; page_rows: number };
+  filter?: any[];
+  sort?: any;
+}) {
+  const { pagination } = params;
 
+  // 1. Отримуємо основний список користувачів з процедури БД
+  const result = await this.dbservice.callProcedure('usr_list', {
+    pagination,
+  });
+
+  // Припустимо, result — це масив або об'єкт { data: [...] }
+  const users = Array.isArray(result) ? result : result.content;
+
+  if (!users || users.length === 0) return result;
+
+  // 2. Отримуємо ID всіх, хто онлайн (шукаємо всі ключі 'user_sockets:*')
+  // Оптимальніше: під час handleConnection додавати ID в один загальний SET "online_users_set"
+  const onlineUsersKeys = await this.redisClient.keys('user_sockets:*');
+  
+  // Витягуємо суто ID з ключів (наприклад, з "user_sockets:123" дістаємо "123")
+  const onlineIds = new Set(onlineUsersKeys.map(key => key.split(':')[1]));
+
+  // 3. Додаємо поле isOnline до кожного користувача
+  const usersWithStatus = users.map(user => ({
+    ...user,
+    isOnline: onlineIds.has(user.id.toString()) // або user.usr_id, залежно від вашої БД
+  }));
+
+  // Повертаємо результат у тому ж форматі, що й раніше
+  return Array.isArray(result) ? usersWithStatus : { ...result, content: usersWithStatus };
+}
   // --- додаємо метод блокування ---
   public async blockUser(userId: number) {
     const blockUSer = this.pool.query(

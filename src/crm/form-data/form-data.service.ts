@@ -20,6 +20,17 @@ export class FormDataService {
 
     return result;
   }
+  public async getCrmLoadFilters() {
+    const result = await this.dbservice.callProcedure(
+      'crm_load_list_filters',
+
+      {},
+
+      {},
+    );
+
+    return result;
+  }
   public async getCurrencies() {
     const result = await this.pool.query(`
         select * from valut`);

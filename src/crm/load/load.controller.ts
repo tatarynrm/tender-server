@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { LoadService } from './load.service';
 import { CreateLoadDto } from './dto/create-load.dto';
@@ -18,8 +19,8 @@ export class LoadController {
   constructor(private readonly loadService: LoadService) {}
 
   @Get('list')
-  getList(@Body() dto: any) {
-    return this.loadService.getList(dto);
+  getList(@Query() query: any) {
+    return this.loadService.getList(query);
   }
   @Post('save')
   create(@Body() dto: any) {

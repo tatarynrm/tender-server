@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { CreateLoadDto } from './dto/create-load.dto';
 import { UpdateLoadDto } from './dto/update-load.dto';
 import { DatabaseService } from 'src/database/database.service';
+import {
+  buildFiltersFromQuery,
+  FilterItem,
+} from 'src/shared/utils/build-filters';
 
 @Injectable()
 export class LoadService {
@@ -17,11 +21,19 @@ export class LoadService {
 
     return result;
   }
-  public async getList(dto: any) {
+  public async getList(query: any) {
+    const filters: FilterItem[] = buildFiltersFromQuery(query);
+
     const result = await this.dbservice.callProcedure(
       'crm_load_list',
 
-      {},
+      {
+        pagination: {
+          per_page: query.limit ?? 10,
+          page: query.page ?? 1,
+        },
+        filter: filters,
+      },
 
       {},
     );
