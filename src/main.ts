@@ -96,7 +96,7 @@ async function bootstrap() {
           'x-rapidapi-host': 'wft-geo-db.p.rapidapi.com',
         },
       });
-      console.log(response.data);
+   
     } catch (error) {
       console.error(error.response?.data || error.message);
     }

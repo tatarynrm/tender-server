@@ -126,7 +126,11 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
     }
   }
-
+  // Відправка події всім користувачам
+  emitToAll(event: string, payload: any) {
+    console.log('EMIT IS WORKING');
+    this.server.emit(event, payload);
+  }
   // Обробка події "send_update"
   @SubscribeMessage('send_update')
   async handleSendUpdate(@ConnectedSocket() socket: Socket, payload: any) {

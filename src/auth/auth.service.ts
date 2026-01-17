@@ -71,7 +71,7 @@ export class AuthService {
   }
 
   public async login(req: Request, dto: LoginDto) {
-    console.log(dto, 'DTO LOLGIN');
+ 
 
     // const user = await this.userService.findByEmail(dto.email);
     const checkUserExist = await this.dbservice.callProcedure(
@@ -81,7 +81,7 @@ export class AuthService {
 
       {},
     );
-    console.log(checkUserExist, 'USERRR----------------');
+ 
     const user = checkUserExist.content;
 
     if (!user) {
@@ -91,7 +91,7 @@ export class AuthService {
     if (!isValidPassword) {
       throw new UnauthorizedException('Невірний пароль');
     }
-    console.log(user, 'user in login service');
+
 
     if (!user.verified) {
       await this.emailConfirmationService.sendVerificationToken(user.email);
@@ -156,7 +156,7 @@ export class AuthService {
             new InternalServerErrorException('Не вдалось зберегти сесію'),
           );
         }
-        console.log('Session saved to Redis with metadata');
+   
         resolve({ user });
       });
     });

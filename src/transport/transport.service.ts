@@ -20,7 +20,7 @@ export class TransportService {
 
       {},
     );
-    console.log(result, 'result');
+
 
     return result;
   }

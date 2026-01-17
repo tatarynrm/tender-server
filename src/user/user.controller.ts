@@ -52,14 +52,12 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @Get('profiles')
   public async testUser(@Authorized('id') userId: string) {
-    console.log('PROFILE');
-
     return this.userService.findById(userId);
   }
   // -------------------------------------------------------------------------
   // ADMIN КОНТРАГЕТНТА
   // Список усії працівників компанії
-  @Post('all')
+  @Get('all')
   public async getAllUsersFromCompany(@Body() body: any) {
     const pagination = body.pagination || {
       page_num: 1,
@@ -116,10 +114,6 @@ export class UserController {
   public async companyFillFromUsrPreRegister(
     @Body() dto: CompanyFillPreRegister,
   ) {
-    console.log('---------');
-
-    console.log(dto, 'DTO');
-
     return this.userService.companyFillFromUsrPreRegister(dto);
   }
   @Authorization()
@@ -129,8 +123,6 @@ export class UserController {
     @Body()
     dto: CreateUserFromCompany & { id_company: number },
   ) {
-    console.log(dto);
-
     return this.userService.adminCreateUser(dto);
   }
 }

@@ -6,10 +6,14 @@ import {
   buildFiltersFromQuery,
   FilterItem,
 } from 'src/shared/utils/build-filters';
+import { LoadGateway } from './load.gateway';
 
 @Injectable()
 export class LoadService {
-  public constructor(private readonly dbservice: DatabaseService) {}
+  public constructor(
+    private readonly dbservice: DatabaseService,
+    private readonly loadGateway: LoadGateway,
+  ) {}
   public async save(dto: any) {
     const result = await this.dbservice.callProcedure(
       'crm_load_save',
@@ -18,7 +22,10 @@ export class LoadService {
 
       {},
     );
-
+if (dto.id) {
+    this.loadGateway.emitToAll('edit_load', result.content[0]);
+}
+    this.loadGateway.emitToAll('new_load', result.content[0]);
     return result;
   }
   public async getList(query: any) {

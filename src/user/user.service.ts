@@ -84,8 +84,7 @@ export class UserService {
   public async createOrUpdateUserFromCompany(
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
-    console.log(dto, 'DTO in service');
-
+ 
     // створення нового користувача
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
@@ -135,7 +134,7 @@ export class UserService {
 
   // Створити користувача який є в передреєстрації!
   public async createPreRegisterUser(dto: UserRegisterFromPreDto) {
-    console.log(dto, 'USER REGISTER FROM PRE');
+
 
     const usersPreRegister = await this.dbservice.callProcedure(
       'usr_register_from_pre',
@@ -149,7 +148,7 @@ export class UserService {
   }
   public async companyFillFromUsrPreRegister(dto: CompanyFillPreRegister) {
     // const user = await this.findById(userId);
-    console.log(dto, 'companyFillFromUsrPreRegister -------------');
+
 
     const usersPreRegister = await this.dbservice.callProcedure(
       'company_fill_from_usr_pre_register',
@@ -167,28 +166,13 @@ export class UserService {
   public async adminCreateUser(
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
-    console.log(dto, 'DTO in service');
+
 
     // створення нового користувача
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
   }
 
-  // async getAllUsers(params: {
-  //   pagination: { page_num: number; page_rows: number };
-  //   filter?: any[];
-  //   sort?: any;
-  // }) {
-  //   const { pagination, filter = [], sort = null } = params;
-  //   console.log(pagination, 'PAGINATION');
-
-  //   const result = await this.dbservice.callProcedure('usr_list', {
-  //     pagination,
-  //     // pagination: { page_num: number; page_rows: number };
-  //   });
-
-  //   return result;
-  // }
 async getAllUsers(params: {
   pagination: { page_num: number; page_rows: number };
   filter?: any[];
@@ -196,32 +180,31 @@ async getAllUsers(params: {
 }) {
   const { pagination } = params;
 
-  // 1. Отримуємо основний список користувачів з процедури БД
-  const result = await this.dbservice.callProcedure('usr_list', {
-    pagination,
-  });
+  // 1. Отримуємо користувачів з БД
+  const result = await this.dbservice.callProcedure('usr_list', { pagination });
 
-  // Припустимо, result — це масив або об'єкт { data: [...] }
   const users = Array.isArray(result) ? result : result.content;
-
   if (!users || users.length === 0) return result;
 
-  // 2. Отримуємо ID всіх, хто онлайн (шукаємо всі ключі 'user_sockets:*')
-  // Оптимальніше: під час handleConnection додавати ID в один загальний SET "online_users_set"
-  const onlineUsersKeys = await this.redisClient.keys('user_sockets:*');
-  
-  // Витягуємо суто ID з ключів (наприклад, з "user_sockets:123" дістаємо "123")
-  const onlineIds = new Set(onlineUsersKeys.map(key => key.split(':')[1]));
+  // 2. Беремо онлайн користувачів з Redis SET
+  const onlineIds: string[] = await this.redisClient.sMembers('online_users_set');
+  const onlineSet = new Set(onlineIds);
 
-  // 3. Додаємо поле isOnline до кожного користувача
-  const usersWithStatus = users.map(user => ({
+
+  // 3. Додаємо isOnline
+  const usersWithStatus = users.map((user) => ({
     ...user,
-    isOnline: onlineIds.has(user.id.toString()) // або user.usr_id, залежно від вашої БД
+    isOnline: onlineSet.has(user.id.toString()),
   }));
 
-  // Повертаємо результат у тому ж форматі, що й раніше
-  return Array.isArray(result) ? usersWithStatus : { ...result, content: usersWithStatus };
+
+  // 4. Повертаємо у тому ж форматі
+  return Array.isArray(result)
+    ? usersWithStatus
+    : { ...result, content: usersWithStatus };
 }
+
+
   // --- додаємо метод блокування ---
   public async blockUser(userId: number) {
     const blockUSer = this.pool.query(

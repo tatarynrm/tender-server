@@ -66,7 +66,7 @@ export class AuthController {
     @Req() req: Request,
     @Body() dto: RegisterIctUserDto,
   ) {
-    console.log(dto, 'DTO');
+
 
     return this.authService.registerIctUser(dto);
   }
@@ -75,7 +75,7 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 10000 } }) // 5 requests per 10 seconds
   @HttpCode(HttpStatus.OK)
   public async login(@Req() req: Request, @Body() dto: LoginDto) {
-    console.log(dto, 'DTO LOGIN CONTROLLER');
+
 
     return this.authService.login(req, dto);
   }
@@ -143,7 +143,7 @@ export class AuthController {
       this.configService.get<string>('SESSION_FOLDER') || '';
     const currentSessionId = req.sessionID;
     const userId = req.session.userId;
-    console.log(currentSessionId, 'CURRENT');
+
 
     const keys = await this.redisClient.keys(`${sessionPrefix}*`);
     const allSessions = await Promise.all(
@@ -176,7 +176,7 @@ export class AuthController {
   @Get('me')
   async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
     const sessionUser = req.session?.userId;
-
+  
     if (!sessionUser) {
       res.clearCookie('centrifuge', { path: '/' });
       return res.status(401).json({ message: 'unauthorized', status: 401 });
@@ -184,7 +184,7 @@ export class AuthController {
     // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
     const { password_hash, ...safeUser } = user;
-    console.log(safeUser, 'SAFE USER', new Date());
+ 
 
     return res.json(safeUser);
   }

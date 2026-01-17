@@ -16,7 +16,6 @@ export class TenderService {
 
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-    console.log(filters, 'FILTERS');
 
     const result = await this.dbservice.callProcedure(
       'tender_list',
@@ -31,13 +30,11 @@ export class TenderService {
 
       {},
     );
-    console.log(result, 'TENDERS');
 
     return result;
   }
   public async getClientList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-
 
     const result = await this.dbservice.callProcedure(
       'tender_list_client',
@@ -52,7 +49,6 @@ export class TenderService {
 
       {},
     );
-    // console.log(result,'RESULT KYIV');
 
     return result;
   }
@@ -87,14 +83,11 @@ export class TenderService {
 
       {},
     );
-    console.log(result.content, 'RESULT CONTENT');
 
-    this.tenderGateway.emitToAll('saveTender', result.content[0]);
+    this.tenderGateway.emitToAll('new_tender', result.content[0]);
     return result;
   }
   public async getOne(id: string) {
-    console.log(id, 'ID IN SERVICE');
-
     const result = await this.dbservice.callProcedure(
       'tender_one',
 
@@ -102,14 +95,11 @@ export class TenderService {
 
       {},
     );
-    console.log(result, 'TENDER ONE--------');
 
     return result;
   }
 
   public async tenderSetRate(dto: any) {
-    console.log('SET RATE FUNC----------------------------');
-
     const result = await this.dbservice.callProcedure(
       'tender_set_rate',
 

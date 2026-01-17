@@ -16,6 +16,7 @@ export class AuthGuard implements CanActivate {
       session: any;
     };
 
+
     if (!request.session?.userId) {
       throw new UnauthorizedException('Ви не авторизовані');
     }

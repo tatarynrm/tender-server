@@ -23,11 +23,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Обробка підключення клієнта
   handleConnection(socket: Socket) {
-    console.log(`Client connected: ${socket.id}`);
+  
 
     // Перевірка, чи переданий userId в параметрах запиту
     const userId = socket.handshake.query.userId as string;
-    console.log(userId, 'USER ID');
+
 
     if (!userId) {
       console.error('User ID is missing!');
@@ -40,7 +40,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Обробка відключення клієнта
   handleDisconnect(socket: Socket) {
-    console.log(`Client disconnected: ${socket.id}`);
+   
 
     // Отримуємо userId з параметрів запиту сокета
     const userId = socket.handshake.query.userId as string;
@@ -56,11 +56,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Метод для надсилання повідомлення користувачу за його userId
   async emitToUser(userId: string, event: string, payload: any) {
     const socketIds = await this.redisClient.sMembers(`chat_user:${userId}`);
-    console.log(socketIds, 'SOCKET IDS'); // Логування для дебагу
+  
 
     // Якщо немає активних сокетів для цього користувача
     if (socketIds.length === 0) {
-      console.log(`[ChatGateway] User ${userId} is not connected.`);
+   
       return;
     }
 
@@ -95,7 +95,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(socketId).emit('message_to_user_group', message);
       }
     }
-    console.log(data, 'PAYLOAD');
+ 
     // Підтвердження для відправника
     socket.emit('message_received', message);
   }
@@ -132,7 +132,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { roomName } = data;
     socket.join(roomName); // приєднати до кімнати
-    console.log(`Socket ${socket.id} joined room ${roomName}`);
+
 
     // Можна сповіщати учасників, що новий користувач приєднався
     this.server.to(roomName).emit('room_notification', {

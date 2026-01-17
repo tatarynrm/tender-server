@@ -31,7 +31,7 @@ export class TenderGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    console.log(`${userId} підключений до namespace /tender`);
+
 
     // Зберігаємо всі сокети користувача
     await this.redisClient.sAdd(`tender_sockets:${userId}`, client.id);

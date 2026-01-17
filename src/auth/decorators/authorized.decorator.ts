@@ -8,7 +8,7 @@ export const Authorized = createParamDecorator(
     const request = ctx.switchToHttp().getRequest();
     const user = request.user;
 
-    // console.log(user,'USER1111111111');
+
 
     return data ? user[data] : user;
   },

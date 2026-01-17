@@ -111,7 +111,7 @@ export class EmailConfirmationService implements OnModuleInit {
         [email, token, expiresIn],
       );
 
-      console.log(insertResult.rows[0], 'TOKEN CREATED');
+ 
       return insertResult.rows[0];
     } finally {
       client.release();
