@@ -26,6 +26,20 @@ export class LoadController {
   create(@Body() dto: any) {
     return this.loadService.save(dto);
   }
+  @Post('add-cars')
+  addCars(@Body() dto: any) {
+    return this.loadService.addCars(dto);
+  }
+  @Post('remove-cars')
+  removeCars(@Body() dto: any) {
+    return this.loadService.removeCars(dto);
+  }
+  @Post('close-cargo-by-manager')
+  closeByManager(@Body() dto: any) {
+    console.log(dto,'DTO!!!!!!!!!!!!!!!!!!!');
+    
+    return this.loadService.closeByManager(dto);
+  }
 
   @Get('edit/:id')
   findOne(@Param('id') id: string) {
