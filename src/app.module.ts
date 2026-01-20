@@ -33,20 +33,21 @@ import { TenderModule } from './tender/tender.module';
 import { TransportModule } from './transport/transport.module';
 import { LocationModule } from './location/location.module';
 import { OracleModule } from './oracle/oracle.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { MulterConfigService } from './config/multer.config.service';
+import { CocktailsModule } from './cocktails/cocktails.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 @Module({
   imports: [
     ConfigModule.forRoot({
       ignoreEnvFile: !IS_DEV_ENV,
       isGlobal: true,
     }),
-    // ThrottlerModule.forRoot({
-    //   throttlers: [{ limit: 4, ttl: 10 }],
-    //   errorMessage: 'Почекайте 10 секунд.Занадто багато спроб',
-    // }),
-    // TelegrafModule.forRoot({
-    //   middlewares: [session()],
-    //   token: process.env.TELEGRAM_BOT_TOKEN!,
-    // }),
+    MulterModule.registerAsync({
+      useClass: MulterConfigService,
+    }),
+
     ScheduleModule.forRoot(),
     AuthModule,
     UserModule,
@@ -91,18 +92,11 @@ import { OracleModule } from './oracle/oracle.module';
     LocationModule,
 
     OracleModule,
+
+    CocktailsModule,
   ],
   controllers: [],
-  providers: [
-    DatabaseModule,
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: ThrottlerGuard,
-    // },
-    UserGateway,
-    TelegramUpdate,
-    LoadGateway,
-  ],
+  providers: [DatabaseModule, UserGateway, TelegramUpdate, LoadGateway],
   exports: [DatabaseModule],
 })
 export class AppModule {}

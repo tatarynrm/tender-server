@@ -26,17 +26,20 @@ export class UserService {
     const existUser = await this.pool.query(
       `select a.*,
       b.company_name,b.company_name_full,
-      c.first_name as telegram_first_name, c.telegram_id,c.username as telegram_user_name
+      c.first_name as telegram_first_name, c.telegram_id,c.username as telegram_user_name,
+      d.avatar_path
 
        from usr  a
        left join company b on a.id_company = b.id
        left join usr_telegram c on a.id = c.id_usr
+       left join usr_avatar d on a.id = d.usr_id
 
       where a.id = $1`,
       [id],
     );
 
     const user = existUser.rows[0];
+console.log(user,'USER');
 
     if (!user) {
       throw new NotFoundException(

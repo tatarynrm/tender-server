@@ -66,8 +66,6 @@ export class AuthController {
     @Req() req: Request,
     @Body() dto: RegisterIctUserDto,
   ) {
-
-
     return this.authService.registerIctUser(dto);
   }
   // @Recaptcha()
@@ -75,8 +73,6 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 10000 } }) // 5 requests per 10 seconds
   @HttpCode(HttpStatus.OK)
   public async login(@Req() req: Request, @Body() dto: LoginDto) {
-
-
     return this.authService.login(req, dto);
   }
 
@@ -144,7 +140,6 @@ export class AuthController {
     const currentSessionId = req.sessionID;
     const userId = req.session.userId;
 
-
     const keys = await this.redisClient.keys(`${sessionPrefix}*`);
     const allSessions = await Promise.all(
       keys.map(async (key) => {
@@ -176,7 +171,7 @@ export class AuthController {
   @Get('me')
   async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
     const sessionUser = req.session?.userId;
-  
+
     if (!sessionUser) {
       res.clearCookie('centrifuge', { path: '/' });
       return res.status(401).json({ message: 'unauthorized', status: 401 });
@@ -184,7 +179,6 @@ export class AuthController {
     // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
     const { password_hash, ...safeUser } = user;
- 
 
     return res.json(safeUser);
   }

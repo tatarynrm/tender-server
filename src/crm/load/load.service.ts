@@ -23,12 +23,15 @@ export class LoadService {
 
       {},
     );
-    console.log(result, 'RESULT');
+    // console.log(result.content[0],'RESULT-------');
+
+    const exactLoad = await this.findOne(result.content[0]);
+    console.log(exactLoad, 'EXACT LOAD');
 
     if (dto.id) {
-      this.loadGateway.emitToAll('edit_load', result.content[0]);
+      this.loadGateway.emitToAll('edit_load', exactLoad.content);
     }
-    this.loadGateway.emitToAll('new_load', result.content[0]);
+    this.loadGateway.emitToAll('new_load', exactLoad.content);
     return result;
   }
   public async addCars(dto: any) {
@@ -137,18 +140,39 @@ export class LoadService {
     // this.loadGateway.emitToAll('new_load', result.content[0]);
     return result;
   }
-  public async markAsRead(dto: any) {
+  public async setAsRead(dto: any) {
     console.log(dto, 'COMMENTS GET');
 
     const result = await this.dbservice.callProcedure(
-      'crm_load_comment_read_mark',
+      'crm_load_comment_read_set',
 
       dto,
 
       {},
     );
 
-    // this.loadGateway.emitToAll('new_load', result.content[0]);
+    this.loadGateway.emitToAll('new_load', result.content[0]);
+    return result;
+  }
+  public async loadUpdate(dto: any) {
+    console.log(dto, 'COMMENTS GET');
+    console.log(dto, 'DTO');
+
+    const result = await this.dbservice.callProcedure(
+      'crm_load_update',
+
+      {
+        id: dto.id,
+      },
+
+      {},
+    );
+    console.log(result, 'RESULT');
+
+    const exactLoad = await this.findOne(result.content.id);
+    console.log(exactLoad, 'EXACT LOAD');
+
+    this.loadGateway.emitToAll('update_load', exactLoad.content[0]);
     return result;
   }
   public async getList(query: any) {
@@ -185,7 +209,7 @@ export class LoadService {
   public async findOne(id: number) {
     // return `This action returns a #${id} load`;
     const result = await this.dbservice.callProcedure(
-      'crm_load_one',
+      'crm_load_list',
 
       { id: id },
 
@@ -193,13 +217,5 @@ export class LoadService {
     );
 
     return result;
-  }
-
-  update(id: number, updateLoadDto: UpdateLoadDto) {
-    return `This action updates a #${id} load`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} load`;
   }
 }

@@ -55,7 +55,11 @@ export class LoadController {
   }
   @Post('comments/mark-as-read')
   markAsRead(@Body() dto: any) {
-    return this.loadService.markAsRead(dto);
+    return this.loadService.setAsRead(dto);
+  }
+  @Post('load-update')
+  loadUpdate(@Body() dto: any) {
+    return this.loadService.loadUpdate(dto);
   }
 
   @Get('edit/:id')
@@ -63,13 +67,13 @@ export class LoadController {
     return this.loadService.findOne(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateLoadDto: UpdateLoadDto) {
-    return this.loadService.update(+id, updateLoadDto);
-  }
+  // @Patch(':id')
+  // update(@Param('id') id: string, @Body() updateLoadDto: UpdateLoadDto) {
+  //   return this.loadService.update(+id, updateLoadDto);
+  // }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.loadService.remove(+id);
-  }
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.loadService.remove(+id);
+  // }
 }
