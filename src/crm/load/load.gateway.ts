@@ -141,4 +141,14 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // socket.broadcast.emit('message_to_all'); // для всіх інших
   }
+
+  // Метод, який ми викликали в контролері
+  notifyAboutUpdate(loadId: number) {
+    // Емітимо подію 'edit_load' (як чекає ваш фронтенд)
+    // Надсилаємо ID вантажу, щоб фронт знав, який саме чат оновити
+    this.server.emit('edit_load_comment', loadId);
+
+    // Або спеціалізована подія для коментарів
+    this.server.emit('edit_load_comment', loadId);
+  }
 }

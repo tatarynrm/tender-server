@@ -16,6 +16,7 @@ export class MailService {
   ) {}
   private sendMail(email: string, subject: string, html: string) {
     return this.mailerService.sendMail({
+      from: 'cargo-info@ict.lviv.ua',
       to: email,
       subject: subject,
       html,
@@ -54,7 +55,11 @@ export class MailService {
     console.log('PRE REGISTER EMAIL SEND');
 
     const html = await render(SuccessfulPreRegistrationAccountTemplate());
-    return this.sendMail(email, 'Успішно зареєстровані нашими менеджерами', html);
+    return this.sendMail(
+      email,
+      'Успішно зареєстровані нашими менеджерами',
+      html,
+    );
   }
   // public async sendRegisterFromCompanyEmail(email: string, token: string) {
   //   const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');

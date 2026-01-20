@@ -80,6 +80,77 @@ export class LoadService {
     // this.loadGateway.emitToAll('new_load', result.content[0]);
     return result;
   }
+  public async cargoHistory(id: any) {
+    const result = await this.dbservice.callProcedure(
+      'crm_load_car_history',
+
+      {
+        id_crm_load: id,
+      },
+
+      {},
+    );
+
+    // this.loadGateway.emitToAll('new_load', result.content[0]);
+    return result;
+  }
+  public async getLoadChat(id: any) {
+    console.log(id, 'DTRO');
+
+    const result = await this.dbservice.callProcedure(
+      'crm_load_car_history',
+
+      {
+        id: id,
+      },
+
+      {},
+    );
+
+    // this.loadGateway.emitToAll('new_load', result.content[0]);
+    return result;
+  }
+  public async saveComment(dto: any) {
+    console.log(dto, 'DTRO');
+
+    const result = await this.dbservice.callProcedure(
+      'crm_load_comment_save',
+
+      dto,
+
+      {},
+    );
+    this.loadGateway.notifyAboutUpdate(dto.id_crm_load);
+    return result;
+  }
+  public async getComments(id: any) {
+    console.log(id, 'COMMENTS GET');
+
+    const result = await this.dbservice.callProcedure(
+      'crm_load_comments',
+
+      { id_crm_load: id },
+
+      {},
+    );
+
+    // this.loadGateway.emitToAll('new_load', result.content[0]);
+    return result;
+  }
+  public async markAsRead(dto: any) {
+    console.log(dto, 'COMMENTS GET');
+
+    const result = await this.dbservice.callProcedure(
+      'crm_load_comment_read_mark',
+
+      dto,
+
+      {},
+    );
+
+    // this.loadGateway.emitToAll('new_load', result.content[0]);
+    return result;
+  }
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 

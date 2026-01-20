@@ -21,7 +21,6 @@ export class TransportService {
       {},
     );
 
-
     return result;
   }
   public async transportList(dto: GetTransportQueryDto) {
@@ -29,7 +28,7 @@ export class TransportService {
     const expression = type === 'TRUCK' ? 'a.main' : 'not a.main';
     // Формуємо параметри для процедури
     const procedureParams = {
-      filter: type ? [{ type: 'where', expression:expression }] : [],
+      filter: type ? [{ type: 'where', expression: expression }] : [],
       pagination: { page, limit },
     };
 

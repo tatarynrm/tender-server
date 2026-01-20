@@ -36,9 +36,26 @@ export class LoadController {
   }
   @Post('close-cargo-by-manager')
   closeByManager(@Body() dto: any) {
-    console.log(dto,'DTO!!!!!!!!!!!!!!!!!!!');
-    
+    console.log(dto, 'DTO!!!!!!!!!!!!!!!!!!!');
+
     return this.loadService.closeByManager(dto);
+  }
+  @Get('load-history/:id')
+  cargoHistory(@Param('id') id: string) {
+    return this.loadService.cargoHistory(id);
+  }
+  // Зберегти коментар
+  @Post('save-comment')
+  saveLoadComment(@Body() dto: any) {
+    return this.loadService.saveComment(dto);
+  }
+  @Get('comments/:id')
+  getComments(@Param('id') id: string) {
+    return this.loadService.getComments(id);
+  }
+  @Post('comments/mark-as-read')
+  markAsRead(@Body() dto: any) {
+    return this.loadService.markAsRead(dto);
   }
 
   @Get('edit/:id')
