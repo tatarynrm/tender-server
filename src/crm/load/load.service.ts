@@ -23,15 +23,13 @@ export class LoadService {
 
       {},
     );
-    // console.log(result.content[0],'RESULT-------');
 
     const exactLoad = await this.findOne(result.content[0]);
-    console.log(exactLoad, 'EXACT LOAD');
 
     if (dto.id) {
-      this.loadGateway.emitToAll('edit_load', exactLoad.content);
+      this.loadGateway.emitToAll('edit_load', exactLoad.content[0]);
     }
-    this.loadGateway.emitToAll('new_load', exactLoad.content);
+    this.loadGateway.emitToAll('new_load', exactLoad.content[0]);
     return result;
   }
   public async addCars(dto: any) {
@@ -114,16 +112,21 @@ export class LoadService {
     return result;
   }
   public async saveComment(dto: any) {
-    console.log(dto, 'DTRO');
-
     const result = await this.dbservice.callProcedure(
       'crm_load_comment_save',
-
       dto,
-
       {},
     );
-    this.loadGateway.notifyAboutUpdate(dto.id_crm_load);
+    console.log(result, 'RESIlt chbat comment result !!!!');
+
+    // Отримуємо актуальний стан вантажу з бази (з новим часом останнього коментаря)
+    const exactLoad = await this.findOne(dto.id_crm_load);
+    const updatedItem = exactLoad.content[0];
+    console.log(updatedItem, 'ITEM UPDATED---');
+
+    // Розсилаємо всім
+    this.loadGateway.emitToAll('edit_load_comment', updatedItem);
+
     return result;
   }
   public async getComments(id: any) {
@@ -141,23 +144,25 @@ export class LoadService {
     return result;
   }
   public async setAsRead(dto: any) {
-    console.log(dto, 'COMMENTS GET');
-
+    // dto має містити { id_crm_load: ... } або просто id
     const result = await this.dbservice.callProcedure(
       'crm_load_comment_read_set',
-
       dto,
-
       {},
     );
 
-    this.loadGateway.emitToAll('new_load', result.content[0]);
+    // Отримуємо оновлений вантаж, де лічильник вже має бути 0
+    const exactLoad = await this.findOne(dto.id_crm_load);
+    const updatedItem = exactLoad.content[0];
+    console.log(updatedItem, 'UPDATE ITEM ----- 157');
+
+    // Повідомляємо іншим вкладкам/користувачам, що цей вантаж прочитано
+    // (Але завдяки logic з датою у майбутньому, у автора коментарів нічого не смикнеться)
+    this.loadGateway.emitToAll('update_chat_count_load', updatedItem);
+
     return result;
   }
   public async loadUpdate(dto: any) {
-    console.log(dto, 'COMMENTS GET');
-    console.log(dto, 'DTO');
-
     const result = await this.dbservice.callProcedure(
       'crm_load_update',
 
@@ -167,10 +172,25 @@ export class LoadService {
 
       {},
     );
-    console.log(result, 'RESULT');
 
     const exactLoad = await this.findOne(result.content.id);
     console.log(exactLoad, 'EXACT LOAD');
+    this.loadGateway.emitToAll('update_load_date', exactLoad.content[0]);
+    return result;
+  }
+  public async loadCopy(dto: any) {
+    const result = await this.dbservice.callProcedure(
+      'crm_load_copy',
+
+      {
+        id_crm_load: dto.id,
+      },
+
+      {},
+    );
+    console.log(result, 'RESULT');
+
+    const exactLoad = await this.findOne(result.content.id);
 
     this.loadGateway.emitToAll('update_load', exactLoad.content[0]);
     return result;
@@ -196,6 +216,8 @@ export class LoadService {
   }
 
   public async getOneLoad(id: number) {
+    console.log(id, 'ID');
+
     const result = await this.dbservice.callProcedure(
       'crm_load_one',
       {

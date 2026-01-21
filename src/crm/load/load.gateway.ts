@@ -127,8 +127,13 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
   // Відправка події всім користувачам
+  // Спрощуємо, прибираємо дублювання
+  notifyAboutUpdate(loadId: number) {
+    // Якщо хочемо надіслати тільки ID
+    this.server.emit('edit_load_comment', loadId);
+  }
+
   emitToAll(event: string, payload: any) {
-    console.log('EMIT IS WORKING');
     this.server.emit(event, payload);
   }
   // Обробка події "send_update"
@@ -143,12 +148,12 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Метод, який ми викликали в контролері
-  notifyAboutUpdate(loadId: number) {
-    // Емітимо подію 'edit_load' (як чекає ваш фронтенд)
-    // Надсилаємо ID вантажу, щоб фронт знав, який саме чат оновити
-    this.server.emit('edit_load_comment', loadId);
+  // notifyAboutUpdate(loadId: number) {
+  //   // Емітимо подію 'edit_load' (як чекає ваш фронтенд)
+  //   // Надсилаємо ID вантажу, щоб фронт знав, який саме чат оновити
+  //   this.server.emit('edit_load_comment', loadId);
 
-    // Або спеціалізована подія для коментарів
-    this.server.emit('edit_load_comment', loadId);
-  }
+  //   // Або спеціалізована подія для коментарів
+  //   this.server.emit('edit_load_comment', loadId);
+  // }
 }

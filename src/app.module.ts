@@ -38,8 +38,10 @@ import { MulterConfigService } from './config/multer.config.service';
 import { CocktailsModule } from './cocktails/cocktails.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { FileCleanupService } from './common/services/file-cleanup.service';
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       ignoreEnvFile: !IS_DEV_ENV,
       isGlobal: true,
@@ -96,7 +98,7 @@ import { join } from 'path';
     CocktailsModule,
   ],
   controllers: [],
-  providers: [DatabaseModule, UserGateway, TelegramUpdate, LoadGateway],
+  providers: [DatabaseModule, UserGateway, TelegramUpdate, LoadGateway,FileCleanupService],
   exports: [DatabaseModule],
 })
 export class AppModule {}

@@ -39,7 +39,6 @@ export class UserService {
     );
 
     const user = existUser.rows[0];
-console.log(user,'USER');
 
     if (!user) {
       throw new NotFoundException(
@@ -87,7 +86,6 @@ console.log(user,'USER');
   public async createOrUpdateUserFromCompany(
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
- 
     // створення нового користувача
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
@@ -137,8 +135,6 @@ console.log(user,'USER');
 
   // Створити користувача який є в передреєстрації!
   public async createPreRegisterUser(dto: UserRegisterFromPreDto) {
-
-
     const usersPreRegister = await this.dbservice.callProcedure(
       'usr_register_from_pre',
 
@@ -151,7 +147,6 @@ console.log(user,'USER');
   }
   public async companyFillFromUsrPreRegister(dto: CompanyFillPreRegister) {
     // const user = await this.findById(userId);
-
 
     const usersPreRegister = await this.dbservice.callProcedure(
       'company_fill_from_usr_pre_register',
@@ -169,44 +164,42 @@ console.log(user,'USER');
   public async adminCreateUser(
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
-
-
     // створення нового користувача
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
   }
 
-async getAllUsers(params: {
-  pagination: { page_num: number; page_rows: number };
-  filter?: any[];
-  sort?: any;
-}) {
-  const { pagination } = params;
+  async getAllUsers(params: {
+    pagination: { page_num: number; page_rows: number };
+    filter?: any[];
+    sort?: any;
+  }) {
+    const { pagination } = params;
 
-  // 1. Отримуємо користувачів з БД
-  const result = await this.dbservice.callProcedure('usr_list', { pagination });
+    // 1. Отримуємо користувачів з БД
+    const result = await this.dbservice.callProcedure('usr_list', {
+      pagination,
+    });
 
-  const users = Array.isArray(result) ? result : result.content;
-  if (!users || users.length === 0) return result;
+    const users = Array.isArray(result) ? result : result.content;
+    if (!users || users.length === 0) return result;
 
-  // 2. Беремо онлайн користувачів з Redis SET
-  const onlineIds: string[] = await this.redisClient.sMembers('online_users_set');
-  const onlineSet = new Set(onlineIds);
+    // 2. Беремо онлайн користувачів з Redis SET
+    const onlineIds: string[] =
+      await this.redisClient.sMembers('online_users_set');
+    const onlineSet = new Set(onlineIds);
 
+    // 3. Додаємо isOnline
+    const usersWithStatus = users.map((user) => ({
+      ...user,
+      isOnline: onlineSet.has(user.id.toString()),
+    }));
 
-  // 3. Додаємо isOnline
-  const usersWithStatus = users.map((user) => ({
-    ...user,
-    isOnline: onlineSet.has(user.id.toString()),
-  }));
-
-
-  // 4. Повертаємо у тому ж форматі
-  return Array.isArray(result)
-    ? usersWithStatus
-    : { ...result, content: usersWithStatus };
-}
-
+    // 4. Повертаємо у тому ж форматі
+    return Array.isArray(result)
+      ? usersWithStatus
+      : { ...result, content: usersWithStatus };
+  }
 
   // --- додаємо метод блокування ---
   public async blockUser(userId: number) {

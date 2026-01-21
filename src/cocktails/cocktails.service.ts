@@ -60,7 +60,6 @@ export class CocktailsService {
 
           // Пріоритет: Кастомне ім'я від користувача -> Оригінальне ім'я файлу
           const finalDisplayName = displayNames[i] || file.originalname;
-   
 
           await client.query(
             `INSERT INTO files (file_url, original_name, mimetype, size, id_company, id_user, entity_id, entity_type)

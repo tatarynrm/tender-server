@@ -22,6 +22,7 @@ export class LoadController {
   getList(@Query() query: any) {
     return this.loadService.getList(query);
   }
+
   @Post('save')
   create(@Body() dto: any) {
     return this.loadService.save(dto);
@@ -61,19 +62,18 @@ export class LoadController {
   loadUpdate(@Body() dto: any) {
     return this.loadService.loadUpdate(dto);
   }
+  @Post('load-copy')
+  loadCopy(@Body() dto: any) {
+    return this.loadService.loadCopy(dto);
+  }
 
   @Get('edit/:id')
   findOne(@Param('id') id: string) {
     return this.loadService.findOne(+id);
   }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateLoadDto: UpdateLoadDto) {
-  //   return this.loadService.update(+id, updateLoadDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.loadService.remove(+id);
-  // }
+  @Get('one/:id')
+  getOneLoad(@Param() params: any) {
+    const id = params.id;
+    return this.loadService.getOneLoad(Number(id));
+  }
 }
