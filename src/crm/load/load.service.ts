@@ -7,6 +7,7 @@ import {
   FilterItem,
 } from 'src/shared/utils/build-filters';
 import { LoadGateway } from './load.gateway';
+import { Request } from 'express';
 
 @Injectable()
 export class LoadService {
@@ -33,6 +34,8 @@ export class LoadService {
     return result;
   }
   public async addCars(dto: any) {
+    console.log(dto, 'dto 37');
+
     const result = await this.dbservice.callProcedure(
       'crm_load_car_add_save',
 
@@ -40,8 +43,11 @@ export class LoadService {
 
       {},
     );
-
-    this.loadGateway.emitToAll('edit_load_car', result.content[0]);
+    console.log(result, 'result --add car');
+    // Отримуємо актуальний стан вантажу з бази (з новим часом останнього коментаря)
+    const exactLoad = await this.findOne(dto.id_crm_load);
+    const updatedItem = exactLoad.content[0];
+    this.loadGateway.emitToAll('load_add_car', updatedItem);
 
     // this.loadGateway.emitToAll('new_load', result.content[0]);
     return result;
@@ -111,21 +117,26 @@ export class LoadService {
     // this.loadGateway.emitToAll('new_load', result.content[0]);
     return result;
   }
-  public async saveComment(dto: any) {
+  public async saveComment(dto: any, req: Request) {
     const result = await this.dbservice.callProcedure(
       'crm_load_comment_save',
       dto,
       {},
     );
     console.log(result, 'RESIlt chbat comment result !!!!');
+    console.log(dto, 'DTO -121');
+    console.log(req.user.id, '---------------------');
 
     // Отримуємо актуальний стан вантажу з бази (з новим часом останнього коментаря)
     const exactLoad = await this.findOne(dto.id_crm_load);
     const updatedItem = exactLoad.content[0];
-    console.log(updatedItem, 'ITEM UPDATED---');
+    // console.log(updatedItem, 'ITEM UPDATED---');
 
     // Розсилаємо всім
-    this.loadGateway.emitToAll('edit_load_comment', updatedItem);
+    this.loadGateway.emitToAll('new_load_comment', {
+      ...updatedItem,
+      sender_id: req.user.id,
+    });
 
     return result;
   }

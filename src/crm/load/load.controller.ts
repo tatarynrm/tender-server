@@ -7,11 +7,13 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { LoadService } from './load.service';
 import { CreateLoadDto } from './dto/create-load.dto';
 import { UpdateLoadDto } from './dto/update-load.dto';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
+import type { Request } from 'express';
 
 @Authorization()
 @Controller('crm/load')
@@ -47,8 +49,8 @@ export class LoadController {
   }
   // Зберегти коментар
   @Post('save-comment')
-  saveLoadComment(@Body() dto: any) {
-    return this.loadService.saveComment(dto);
+  saveLoadComment(@Body() dto: any,@Req() req:Request) {
+    return this.loadService.saveComment(dto,req);
   }
   @Get('comments/:id')
   getComments(@Param('id') id: string) {
