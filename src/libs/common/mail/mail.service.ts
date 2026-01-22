@@ -14,7 +14,7 @@ export class MailService {
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
   ) {}
-  private sendMail(email: string, subject: string, html: string) {
+  public async sendMail(email: string, subject: string, html: string) {
     return this.mailerService.sendMail({
       from: 'cargo-info@ict.lviv.ua',
       to: email,

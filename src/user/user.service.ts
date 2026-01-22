@@ -165,6 +165,8 @@ export class UserService {
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
     // створення нового користувача
+    console.log(dto,'dto admin 168');
+    
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
   }

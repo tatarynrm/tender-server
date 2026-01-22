@@ -8,10 +8,8 @@ import { MailModule } from './libs/common/mail/mail.module';
 import { EmailConfirmationModule } from './auth/email-confirmation/email-confirmation.module';
 import { PasswordRecoveryModule } from './auth/password-recovery/password-recovery.module';
 import { TwoFactorAuthModule } from './auth/two-factor-auth/two-factor-auth.module';
-// import { RedisModule } from './libs/common/redis/redis.module';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
-import { APP_GUARD } from '@nestjs/core';
+import { RouterModule } from '@nestjs/core';
 import { CompanyModule } from './company/company.module';
 import { OraIctModule } from './ora-ict/ora-ict.module';
 import { CrmModule } from './crm/crm.module';
@@ -22,8 +20,6 @@ import { AdminModule } from './admin/admin.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { TelegramTokenModule } from './telegram/telegram-token/telegram-token.module';
 import { TelegramUpdate } from './telegram/telegram.update';
-import { TelegrafModule } from 'nestjs-telegraf';
-import { session } from 'telegraf';
 import { ChatModule } from './chat/chat.module';
 import { LoadGateway } from './crm/load/load.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -36,11 +32,18 @@ import { OracleModule } from './oracle/oracle.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from './config/multer.config.service';
 import { CocktailsModule } from './cocktails/cocktails.module';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
 import { FileCleanupService } from './common/services/file-cleanup.service';
+import { ClsModule } from 'nestjs-cls';
+
+import { AdminCompanyModule } from './admin/admin-company/admin-company.module';
+import { AdminUserModule } from './admin/admin-user/admin-user.module';
+
 @Module({
   imports: [
+    ClsModule.forRoot({
+      global: true,
+      middleware: { mount: true }, // автоматично підключає middleware для кожного запиту
+    }),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       ignoreEnvFile: !IS_DEV_ENV,
@@ -51,6 +54,8 @@ import { FileCleanupService } from './common/services/file-cleanup.service';
     }),
 
     ScheduleModule.forRoot(),
+    AdminModule,
+
     AuthModule,
     UserModule,
     // RedisModule,
@@ -75,7 +80,6 @@ import { FileCleanupService } from './common/services/file-cleanup.service';
     ExternalServicesModule,
     NominatimModule,
     ExternalServicesModule,
-    AdminModule,
 
     TelegramTokenModule,
 
@@ -96,9 +100,31 @@ import { FileCleanupService } from './common/services/file-cleanup.service';
     OracleModule,
 
     CocktailsModule,
+    RouterModule.register([
+      {
+        path: 'admin',
+        module: AdminModule,
+        children: [
+          {
+            path: 'user',
+            module: AdminUserModule,
+          },
+          {
+            path: 'company',
+            module: AdminCompanyModule,
+          },
+        ],
+      },
+    ]),
   ],
   controllers: [],
-  providers: [DatabaseModule, UserGateway, TelegramUpdate, LoadGateway,FileCleanupService],
+  providers: [
+    DatabaseModule,
+    UserGateway,
+    TelegramUpdate,
+    LoadGateway,
+    FileCleanupService,
+  ],
   exports: [DatabaseModule],
 })
 export class AppModule {}

@@ -1,6 +1,7 @@
+import * as React from 'react';
 import { Html } from '@react-email/html';
 import { Body, Heading, Tailwind, Text } from '@react-email/components';
-import * as React from 'react';
+
 
 export function SuccessfulPreRegistrationAccountTemplate() {
   return (

@@ -8,6 +8,7 @@ import {
 } from 'src/shared/utils/build-filters';
 import { LoadGateway } from './load.gateway';
 import { Request } from 'express';
+import { CrmLoadListDto } from './dto/crm-load-list.dto';
 
 @Injectable()
 export class LoadService {
@@ -53,8 +54,6 @@ export class LoadService {
     return result;
   }
   public async removeCars(dto: any) {
-    console.log(dto, 'DTRO');
-
     const result = await this.dbservice.callProcedure(
       'crm_load_car_cancel_save',
 
@@ -62,8 +61,9 @@ export class LoadService {
 
       {},
     );
-
-    this.loadGateway.emitToAll('edit_load_car', result.content[0]);
+    const exactLoad = await this.findOne(dto.id_crm_load);
+    const updatedItem = exactLoad.content[0];
+    this.loadGateway.emitToAll('load_remove_car', updatedItem);
 
     // this.loadGateway.emitToAll('new_load', result.content[0]);
     return result;
@@ -206,20 +206,20 @@ export class LoadService {
     this.loadGateway.emitToAll('update_load', exactLoad.content[0]);
     return result;
   }
-  public async getList(query: any) {
+  public async getList(query: CrmLoadListDto) {
+    console.log(query, 'CLEAN QUERY');
+
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
     const result = await this.dbservice.callProcedure(
       'crm_load_list',
-
       {
         pagination: {
-          per_page: query.limit ?? 10,
-          page: query.page ?? 1,
+          per_page: query.limit, // вже число
+          page: query.page, // вже число
         },
         filter: filters,
       },
-
       {},
     );
 

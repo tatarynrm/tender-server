@@ -116,13 +116,13 @@ export class UserController {
   ) {
     return this.userService.companyFillFromUsrPreRegister(dto);
   }
-  @Authorization()
-  @Post('admin/create-user')
-  public async adminCreateUser(
-    @Req() req: Request,
-    @Body()
-    dto: CreateUserFromCompany & { id_company: number },
-  ) {
-    return this.userService.adminCreateUser(dto);
-  }
+  // @Authorization()
+  // @Post('admin/create-user')
+  // public async adminCreateUser(
+  //   @Req() req: Request,
+  //   @Body()
+  //   dto: CreateUserFromCompany & { id_company: number },
+  // ) {
+  //   return this.userService.adminCreateUser(dto);
+  // }
 }

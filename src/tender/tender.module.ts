@@ -6,9 +6,9 @@ import { UserModule } from 'src/user/user.module';
 import { TenderGateway } from './tender.gateway';
 
 @Module({
-  imports:[UserModule],
+  imports: [UserModule],
   controllers: [TenderController],
-  providers: [TenderService,UserService,TenderGateway],
-  exports:[TenderGateway]
+  providers: [TenderService, UserService, TenderGateway],
+  exports: [TenderGateway],
 })
 export class TenderModule {}

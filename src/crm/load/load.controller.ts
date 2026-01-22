@@ -14,17 +14,20 @@ import { CreateLoadDto } from './dto/create-load.dto';
 import { UpdateLoadDto } from './dto/update-load.dto';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 import type { Request } from 'express';
-
+import { CrmLoadListDto } from './dto/crm-load-list.dto';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+@ApiTags('CRM Loads')
 @Authorization()
 @Controller('crm/load')
 export class LoadController {
   constructor(private readonly loadService: LoadService) {}
 
   @Get('list')
-  getList(@Query() query: any) {
+  @ApiOperation({ summary: 'Отримати список вантажів з фільтрацією' })
+  getList(@Query() query: CrmLoadListDto) {
+    // Тепер query.page та query.limit гарантовано будуть числами (number)
     return this.loadService.getList(query);
   }
-
   @Post('save')
   create(@Body() dto: any) {
     return this.loadService.save(dto);
@@ -49,8 +52,8 @@ export class LoadController {
   }
   // Зберегти коментар
   @Post('save-comment')
-  saveLoadComment(@Body() dto: any,@Req() req:Request) {
-    return this.loadService.saveComment(dto,req);
+  saveLoadComment(@Body() dto: any, @Req() req: Request) {
+    return this.loadService.saveComment(dto, req);
   }
   @Get('comments/:id')
   getComments(@Param('id') id: string) {

@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Scope,
 } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 
 import { Pool } from 'pg';
 import { REQUEST } from '@nestjs/core';
@@ -26,26 +27,26 @@ interface AuthObject {
   id_company?: number | string | null;
 }
 
-@Injectable({ scope: Scope.REQUEST }) // 👈 обов’язково request-scoped
+// @Injectable({ scope: Scope.REQUEST }) // 👈 обов’язково request-scoped
+@Injectable() // 👈 обов’язково request-scoped
 export class DatabaseService {
   constructor(
+    private readonly cls: ClsService, // Доступ до контексту
     @Inject('PG_POOL') private readonly pool: Pool,
-    @Inject(REQUEST)
-    private readonly request: Request & {
-      user?: { id_user?: number; id_company?: number };
-    },
-  ) {}
+  ) {
+    console.log('DATABASE SERVICE СТВОРОЕНО ✅✅✅');
+  }
 
   public async callProcedure(
     procedureName: string,
     dataObject: any = {},
     resultObject: any = {},
   ) {
-    // ⚡ Автоматично формуємо authObject з request.user
-    const authObject: AuthObject = {
-      id_usr: this.request.user?.id ?? null,
-      id_company: this.request.user?.id_company ?? null,
-    };
+    const user = this.cls.get('user'); // Дістаємо без Scope.REQUEST
+    // console.log(user, 'USER from CLS');
+
+    const authObject = { id_usr: user?.id, id_company: user?.id_company };
+
     console.log(
       authObject,
       'AUTH OBJECT IN CALL PROCDERUE FUNCTION database service 49 line test',

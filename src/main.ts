@@ -12,14 +12,26 @@ import { json, urlencoded } from 'express'; // Додай ці імпорти
 // ✅ ПРАВИЛЬНИЙ ІМПОРТ
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path'; // Додайте цей іпорт для join
-
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
 async function bootstrap() {
   // ✅ Generic вказано вірно
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Конфігурація документації
+  const configSwagger = new DocumentBuilder()
+    .setTitle('ICT NEW TENDER PLATFORM ALL IN ONE')
+    .setDescription('Документація API для логістичної системи')
+    .setVersion('1.0')
+    // .addTag('admin') // Можна додати теги для групування
+    // .addBearerAuth() // Якщо використовуєте JWT авторизацію
+    .build();
 
+  const document = SwaggerModule.createDocument(app, configSwagger);
+
+  // Шлях, за яким буде доступна документація (наприклад, http://localhost:7000/docs)
+  SwaggerModule.setup('noris-docs', app, document);
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
 
@@ -28,7 +40,9 @@ async function bootstrap() {
   const isDev = process.env.NODE_ENV === 'development';
 
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')));
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({ transform: true, forbidNonWhitelisted: true }),
+  );
 
   app.enableCors({
     origin: ['https://tender.ict.lviv.ua', 'http://localhost:3000'],
