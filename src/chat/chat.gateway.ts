@@ -30,7 +30,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 
     if (!userId) {
-      console.error('User ID is missing!');
+      // console.error('User ID is missing!');
       return;
     }
 
@@ -45,7 +45,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Отримуємо userId з параметрів запиту сокета
     const userId = socket.handshake.query.userId as string;
     if (!userId) {
-      console.error('User ID is missing!');
+      // console.error('User ID is missing!');
       return;
     }
 

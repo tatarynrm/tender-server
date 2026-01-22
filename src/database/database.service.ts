@@ -8,8 +8,8 @@ import {
 import { ClsService } from 'nestjs-cls';
 
 import { Pool } from 'pg';
-import { REQUEST } from '@nestjs/core';
-import type { Request } from 'express';
+// import { REQUEST } from '@nestjs/core';
+// import type { Request } from 'express';
 
 export type DbResponse<T = any> =
   | {
@@ -21,11 +21,6 @@ export type DbResponse<T = any> =
       error_message: string;
       error_code?: string;
     };
-
-interface AuthObject {
-  id_usr?: number | string | null;
-  id_company?: number | string | null;
-}
 
 // @Injectable({ scope: Scope.REQUEST }) // 👈 обов’язково request-scoped
 @Injectable() // 👈 обов’язково request-scoped
@@ -43,14 +38,8 @@ export class DatabaseService {
     resultObject: any = {},
   ) {
     const user = this.cls.get('user'); // Дістаємо без Scope.REQUEST
-    // console.log(user, 'USER from CLS');
 
     const authObject = { id_usr: user?.id, id_company: user?.id_company };
-
-    console.log(
-      authObject,
-      'AUTH OBJECT IN CALL PROCDERUE FUNCTION database service 49 line test',
-    );
 
     const query = `CALL run($1, $2, $3, $4)`;
 

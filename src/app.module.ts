@@ -37,6 +37,7 @@ import { ClsModule } from 'nestjs-cls';
 
 import { AdminCompanyModule } from './admin/admin-company/admin-company.module';
 import { AdminUserModule } from './admin/admin-user/admin-user.module';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -116,6 +117,7 @@ import { AdminUserModule } from './admin/admin-user/admin-user.module';
         ],
       },
     ]),
+    SocketModule,
   ],
   controllers: [],
   providers: [

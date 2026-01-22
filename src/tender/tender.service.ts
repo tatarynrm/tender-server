@@ -7,6 +7,7 @@ import {
   FilterItem,
 } from 'src/shared/utils/build-filters';
 
+
 @Injectable()
 export class TenderService {
   public constructor(
@@ -17,6 +18,7 @@ export class TenderService {
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
+    
     const result = await this.dbservice.callProcedure(
       'tender_list',
 
