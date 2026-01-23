@@ -6,9 +6,10 @@ import { AuthModule } from 'src/auth/auth.module';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
 import { UserModule } from 'src/user/user.module';
 import { FormDataModule } from './form-data/form-data.module';
+import { StatisticModule } from './statistic/statistic.module';
 
 @Module({
-  imports: [LoadModule, UserModule, FormDataModule],
+  imports: [LoadModule, UserModule, FormDataModule, StatisticModule],
   controllers: [CrmController],
   providers: [CrmService, AuthGuard],
 })
