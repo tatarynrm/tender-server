@@ -24,15 +24,15 @@ export class AdminUserService {
       {},
     );
 
-    // // Підготовка даних для листа
-    // const emailData = {
-    //   name: dto.name || 'Користувач',
+    // Підготовка даних для листа
+    const emailData = {
+      name: dto.name || 'Користувач',
 
-    //   loginUrl: this.configSerivce.getOrThrow<string>('APP_CLIENT_URL'),
-    // };
+      loginUrl: this.configSerivce.getOrThrow<string>('APP_CLIENT_URL'),
+    };
 
-    // // Відправка
-    // await this.adminMailService.sendUserCreatedByAdmin(dto.email, emailData);
+    // Відправка
+    await this.adminMailService.sendUserCreatedByAdmin(dto.email, emailData);
 
     return result;
   }
