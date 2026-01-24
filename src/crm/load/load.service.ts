@@ -17,7 +17,7 @@ export class LoadService {
     private readonly loadGateway: LoadGateway,
   ) {}
   public async save(dto: any) {
-    console.log(dto, ' LOAD SAVE DTO!!!!!!!');
+
     const result = await this.dbservice.callProcedure(
       'crm_load_save',
 

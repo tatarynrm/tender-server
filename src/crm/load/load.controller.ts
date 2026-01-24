@@ -50,6 +50,7 @@ export class LoadController {
   cargoHistory(@Param('id') id: string) {
     return this.loadService.cargoHistory(id);
   }
+
   // Зберегти коментар
   @Post('save-comment')
   saveLoadComment(@Body() dto: any, @Req() req: Request) {

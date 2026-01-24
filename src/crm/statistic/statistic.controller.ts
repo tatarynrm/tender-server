@@ -8,8 +8,13 @@ export class StatisticController {
   constructor(private readonly statisticService: StatisticService) {}
 
   @Get('stats')
-  public async getLogisticDashboardStatistic(@Query() query: any) {
+  public async getCrmLoadStatistic(@Query() query: any) {
     // query може містити фільтри, наприклад: ?startDate=2023-01-01
-    return await this.statisticService.getLogisticDashboardStatistic(query);
+    return await this.statisticService.getCrmLoadStatistic(query);
+  }
+  @Get('stats-country')
+  public async getCrmLoadStatisticCountry(@Query() query: any) {
+    // query може містити фільтри, наприклад: ?startDate=2023-01-01
+    return await this.statisticService.getCrmLoadStatisticCountry(query);
   }
 }
