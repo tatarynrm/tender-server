@@ -73,10 +73,10 @@ export class LoadController {
     return this.loadService.loadCopy(dto);
   }
 
-  @Get('edit/:id')
-  findOne(@Param('id') id: string) {
-    return this.loadService.findOne(+id);
-  }
+  // @Get('edit/:id')
+  // findOne(@Param('id') id: string) {
+  //   return this.loadService.findOne(+id);
+  // }
   @Get('one/:id')
   getOneLoad(@Param() params: any) {
     const id = params.id;
