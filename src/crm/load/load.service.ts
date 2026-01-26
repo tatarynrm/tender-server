@@ -17,7 +17,6 @@ export class LoadService {
     private readonly loadGateway: LoadGateway,
   ) {}
   public async save(dto: any) {
-
     const result = await this.dbservice.callProcedure(
       'crm_load_save',
 
@@ -118,21 +117,51 @@ export class LoadService {
     return result;
   }
   public async saveComment(dto: any, req: Request) {
+    console.log(dto, 'DTO COMMENT ID');
+
+    const isEditing = !!dto.id; // Перевіряємо наявність ID коментаря
+
     const result = await this.dbservice.callProcedure(
       'crm_load_comment_save',
       dto,
       {},
     );
-    console.log(result, 'RESIlt chbat comment result !!!!');
-    console.log(dto, 'DTO -121');
-    console.log(req.user.id, '---------------------');
 
-    // Отримуємо актуальний стан вантажу з бази (з новим часом останнього коментаря)
+    // Отримуємо актуальний стан вантажу (для оновлення лічильників на картках)
     const exactLoad = await this.findOne(dto.id_crm_load);
-    const updatedItem = exactLoad.content[0];
-    // console.log(updatedItem, 'ITEM UPDATED---');
+    const updatedLoad = exactLoad.content[0];
 
-    // Розсилаємо всім
+    // Визначаємо тип події для чату
+    const chatEvent = isEditing ? 'load_comment_updated' : 'new_load_comment';
+
+    // 1. Сповіщаємо про зміну стану вантажу (лічильники, дати)
+    this.loadGateway.emitToAll('update_load', {
+      ...updatedLoad,
+      sender_id: req.user.id,
+    });
+
+    // 2. Сповіщаємо про конкретну дію в чаті
+    this.loadGateway.emitToAll(chatEvent, {
+      id_crm_load: dto.id_crm_load,
+      comment: result[0], // процедура має повертати оновлений об'єкт коментаря
+      sender_id: req.user.id,
+    });
+
+    return result;
+  }
+  public async deleteComment(commentId: number, loadId: number, req: Request) {
+    const result = await this.dbservice.callProcedure(
+      'crm_load_comment_delete', // Назва вашої процедури видалення
+      { id: commentId },
+      {},
+    );
+
+    // Отримуємо актуальний стан вантажу після видалення коментаря
+    const exactLoad = await this.findOne(loadId);
+    const updatedItem = exactLoad.content[0];
+
+    // Розсилаємо через сокети подію 'delete_load_comment' або 'new_load_comment'
+    // (зазвичай краще оновити весь об'єкт вантажу, щоб зник індикатор останнього коментаря)
     this.loadGateway.emitToAll('new_load_comment', {
       ...updatedItem,
       sender_id: req.user.id,
@@ -248,6 +277,37 @@ export class LoadService {
 
       {},
     );
+
+    return result;
+  }
+  public async loadDelete(id: number) {
+    // return `This action returns a #${id} load`;
+    console.log(id, 'dto delete');
+
+    const result = await this.dbservice.callProcedure(
+      'crm_load_delete',
+
+      { id: id },
+
+      {},
+    );
+    this.loadGateway.emitToAll('delete_load', id);
+    return result;
+  }
+  public async loadHistoryDelete(dto: { id: number; table: string }) {
+    // Формуємо назву процедури: беремо назву таблиці та додаємо суфікс
+    const procedureName = `${dto.table}_delete`;
+
+    console.log(`Calling procedure: ${procedureName} for ID: ${dto.id}`);
+    console.log(dto, 'DTO');
+
+    // Викликаємо процедуру в БД
+    const result = await this.dbservice.callProcedure(
+      procedureName,
+      { id: dto.id }, // передаємо ID запису, який треба видалити
+      {},
+    );
+    console.log(result, 'RESULT');
 
     return result;
   }

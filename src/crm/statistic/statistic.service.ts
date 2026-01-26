@@ -6,40 +6,29 @@ export class StatisticService {
   public constructor(private readonly dbservice: DatabaseService) {}
 
   public async getCrmLoadStatistic(filters: any = {}) {
+    // Якщо клієнт не надіслав нічого, filters буде порожнім об'єктом {}
+    console.log('Received filters for POST request:', filters);
+    
     try {
-      // Викликаємо процедуру для отримання статистики
+      // Передаємо об'єкт filters безпосередньо в процедуру БД
       const result = await this.dbservice.callProcedure(
         'crm_load_statistic',
-        filters, // Передаємо фільтри, якщо процедура їх приймає (наприклад, { userId: 1 })
+        filters, 
         {},
       );
-      console.log(result, 'RESULT');
 
-      // Зазвичай процедури повертають масив у полі content
-      return result.content || [];
+      console.log('Database Result:', result);
+
+      // Повертаємо контент або порожній об'єкт (важливо для фронтенда)
+      return result.content || {
+        car_actual: [],
+        car_closed: [],
+        car_published: [],
+        chart_clients: [],
+        chart_countries: []
+      };
     } catch (error) {
-      console.error('Error fetching active user stats:', error);
-      throw error;
-    }
-  }
-  public async getCrmLoadStatisticCountry(filters: any = {}) {
-    console.log(filters, 'filters 26');
-    const { startDate, endDate,id_usr } = filters;
-
-
-    try {
-      // Викликаємо процедуру для отримання статистики
-      const result = await this.dbservice.callProcedure(
-        'crm_load_statistic_country',
-        { date1: startDate, date2: endDate,id_usr:id_usr }, // Передаємо фільтри, якщо процедура їх приймає (наприклад, { userId: 1 })
-        {},
-      );
-      console.log(result, 'RESULT');
-
-      // Зазвичай процедури повертають масив у полі content
-      return result.content || [];
-    } catch (error) {
-      console.error('Error fetching active user stats:', error);
+      console.error('Error fetching CRM statistics via POST:', error);
       throw error;
     }
   }

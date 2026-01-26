@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common'; // Змінено Get -> Post, Query -> Body
 import { StatisticService } from './statistic.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 
@@ -7,14 +7,10 @@ import { Authorization } from 'src/auth/decorators/auth.decorator';
 export class StatisticController {
   constructor(private readonly statisticService: StatisticService) {}
 
-  @Get('stats')
-  public async getCrmLoadStatistic(@Query() query: any) {
-    // query може містити фільтри, наприклад: ?startDate=2023-01-01
-    return await this.statisticService.getCrmLoadStatistic(query);
-  }
-  @Get('stats-country')
-  public async getCrmLoadStatisticCountry(@Query() query: any) {
-    // query може містити фільтри, наприклад: ?startDate=2023-01-01
-    return await this.statisticService.getCrmLoadStatisticCountry(query);
+  @Post('stats') // Змінено з @Get на @Post
+  public async getCrmLoadStatistic(@Body() filters: any) { 
+    // Тепер фільтри приходять з Body запиту (payload)
+    // Це набагато стабільніше для SPA-клієнта
+    return await this.statisticService.getCrmLoadStatistic(filters);
   }
 }

@@ -50,12 +50,26 @@ export class LoadController {
   cargoHistory(@Param('id') id: string) {
     return this.loadService.cargoHistory(id);
   }
+  @Post('load-history/delete')
+  async loadHistoryDelete(@Body() dto: { id: number; table: string }) {
+    return await this.loadService.loadHistoryDelete(dto);
+  }
 
   // Зберегти коментар
   @Post('save-comment')
   saveLoadComment(@Body() dto: any, @Req() req: Request) {
     return this.loadService.saveComment(dto, req);
   }
+
+  @Delete('delete-comment/:id')
+  deleteComment(
+    @Param('id') commentId: number,
+    @Body() dto: { id_crm_load: number },
+    @Req() req: Request,
+  ) {
+    return this.loadService.deleteComment(commentId, dto.id_crm_load, req);
+  }
+
   @Get('comments/:id')
   getComments(@Param('id') id: string) {
     return this.loadService.getComments(id);
@@ -81,5 +95,12 @@ export class LoadController {
   getOneLoad(@Param() params: any) {
     const id = params.id;
     return this.loadService.getOneLoad(Number(id));
+  }
+  @Delete('delete/:id')
+  loadDelete(@Param() params: any) {
+    console.log(params, 'params delete');
+
+    const id = params.id;
+    return this.loadService.loadDelete(Number(id));
   }
 }

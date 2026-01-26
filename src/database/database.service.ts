@@ -41,8 +41,8 @@ export class DatabaseService {
 
     const authObject = { id_usr: user?.id, id_company: user?.id_company };
 
-    console.log(authObject,'AUTH OBJECT FOR TARAS');
-    
+    console.log(authObject, 'AUTH OBJECT FOR TARAS');
+
     const query = `CALL run($1, $2, $3, $4)`;
 
     const result = await this.pool.query(query, [
