@@ -25,13 +25,12 @@ export class UserService {
   public async findById(id: string | number) {
     const existUser = await this.pool.query(
       `select a.*,
-      b.company_name,b.company_name_full,
-     
-  
+      b.company_name,b.company_name_full
+
 
        from usr  a
        left join company b on a.id_company = b.id
-
+ 
 
       where a.id = $1`,
       [id],
@@ -164,8 +163,8 @@ export class UserService {
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
     // створення нового користувача
-    console.log(dto, 'dto admin 168');
-
+    console.log(dto,'dto admin 168');
+    
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
   }
