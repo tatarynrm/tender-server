@@ -47,7 +47,7 @@ async createCocktail(
       throw new BadRequestException('Файл не знайдено');
     }
 
-    console.log(body,'BODY -------------------------');
+   
     
 
     const userId = req.user.id;
@@ -56,7 +56,7 @@ async createCocktail(
     const file = files[0];
 
     // Перевірка шляху для логів
-    console.log('Збережено у:', file.path);
+  
 
     return await this.cocktailsService.updateAvatar(userId, file);
   }

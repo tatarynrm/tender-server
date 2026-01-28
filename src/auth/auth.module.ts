@@ -15,6 +15,7 @@ import { CompanyService } from 'src/company/company.service';
 import { EmailConfirmationService } from './email-confirmation/email-confirmation.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { AuthGuard } from './guards/auth.guard';
+import { UserGateway } from 'src/user/user.gateway';
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { AuthGuard } from './guards/auth.guard';
     TwoFactorAuthService,
     CompanyService,
     EmailConfirmationService,
-    AuthGuard
+    AuthGuard,
+    UserGateway
   ],
   exports: [AuthService,AuthGuard],
 })

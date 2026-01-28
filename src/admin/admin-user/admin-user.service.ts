@@ -16,7 +16,7 @@ export class AdminUserService {
   ) {}
 
   public async createUser(dto: AdminCreateUserDto) {
-    console.log(dto, 'DTO');
+  
 
     const result = await this.dbservice.callProcedure(
       'usr_register_ict',

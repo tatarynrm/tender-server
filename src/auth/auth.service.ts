@@ -26,6 +26,7 @@ import { PreRegisterDto } from './dto/pre-register.dto';
 import { DatabaseService } from 'src/database/database.service';
 import { RegisterIctUserDto } from './dto/register-ict-user.dto';
 import { MailService } from 'src/libs/common/mail/mail.service';
+import { UserGateway } from 'src/user/user.gateway';
 
 @Injectable()
 export class AuthService {
@@ -36,6 +37,7 @@ export class AuthService {
     private readonly emailConfirmationService: EmailConfirmationService,
     private readonly twoFactorAuthService: TwoFactorAuthService,
     private readonly mailService: MailService,
+    private readonly userGatawey: UserGateway,
     @Inject('PG_POOL') private readonly pool: Pool,
     private readonly dbservice: DatabaseService,
   ) {}
@@ -71,8 +73,6 @@ export class AuthService {
   }
 
   public async login(req: Request, dto: LoginDto) {
- 
-
     // const user = await this.userService.findByEmail(dto.email);
     const checkUserExist = await this.dbservice.callProcedure(
       'usr_login',
@@ -81,7 +81,7 @@ export class AuthService {
 
       {},
     );
- 
+
     const user = checkUserExist.content;
 
     if (!user) {
@@ -91,7 +91,6 @@ export class AuthService {
     if (!isValidPassword) {
       throw new UnauthorizedException('Невірний пароль');
     }
-
 
     if (!user.verified) {
       await this.emailConfirmationService.sendVerificationToken(user.email);
@@ -118,12 +117,16 @@ export class AuthService {
     return this.saveSession(req, user);
   }
   public async logout(req: Request, res: Response): Promise<void> {
+    const userId = req.session?.user?.id; // або де ти його зберігаєш
     return new Promise((resolve, reject) => {
       req.session.destroy((err: any) => {
         if (err) {
           return reject(
             new InternalServerErrorException('Не вдалось завершити сесію.'),
           );
+        }
+        if (userId) {
+          this.userGatawey.forceLogout(userId.toString());
         }
         res.clearCookie(this.configService.getOrThrow<string>('SESSION_NAME'));
         resolve();
@@ -156,7 +159,7 @@ export class AuthService {
             new InternalServerErrorException('Не вдалось зберегти сесію'),
           );
         }
-   
+
         resolve({ user });
       });
     });

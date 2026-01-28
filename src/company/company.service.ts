@@ -17,7 +17,7 @@ export class CompanyService {
     private readonly dbservice: DatabaseService,
   ) {}
   public async create(createCompanyDto: CreateCompanyDto) {
-    console.log(createCompanyDto, 'CREATE COMPANY DTO');
+   
 
     const newCompany = await this.dbservice.callProcedure(
       'company_save',
@@ -32,7 +32,7 @@ export class CompanyService {
 
   async findAll(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-console.log(filters,'FILTERS');
+
 
     const result = await this.dbservice.callProcedure('company_list', {
       pagination: {
@@ -49,7 +49,7 @@ console.log(filters,'FILTERS');
       `select id_company from usr where id = $1`,
       [req.session.userId],
     );
-    console.log(userCompany.rows[0], 'user company');
+    
     const id_company = userCompany.rows[0].id_company;
 
     const company = await this.pool.query(

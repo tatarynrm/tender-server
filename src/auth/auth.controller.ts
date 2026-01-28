@@ -170,10 +170,13 @@ export class AuthController {
 
   @Get('me')
   async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
-    const sessionUser = req.session?.userId;
+  
 
+    const sessionUser = req.session?.userId;
+   
     if (!sessionUser) {
       res.clearCookie('centrifuge', { path: '/' });
+
       return res.status(401).json({ message: 'unauthorized', status: 401 });
     }
     // Отримуємо актуальні дані з бази

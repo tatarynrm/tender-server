@@ -34,7 +34,7 @@ export class LoadService {
     return result;
   }
   public async addCars(dto: any) {
-    console.log(dto, 'dto 37');
+  
 
     const result = await this.dbservice.callProcedure(
       'crm_load_car_add_save',
@@ -43,7 +43,7 @@ export class LoadService {
 
       {},
     );
-    console.log(result, 'result --add car');
+   
     // Отримуємо актуальний стан вантажу з бази (з новим часом останнього коментаря)
     const exactLoad = await this.findOne(dto.id_crm_load);
     const updatedItem = exactLoad.content[0];
@@ -68,7 +68,7 @@ export class LoadService {
     return result;
   }
   public async closeByManager(dto: any) {
-    console.log(dto, 'DTRO');
+ 
 
     const result = await this.dbservice.callProcedure(
       'crm_load_car_close_save',
@@ -101,7 +101,7 @@ export class LoadService {
     return result;
   }
   public async getLoadChat(id: any) {
-    console.log(id, 'DTRO');
+
 
     const result = await this.dbservice.callProcedure(
       'crm_load_car_history',
@@ -117,7 +117,7 @@ export class LoadService {
     return result;
   }
   public async saveComment(dto: any, req: Request) {
-    console.log(dto, 'DTO COMMENT ID');
+
 
     const isEditing = !!dto.id; // Перевіряємо наявність ID коментаря
 
@@ -170,7 +170,7 @@ export class LoadService {
     return result;
   }
   public async getComments(id: any) {
-    console.log(id, 'COMMENTS GET');
+
 
     const result = await this.dbservice.callProcedure(
       'crm_load_comments',
@@ -194,7 +194,7 @@ export class LoadService {
     // Отримуємо оновлений вантаж, де лічильник вже має бути 0
     const exactLoad = await this.findOne(dto.id_crm_load);
     const updatedItem = exactLoad.content[0];
-    console.log(updatedItem, 'UPDATE ITEM ----- 157');
+;
 
     // Повідомляємо іншим вкладкам/користувачам, що цей вантаж прочитано
     // (Але завдяки logic з датою у майбутньому, у автора коментарів нічого не смикнеться)
@@ -214,7 +214,7 @@ export class LoadService {
     );
 
     const exactLoad = await this.findOne(result.content.id);
-    console.log(exactLoad, 'EXACT LOAD');
+    
     this.loadGateway.emitToAll('update_load_date', exactLoad.content[0]);
     return result;
   }
@@ -228,7 +228,7 @@ export class LoadService {
 
       {},
     );
-    console.log(result, 'RESULT');
+
 
     const exactLoad = await this.findOne(result.content.id);
 
@@ -236,7 +236,7 @@ export class LoadService {
     return result;
   }
   public async getList(query: CrmLoadListDto) {
-    console.log(query, 'CLEAN QUERY');
+  
 
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
@@ -256,7 +256,7 @@ export class LoadService {
   }
 
   public async getOneLoad(id: number) {
-    console.log(id, 'ID');
+   
 
     const result = await this.dbservice.callProcedure(
       'crm_load_one',
@@ -282,7 +282,7 @@ export class LoadService {
   }
   public async loadDelete(id: number) {
     // return `This action returns a #${id} load`;
-    console.log(id, 'dto delete');
+ 
 
     const result = await this.dbservice.callProcedure(
       'crm_load_delete',
