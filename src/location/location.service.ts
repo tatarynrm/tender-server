@@ -14,7 +14,8 @@ export class LocationService {
           input,
           //   components: 'country:ua',
           language: 'uk',
-          types: 'geocode',
+          // types: 'geocode', 
+          // Прибираємо types щоб шукало все повністю
           key: process.env.GOOGLE_API_KEY,
         },
       },
@@ -29,12 +30,13 @@ export class LocationService {
       {
         params: {
           place_id: placeId,
-          fields: 'address_components,geometry',
+          fields: 'address_components,geometry,formatted_address',
           language: 'uk',
           key: process.env.GOOGLE_API_KEY,
         },
       },
     );
+    console.log(JSON.stringify(data, null, 2));
 
     return normalizeGooglePlace(data.result);
   }
