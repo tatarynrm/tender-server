@@ -137,7 +137,7 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // 3. Додаємо в кімнату для приватних повідомлень
     client.join(`user_room:${userId}`);
-
+    client.join(`user_${userId}`); // Кімната для персональних команд
     // 4. Перевіряємо, чи став юзер онлайн
     const socketCount = await this.redisClient.sCard(userSocketsKey);
 
