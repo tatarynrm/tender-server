@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Pool } from 'pg';
 
 import { MailService } from 'src/libs/common/mail/mail.service';
@@ -81,7 +86,11 @@ export class TwoFactorAuthService {
       RETURNING *;
     `;
 
-    const { rows } = await this.pool.query(insertQuery, [email, token, expiresIn]);
+    const { rows } = await this.pool.query(insertQuery, [
+      email,
+      token,
+      expiresIn,
+    ]);
     return rows[0];
   }
 }
