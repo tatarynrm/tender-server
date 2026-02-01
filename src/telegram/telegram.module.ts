@@ -17,15 +17,21 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const token = config.get<string>('TELEGRAM_BOT_TOKEN')!;
+        const isProd = config.get<string>('NODE_ENV') === 'production';
 
         return {
           token,
           middlewares: [session()],
-          /* ВАЖЛИВО: Встановлюємо launchOptions у false.
-            Це вимикає вбудований сервер Telegraf. 
-            NestJS сам прийматиме запити через ваш TelegramController.
-          */
-          launchOptions: false, 
+          // На Dev — використовуємо Polling (автоматично, якщо немає webhook)
+          // На Prod — вмикаємо Webhook вбудованими засобами NestJS
+          launchOptions: isProd
+            ? {
+                webhook: {
+                  domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!,
+                  hookPath: '/api/telegram/telegram-webhook',
+                },
+              }
+            : undefined, // undefined змусить Telegraf працювати в режимі Polling
         };
       },
     }),
