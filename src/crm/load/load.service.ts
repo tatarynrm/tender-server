@@ -1,314 +1,186 @@
-import { Injectable } from '@nestjs/common';
-import { CreateLoadDto } from './dto/create-load.dto';
-import { UpdateLoadDto } from './dto/update-load.dto';
+import { Injectable, Logger } from '@nestjs/common';
+import { Request } from 'express';
 import { DatabaseService } from 'src/database/database.service';
+import { LoadGateway } from './load.gateway';
+import { SOCKET_EVENTS } from 'src/shared/utils/constants/socket-events';
 import {
   buildFiltersFromQuery,
   FilterItem,
 } from 'src/shared/utils/build-filters';
-import { LoadGateway } from './load.gateway';
-import { Request } from 'express';
 import { CrmLoadListDto } from './dto/crm-load-list.dto';
 
 @Injectable()
 export class LoadService {
-  public constructor(
+  private readonly logger = new Logger(LoadService.name);
+
+  constructor(
     private readonly dbservice: DatabaseService,
     private readonly loadGateway: LoadGateway,
   ) {}
-  public async save(dto: any) {
-    const result = await this.dbservice.callProcedure(
-      'crm_load_save',
 
-      dto,
+  /**
+   * Універсальний метод для еміту оновленого об'єкта вантажу
+   */
+  private async emitLoadUpdate(id: number, event: string, extraData = {}) {
+    const response = await this.findOne(id);
+    const updatedItem = response.content[0];
 
-      {},
-    );
-
-    const exactLoad = await this.findOne(result.content[0]);
-
-    if (dto.id) {
-      this.loadGateway.emitToAll('edit_load', exactLoad.content[0]);
+    if (updatedItem) {
+      this.loadGateway.emitToAll(event, { ...updatedItem, ...extraData });
     }
-    this.loadGateway.emitToAll('new_load', exactLoad.content[0]);
+    return updatedItem;
+  }
+
+  async save(dto: any) {
+    const isEditing = !!dto.id;
+    const result = await this.dbservice.callProcedure('crm_load_save', dto);
+    const loadId = isEditing ? dto.id : result.content[0];
+
+    // Використовуємо EDIT або NEW з констант
+    const event = isEditing ? SOCKET_EVENTS.LOAD.EDIT : SOCKET_EVENTS.LOAD.NEW;
+    await this.emitLoadUpdate(loadId, event);
+
     return result;
   }
-  public async addCars(dto: any) {
-  
 
+  async addCars(dto: any) {
     const result = await this.dbservice.callProcedure(
       'crm_load_car_add_save',
-
       dto,
-
-      {},
     );
-   
-    // Отримуємо актуальний стан вантажу з бази (з новим часом останнього коментаря)
-    const exactLoad = await this.findOne(dto.id_crm_load);
-    const updatedItem = exactLoad.content[0];
-    this.loadGateway.emitToAll('load_add_car', updatedItem);
-
-    // this.loadGateway.emitToAll('new_load', result.content[0]);
+    await this.emitLoadUpdate(dto.id_crm_load, SOCKET_EVENTS.LOAD.ADD_CAR);
     return result;
   }
-  public async removeCars(dto: any) {
+
+  async removeCars(dto: any) {
     const result = await this.dbservice.callProcedure(
       'crm_load_car_cancel_save',
-
       dto,
-
-      {},
     );
-    const exactLoad = await this.findOne(dto.id_crm_load);
-    const updatedItem = exactLoad.content[0];
-    this.loadGateway.emitToAll('load_remove_car', updatedItem);
-
-    // this.loadGateway.emitToAll('new_load', result.content[0]);
+    await this.emitLoadUpdate(dto.id_crm_load, SOCKET_EVENTS.LOAD.REMOVE_CAR);
     return result;
   }
-  public async closeByManager(dto: any) {
- 
 
+  async closeByManager(dto: any) {
     const result = await this.dbservice.callProcedure(
       'crm_load_car_close_save',
-
       dto,
-
-      {},
     );
-
-    this.loadGateway.emitToAll(
-      'edit_load_car_close_by_manager',
-      result.content[0],
+    // Використовуємо нову константу CLOSE_CAR_BY_MANAGER
+    await this.emitLoadUpdate(
+      dto.id_crm_load,
+      SOCKET_EVENTS.LOAD.CLOSE_CAR_BY_MANAGER,
     );
-
-    // this.loadGateway.emitToAll('new_load', result.content[0]);
     return result;
   }
-  public async cargoHistory(id: any) {
-    const result = await this.dbservice.callProcedure(
-      'crm_load_car_history',
 
-      {
-        id_crm_load: id,
-      },
-
-      {},
-    );
-
-    // this.loadGateway.emitToAll('new_load', result.content[0]);
-    return result;
-  }
-  public async getLoadChat(id: any) {
-
-
-    const result = await this.dbservice.callProcedure(
-      'crm_load_car_history',
-
-      {
-        id: id,
-      },
-
-      {},
-    );
-
-    // this.loadGateway.emitToAll('new_load', result.content[0]);
-    return result;
-  }
-  public async saveComment(dto: any, req: Request) {
-
-
-    const isEditing = !!dto.id; // Перевіряємо наявність ID коментаря
-
+  async saveComment(dto: any, req: Request) {
+    const isEditing = !!dto.id;
     const result = await this.dbservice.callProcedure(
       'crm_load_comment_save',
       dto,
-      {},
     );
 
-    // Отримуємо актуальний стан вантажу (для оновлення лічильників на картках)
-    const exactLoad = await this.findOne(dto.id_crm_load);
-    const updatedLoad = exactLoad.content[0];
-
-    // Визначаємо тип події для чату
-    const chatEvent = isEditing ? 'load_comment_updated' : 'new_load_comment';
-
-    // 1. Сповіщаємо про зміну стану вантажу (лічильники, дати)
-    this.loadGateway.emitToAll('update_load', {
-      ...updatedLoad,
+    // Оновлюємо лічильники на картці вантажу (використовуємо загальний UPDATE)
+    await this.emitLoadUpdate(dto.id_crm_load, SOCKET_EVENTS.LOAD.UPDATE, {
       sender_id: req.user.id,
     });
 
-    // 2. Сповіщаємо про конкретну дію в чаті
+    // Сповіщаємо про коментар у чаті через константи
+    const chatEvent = isEditing
+      ? SOCKET_EVENTS.LOAD.COMMENT_UPDATE
+      : SOCKET_EVENTS.LOAD.COMMENT;
     this.loadGateway.emitToAll(chatEvent, {
       id_crm_load: dto.id_crm_load,
-      comment: result[0], // процедура має повертати оновлений об'єкт коментаря
+      comment: result[0],
       sender_id: req.user.id,
     });
 
     return result;
   }
-  public async deleteComment(commentId: number, loadId: number, req: Request) {
+
+  async deleteComment(commentId: number, loadId: number, req: Request) {
     const result = await this.dbservice.callProcedure(
-      'crm_load_comment_delete', // Назва вашої процедури видалення
+      'crm_load_comment_delete',
       { id: commentId },
-      {},
     );
-
-    // Отримуємо актуальний стан вантажу після видалення коментаря
-    const exactLoad = await this.findOne(loadId);
-    const updatedItem = exactLoad.content[0];
-
-    // Розсилаємо через сокети подію 'delete_load_comment' або 'new_load_comment'
-    // (зазвичай краще оновити весь об'єкт вантажу, щоб зник індикатор останнього коментаря)
-    this.loadGateway.emitToAll('new_load_comment', {
-      ...updatedItem,
+    // При видаленні коментаря також оновлюємо стан вантажу (лічильники)
+    await this.emitLoadUpdate(loadId, SOCKET_EVENTS.LOAD.UPDATE, {
       sender_id: req.user.id,
     });
-
     return result;
   }
-  public async getComments(id: any) {
 
-
-    const result = await this.dbservice.callProcedure(
-      'crm_load_comments',
-
-      { id_crm_load: id },
-
-      {},
-    );
-
-    // this.loadGateway.emitToAll('new_load', result.content[0]);
-    return result;
-  }
-  public async setAsRead(dto: any) {
-    // dto має містити { id_crm_load: ... } або просто id
+  async setAsRead(dto: any) {
     const result = await this.dbservice.callProcedure(
       'crm_load_comment_read_set',
       dto,
-      {},
     );
-
-    // Отримуємо оновлений вантаж, де лічильник вже має бути 0
-    const exactLoad = await this.findOne(dto.id_crm_load);
-    const updatedItem = exactLoad.content[0];
-;
-
-    // Повідомляємо іншим вкладкам/користувачам, що цей вантаж прочитано
-    // (Але завдяки logic з датою у майбутньому, у автора коментарів нічого не смикнеться)
-    this.loadGateway.emitToAll('update_chat_count_load', updatedItem);
-
+    // Використовуємо константу CHAT_COUNT_UPDATE
+    await this.emitLoadUpdate(
+      dto.id_crm_load,
+      SOCKET_EVENTS.LOAD.CHAT_COUNT_UPDATE,
+    );
     return result;
   }
-  public async loadUpdate(dto: any) {
-    const result = await this.dbservice.callProcedure(
-      'crm_load_update',
 
-      {
-        id: dto.id,
-      },
-
-      {},
-    );
-
-    const exactLoad = await this.findOne(result.content.id);
-    
-    this.loadGateway.emitToAll('update_load_date', exactLoad.content[0]);
+  async loadUpdate(dto: any) {
+    const result = await this.dbservice.callProcedure('crm_load_update', {
+      id: dto.id,
+    });
+    await this.emitLoadUpdate(dto.id, SOCKET_EVENTS.LOAD.DATE_UPDATE);
     return result;
   }
-  public async loadCopy(dto: any) {
-    const result = await this.dbservice.callProcedure(
-      'crm_load_copy',
 
-      {
-        id_crm_load: dto.id,
-      },
-
-      {},
-    );
-
-
-    const exactLoad = await this.findOne(result.content.id);
-
-    this.loadGateway.emitToAll('update_load', exactLoad.content[0]);
+  async loadCopy(dto: any) {
+    const result = await this.dbservice.callProcedure('crm_load_copy', {
+      id_crm_load: dto.id,
+    });
+    // Для копії зазвичай підходить подія NEW або UPDATE (залежить від фільтрів фронтенду)
+    await this.emitLoadUpdate(result.content.id, SOCKET_EVENTS.LOAD.NEW);
     return result;
   }
-  public async getList(query: CrmLoadListDto) {
-  
 
+  async loadDelete(id: number) {
+    const result = await this.dbservice.callProcedure('crm_load_delete', {
+      id,
+    });
+    this.loadGateway.emitToAll(SOCKET_EVENTS.LOAD.DELETE, id);
+    return result;
+  }
+
+  // --- Read Methods (без змін) ---
+
+  async getList(query: CrmLoadListDto) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-
-    const result = await this.dbservice.callProcedure(
-      'crm_load_list',
-      {
-        pagination: {
-          per_page: query.limit, // вже число
-          page: query.page, // вже число
-        },
-        filter: filters,
-      },
-      {},
-    );
-
-    return result;
+    return this.dbservice.callProcedure('crm_load_list', {
+      pagination: { per_page: query.limit, page: query.page },
+      filter: filters,
+    });
   }
 
-  public async getOneLoad(id: number) {
-   
-
-    const result = await this.dbservice.callProcedure(
-      'crm_load_one',
-      {
-        id: id,
-      },
-      {},
-    );
-
-    return result;
+  async getOneLoad(id: number) {
+    return this.dbservice.callProcedure('crm_load_one', { id });
   }
-  public async findOne(id: number) {
-    // return `This action returns a #${id} load`;
-    const result = await this.dbservice.callProcedure(
-      'crm_load_list',
 
-      { id: id },
-
-      {},
-    );
-
-    return result;
+  async findOne(id: number) {
+    return this.dbservice.callProcedure('crm_load_list', { id });
   }
-  public async loadDelete(id: number) {
-    // return `This action returns a #${id} load`;
- 
 
-    const result = await this.dbservice.callProcedure(
-      'crm_load_delete',
-
-      { id: id },
-
-      {},
-    );
-    this.loadGateway.emitToAll('delete_load', id);
-    return result;
+  async getComments(id: any) {
+    return this.dbservice.callProcedure('crm_load_comments', {
+      id_crm_load: id,
+    });
   }
-  public async loadHistoryDelete(dto: { id: number; table: string }) {
-    // Формуємо назву процедури: беремо назву таблиці та додаємо суфікс
+
+  async cargoHistory(id: any) {
+    return this.dbservice.callProcedure('crm_load_car_history', {
+      id_crm_load: id,
+    });
+  }
+
+  async loadHistoryDelete(dto: { id: number; table: string }) {
     const procedureName = `${dto.table}_delete`;
-
-    console.log(`Calling procedure: ${procedureName} for ID: ${dto.id}`);
-    console.log(dto, 'DTO');
-
-    // Викликаємо процедуру в БД
-    const result = await this.dbservice.callProcedure(
-      procedureName,
-      { id: dto.id }, // передаємо ID запису, який треба видалити
-      {},
-    );
-    console.log(result, 'RESULT');
-
-    return result;
+    return this.dbservice.callProcedure(procedureName, { id: dto.id });
   }
 }

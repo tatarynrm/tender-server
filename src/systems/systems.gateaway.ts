@@ -18,7 +18,7 @@ export class SystemGateway implements OnGatewayConnection {
 
   handleConnection(client: Socket) {
     const userId = client.handshake.auth?.userId?.toString();
-    console.log('USER IDDDDDDDDDDDDDDDDDD',userId);
+   
     
     if (userId) {
       client.join(`user_${userId}`); // Кімната для персональних команд
