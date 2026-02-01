@@ -28,7 +28,7 @@ private async setupWebhook() {
   if (!isProd) return;
 
   const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
-  const webhookUrl = `${domain}/api/telegram-webhook`;
+  const webhookUrl = `${domain}/telegram/telegram-webhook`;
 
   try {
     // 1. Отримуємо поточний стан вебхука
