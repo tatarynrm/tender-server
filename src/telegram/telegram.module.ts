@@ -27,7 +27,7 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
           config.get('NODE_ENV') === 'production'
             ? {
                 webhook: {
-                  domain: config.get('TELEGRAM_WEBHOOK_DOMAIN')!,
+                  domain: config.getOrThrow<string>('TELEGRAM_WEBHOOK_DOMAIN'),
                   hookPath: '/telegram/telegram-webhook',
                 },
               }
