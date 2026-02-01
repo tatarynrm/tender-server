@@ -28,7 +28,7 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
             ? {
                 webhook: {
                   domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!,
-                  hookPath: '/api/telegram/telegram-webhook',
+                  hookPath: '/telegram/telegram-webhook',
                 },
               }
             : undefined, // undefined змусить Telegraf працювати в режимі Polling

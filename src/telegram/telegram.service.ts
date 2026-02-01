@@ -21,7 +21,7 @@ export class TelegramService implements OnModuleInit {
   async onModuleInit() {
     // Задаємо команди при старті
     // await this.setCommands();
-    await this.setupWebhook();
+    // await this.setupWebhook();
   }
   private async setupWebhook() {
     const isProd = this.configService.get<string>('NODE_ENV') === 'production';
