@@ -8,31 +8,29 @@ import { TelegramUpdate } from './telegram.update';
 import { TelegramGateway } from './telegram.gateway';
 import { DatabaseModule } from 'src/database/database.module';
 import { RedisModule } from 'src/libs/common/redis/redis.module';
-// ... ваші інші імпорти
 
 @Module({
   controllers: [TelegramController],
   imports: [
     TelegrafModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        token: config.get('TELEGRAM_BOT_TOKEN')!,
-        middlewares: [session()],
-        // Додаємо налаштування клієнта
-        telegram: {
-          agent: null, // Можна налаштувати проксі, якщо сервер заблоковано
-          webhookReply: true, // Пришвидшує відповіді на вебхуках
-        },
-        launchOptions:
-          config.get('NODE_ENV') === 'production'
-            ? {
-                webhook: {
-                  domain: config.getOrThrow<string>('TELEGRAM_WEBHOOK_DOMAIN'),
-                  hookPath: '/telegram/telegram-webhook',
-                },
-              }
-            : undefined,
-      }),
+      useFactory: (config: ConfigService) => {
+        const isProd = config.get<string>('NODE_ENV') === 'production';
+        
+        return {
+          token: config.get<string>('TELEGRAM_BOT_TOKEN')!,
+          middlewares: [session()],
+          /* ВАЖЛИВО: На продакшні ставимо false.
+             Ми реєструємо вебхук вручну в TelegramService, 
+             а запити приймаємо через TelegramController.
+          */
+          launchOptions: isProd ? false : undefined,
+          
+          telegram: {
+            webhookReply: true, // Залишаємо для швидкості
+          },
+        };
+      },
     }),
     DatabaseModule,
     RedisModule,
