@@ -28,6 +28,8 @@ export class TelegramService implements OnModuleInit {
     if (!isProd) return;
 
     const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
+    console.log(domain,'DOMAIN');
+    
     const webhookUrl = `${domain}/telegram/telegram-webhook`;
 
     try {
