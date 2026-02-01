@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TelegrafModule } from 'nestjs-telegraf';
@@ -15,22 +14,28 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
   controllers: [TelegramController],
   imports: [
     TelegrafModule.forRootAsync({
-      useFactory: (config: ConfigService) => ({
-        middlewares: [session()],
-        token: config.get<string>('TELEGRAM_BOT_TOKEN')!, // Додаємо !
-        launchOptions: {
-          webhook: {
-            domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!, // Додаємо !
-            hookPath: '/telegram/telegram-webhook',
-            // port: config.getOrThrow<number>('APPLICATION_PORT'),
-          },
-        },
-      }),
       inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const isProd = config.get<string>('NODE_ENV') === 'production';
+        const token = config.get<string>('TELEGRAM_BOT_TOKEN')!;
+
+        return {
+          token,
+          middlewares: [session()],
+          // Якщо Production — додаємо Webhook, якщо ні — пустий об'єкт (Polling)
+          launchOptions: isProd
+            ? {
+                webhook: {
+                  domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!,
+                  hookPath: '/api/telegram-webhook', // шлях, за яким Nest чекатиме запити
+                },
+              }
+            : undefined,
+        };
+      },
     }),
     DatabaseModule,
     RedisModule,
-   
   ],
   providers: [TelegramService, TelegramUpdate, TelegramGateway],
   exports: [TelegramService],
