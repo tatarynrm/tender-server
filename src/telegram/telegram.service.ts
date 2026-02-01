@@ -18,32 +18,23 @@ export class TelegramService implements OnModuleInit {
   ) {
     this.channelId = this.configService.get<string>('TELEGRAM_CHANNEL_ID')!;
   }
-  async onModuleInit() {
-    // Задаємо команди при старті
-    // await this.setCommands();
-    await this.setupWebhook();
+async onModuleInit() {
+    await this.setupPollingMode();
   }
-  private async setupWebhook() {
-    const isProd = this.configService.get<string>('NODE_ENV') === 'production';
 
-    if (isProd) {
-      // ЛОГІКА ДЛЯ ПРОДАКШНУ (Webhook)
-      const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
-      const webhookUrl = `${domain}/telegram/telegram-webhook`;
-
+  private async setupPollingMode() {
+    try {
       const webhookInfo = await this.bot.telegram.getWebhookInfo();
-      if (webhookInfo.url !== webhookUrl) {
-        await this.bot.telegram.setWebhook(webhookUrl);
-        console.log(`🚀 Webhook встановлено на: ${webhookUrl}`);
-      }
-    } else {
-      // ЛОГІКА ДЛЯ РОЗРОБКИ (Polling)
-      // Видаляємо вебхук, щоб Telegram дозволив Polling
-      const webhookInfo = await this.bot.telegram.getWebhookInfo();
+      
+      // Якщо встановлений будь-який вебхук — видаляємо його
       if (webhookInfo.url !== '') {
         await this.bot.telegram.deleteWebhook();
-        console.log('🔄 Webhook видалено для роботи в режимі Polling (Dev)');
+        console.log('🗑️ Старий Webhook видалено. Бот перейшов у режим Polling.');
+      } else {
+        console.log('🤖 Бот працює в режимі Polling.');
       }
+    } catch (error) {
+      console.error('❌ Помилка при налаштуванні Polling:', error);
     }
   }
   // async setCommands() {

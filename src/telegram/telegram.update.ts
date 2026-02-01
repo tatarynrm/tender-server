@@ -17,52 +17,40 @@ export class TelegramUpdate {
 
   @Start()
   async startCommand(ctx: Context) {
-    const telegramId = ctx.from?.id; // Безпечніший спосіб отримати ID
-    const token = (ctx as any).payload; // Для команди /start TOKEN
-
-    console.log('--- НОВИЙ ЗАПИТ ---');
-    console.log('ID:', telegramId);
-    console.log('Token:', token);
     try {
-      const telegramId = ctx.message?.from?.id;
+      const telegramId = ctx.from?.id;
       if (!telegramId) return ctx.reply('Не вдалося отримати ваш ID');
 
-      const token = (ctx as any).payload as string | undefined; // <-- тут
+      // Telegraf автоматично парсить посилання типу t.me/bot?start=TOKEN
+      const token = (ctx as any).payload; 
+
+      console.log(`--- NEW POLLING REQUEST --- ID: ${telegramId}, Token: ${token}`);
 
       if (token) {
         const user = await this.telegramService.findByTelegramToken(token);
-
         if (user) {
           await this.telegramService.updateTelegramId(
             user.id,
             telegramId,
-            ctx.message.from.username ?? '',
-            ctx.message.from.first_name ?? '',
+            ctx.from.username ?? '',
+            ctx.from.first_name ?? '',
           );
-
-          // await this.telegramService.deleteTelegramToken(token);
-
-          ctx.reply('✅ Telegram успішно підключено!', PREMIUM_KEYBOARD);
-          return;
+          return ctx.reply('✅ Telegram успішно підключено!', PREMIUM_KEYBOARD);
         } else {
-          ctx.reply('❌ Токен не знайдено або він вже використаний.');
-          return;
+          return ctx.reply('❌ Токен не знайдено або він вже використаний.');
         }
       }
 
       const user = await this.telegramService.checkIfUserExist(telegramId);
-      console.log(user, 'USER');
-
       if (!user) {
-        const msg = MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!);
-
-        ctx.reply(msg.text);
-        return;
+        return ctx.reply(MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!).text);
       }
 
       const keyboard = user.isPremium ? PREMIUM_KEYBOARD : DEFAULT_KEYBOARD;
       await ctx.reply('Виберіть опцію:', keyboard);
+
     } catch (err) {
+      console.error(err);
       await ctx.reply('Сталася помилка, спробуйте пізніше.');
     }
   }

@@ -10,27 +10,17 @@ import { DatabaseModule } from 'src/database/database.module';
 import { RedisModule } from 'src/libs/common/redis/redis.module';
 
 @Module({
-  controllers: [TelegramController],
+  // Контролер більше не потрібен для Polling, але можна залишити
+  controllers: [TelegramController], 
   imports: [
     TelegrafModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const isProd = config.get<string>('NODE_ENV') === 'production';
-
-        return {
-          token: config.get<string>('TELEGRAM_BOT_TOKEN')!,
-          middlewares: [session()],
-          /* ВАЖЛИВО: На продакшні ставимо false.
-             Ми реєструємо вебхук вручну в TelegramService, 
-             а запити приймаємо через TelegramController.
-          */
-          launchOptions: isProd ? false : undefined,
-
-          telegram: {
-            webhookReply: true, // Залишаємо для швидкості
-          },
-        };
-      },
+      useFactory: (config: ConfigService) => ({
+        token: config.get<string>('TELEGRAM_BOT_TOKEN')!,
+        middlewares: [session()],
+        // Якщо launchOptions порожній або undefined — вмикається Polling
+        launchOptions: undefined, 
+      }),
     }),
     DatabaseModule,
     RedisModule,
