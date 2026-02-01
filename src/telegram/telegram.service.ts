@@ -24,25 +24,33 @@ export class TelegramService implements OnModuleInit {
     await this.setupWebhook();
   }
 private async setupWebhook() {
-    const isProd = this.configService.get<string>('NODE_ENV') === 'production';
-    
-    if (isProd) {
-      const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
-      // Шлях має збігатися з тим, що прописаний у вашому TelegramController
-      const webhookUrl = `${domain}/api/telegram-webhook`; 
+  const isProd = this.configService.get<string>('NODE_ENV') === 'production';
+  if (!isProd) return;
 
-      try {
-        await this.bot.telegram.setWebhook(webhookUrl);
-        console.log(`🚀 Telegram Webhook зареєстровано: ${webhookUrl}`);
-      } catch (error) {
-        console.error('❌ Помилка реєстрації Webhook:', error);
-      }
+  const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
+  const webhookUrl = `${domain}/api/telegram-webhook`;
+
+  try {
+    // 1. Отримуємо поточний стан вебхука
+    const webhookInfo = await this.bot.telegram.getWebhookInfo();
+
+    // 2. Якщо URL вже такий самий — нічого не робимо
+    if (webhookInfo.url === webhookUrl) {
+      console.log('✅ Webhook вже налаштований вірно. Пропускаємо.');
+      return;
+    }
+
+    // 3. Якщо URL інший — оновлюємо
+    await this.bot.telegram.setWebhook(webhookUrl);
+    console.log(`🚀 Webhook оновлено на: ${webhookUrl}`);
+  } catch (error) {
+    if (error.response?.error_code === 429) {
+      console.warn('⚠️ Telegram Rate Limit: зачекайте хвилину перед наступною спробою.');
     } else {
-      // На локалці краще видаляти вебхук, щоб працював Long Polling (якщо ви його використовуєте)
-      // Або просто нічого не робити
-      // await this.bot.telegram.deleteWebhook();
+      console.error('❌ Помилка реєстрації Webhook:', error);
     }
   }
+}
   // async setCommands() {
   //   await this.bot.telegram.setMyCommands([
   //     { command: 'start', description: '🚀 Запустити бота' },
@@ -96,62 +104,64 @@ private async setupWebhook() {
   //   await this.telegramGateway.notifyTelegramDisonnected(0);
   // }
 
-async sendNewLoadToTelegramGroup(order: any) {
-  // 1. Формуємо повний маршрут (збираємо всі точки, якщо їх декілька)
-  const formatRoute = (routes: any[]) => 
-    routes
-      .sort((a, b) => a.order_num - b.order_num) // сортуємо по черзі
-      .map((r: any) => `*${r.city}* (${r.country || r.ids_country})`)
-      .join(' ➡️ ');
+  async sendNewLoadToTelegramGroup(order: any) {
+    // 1. Формуємо повний маршрут (збираємо всі точки, якщо їх декілька)
+    const formatRoute = (routes: any[]) =>
+      routes
+        .sort((a, b) => a.order_num - b.order_num) // сортуємо по черзі
+        .map((r: any) => `*${r.city}* (${r.country || r.ids_country})`)
+        .join(' ➡️ ');
 
-  const fromRoute = formatRoute(order.crm_load_route_from);
-  const toRoute = formatRoute(order.crm_load_route_to);
+    const fromRoute = formatRoute(order.crm_load_route_from);
+    const toRoute = formatRoute(order.crm_load_route_to);
 
-  // 2. Типи авто (красиві назви)
-  const trailers = order.crm_load_trailer
-    .map((t: any) => t.trailer_type_name || t.ids_trailer_type)
-    .join(', ');
+    // 2. Типи авто (красиві назви)
+    const trailers = order.crm_load_trailer
+      .map((t: any) => t.trailer_type_name || t.ids_trailer_type)
+      .join(', ');
 
-  // 3. Логіка ціни
-  const priceDisplay = order.is_price_request 
-    ? 'Запит ціни 💰' 
-    : `*${order.price} ${order.ids_valut}*`;
+    // 3. Логіка ціни
+    const priceDisplay = order.is_price_request
+      ? 'Запит ціни 💰'
+      : `*${order.price} ${order.ids_valut}*`;
 
-  // 4. Формуємо текст повідомлення
-  const message = [
-    `👉 **${order.author || 'Користувач'}** додав нову заявку: ✅ \`${order.id}\``,
-    `---`,
-    `📍 **Звідки:** ${fromRoute}`,
-    `🏁 **Куди:** ${toRoute}`,
-    ``,
-    `🚛 **Транспорт:** ${trailers}`,
-    `🗓 **Дата завантаження:** ${order.date_load}`,
-    `💵 **Ставка:** ${priceDisplay}`,
-    ``,
-    `📦 **Деталі:** ${order.is_collective ? 'Збірний вантаж' : 'Повна машина'} / ${order.transit_type || 'Регіональні'}`,
-    order.load_info ? `ℹ️ **Інфо:** ${order.load_info}` : '',
-    `---`,
-    `🏢 **Замовник:** ${order.company_name || 'Приватна особа'}`,
-    `👤 **Автор:** ${order.author || 'ID ' + order.id_usr}`
-  ].filter(line => line !== '').join('\n');
+    // 4. Формуємо текст повідомлення
+    const message = [
+      `👉 **${order.author || 'Користувач'}** додав нову заявку: ✅ \`${order.id}\``,
+      `---`,
+      `📍 **Звідки:** ${fromRoute}`,
+      `🏁 **Куди:** ${toRoute}`,
+      ``,
+      `🚛 **Транспорт:** ${trailers}`,
+      `🗓 **Дата завантаження:** ${order.date_load}`,
+      `💵 **Ставка:** ${priceDisplay}`,
+      ``,
+      `📦 **Деталі:** ${order.is_collective ? 'Збірний вантаж' : 'Повна машина'} / ${order.transit_type || 'Регіональні'}`,
+      order.load_info ? `ℹ️ **Інфо:** ${order.load_info}` : '',
+      `---`,
+      `🏢 **Замовник:** ${order.company_name || 'Приватна особа'}`,
+      `👤 **Автор:** ${order.author || 'ID ' + order.id_usr}`,
+    ]
+      .filter((line) => line !== '')
+      .join('\n');
 
-  try {
-    await this.bot.telegram.sendMessage(this.channelId, message, {
-      parse_mode: 'Markdown',
-   
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { 
-              text: '🚚 Відкрити заявку на порталі', 
-              url: `https://work.ict.lviv.ua/load/${order.id}` 
-            }
-          ]
-        ]
-      }
-    });
-  } catch (error) {
-    console.error('Telegram Send Error:', error);
+    try {
+      await this.bot.telegram.sendMessage(this.channelId, message, {
+        parse_mode: 'Markdown',
+
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: '🚚 Відкрити заявку на порталі',
+                url: `https://work.ict.lviv.ua/load/${order.id}`,
+              },
+            ],
+          ],
+        },
+      });
+    } catch (error) {
+      console.error('Telegram Send Error:', error);
+    }
   }
-}
 }
