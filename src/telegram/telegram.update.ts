@@ -17,8 +17,12 @@ export class TelegramUpdate {
 
   @Start()
   async startCommand(ctx: Context) {
-    console.log(ctx, 'CTX');
+    const telegramId = ctx.from?.id; // Безпечніший спосіб отримати ID
+    const token = (ctx as any).payload; // Для команди /start TOKEN
 
+    console.log('--- НОВИЙ ЗАПИТ ---');
+    console.log('ID:', telegramId);
+    console.log('Token:', token);
     try {
       const telegramId = ctx.message?.from?.id;
       if (!telegramId) return ctx.reply('Не вдалося отримати ваш ID');

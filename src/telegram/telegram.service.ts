@@ -23,34 +23,36 @@ export class TelegramService implements OnModuleInit {
     // await this.setCommands();
     await this.setupWebhook();
   }
-private async setupWebhook() {
-  const isProd = this.configService.get<string>('NODE_ENV') === 'production';
-  if (!isProd) return;
+  private async setupWebhook() {
+    const isProd = this.configService.get<string>('NODE_ENV') === 'production';
+    if (!isProd) return;
 
-  const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
-  const webhookUrl = `${domain}/telegram/telegram-webhook`;
+    const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
+    const webhookUrl = `${domain}/telegram/telegram-webhook`;
 
-  try {
-    // 1. Отримуємо поточний стан вебхука
-    const webhookInfo = await this.bot.telegram.getWebhookInfo();
+    try {
+      // 1. Отримуємо поточний стан вебхука
+      const webhookInfo = await this.bot.telegram.getWebhookInfo();
 
-    // 2. Якщо URL вже такий самий — нічого не робимо
-    if (webhookInfo.url === webhookUrl) {
-      console.log('✅ Webhook вже налаштований вірно. Пропускаємо.');
-      return;
-    }
+      // 2. Якщо URL вже такий самий — нічого не робимо
+      if (webhookInfo.url === webhookUrl) {
+        console.log('✅ Webhook вже налаштований вірно. Пропускаємо.');
+        return;
+      }
 
-    // 3. Якщо URL інший — оновлюємо
-    await this.bot.telegram.setWebhook(webhookUrl);
-    console.log(`🚀 Webhook оновлено на: ${webhookUrl}`);
-  } catch (error) {
-    if (error.response?.error_code === 429) {
-      console.warn('⚠️ Telegram Rate Limit: зачекайте хвилину перед наступною спробою.');
-    } else {
-      console.error('❌ Помилка реєстрації Webhook:', error);
+      // 3. Якщо URL інший — оновлюємо
+      await this.bot.telegram.setWebhook(webhookUrl);
+      console.log(`🚀 Webhook оновлено на: ${webhookUrl}`);
+    } catch (error) {
+      if (error.response?.error_code === 429) {
+        console.warn(
+          '⚠️ Telegram Rate Limit: зачекайте хвилину перед наступною спробою.',
+        );
+      } else {
+        console.error('❌ Помилка реєстрації Webhook:', error);
+      }
     }
   }
-}
   // async setCommands() {
   //   await this.bot.telegram.setMyCommands([
   //     { command: 'start', description: '🚀 Запустити бота' },

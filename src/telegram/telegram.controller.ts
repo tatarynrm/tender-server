@@ -1,26 +1,21 @@
 import { Controller, Post, Req, Res } from '@nestjs/common';
-import { Telegraf } from 'telegraf';
-import type { Request, Response } from 'express';
 import { InjectBot } from 'nestjs-telegraf';
+import { Telegraf, Context } from 'telegraf';
 
 @Controller('telegram')
 export class TelegramController {
-  constructor(@InjectBot() private readonly bot: Telegraf<any>) {}
+  constructor(@InjectBot() private readonly bot: Telegraf<Context>) {}
 
   @Post('telegram-webhook')
-  async handleUpdate(@Req() req: Request, @Res() res: Response) {
+  async handleWebhook(@Req() req: any, @Res() res: any) {
     try {
-      console.log('Update received:', req.body);
+      // Передаємо вхідне повідомлення від Telegram в логіку Telegraf (@Update)
       await this.bot.handleUpdate(req.body, res);
-      res.status(200).send('OK');
-    } catch (err) {
-      console.error(err);
-      res.status(500).send('Error');
-      
+      // Важливо: res вже закривається методом handleUpdate, але можна підстрахуватися:
+      if (!res.writableEnded) res.status(200).send();
+    } catch (e) {
+      console.error('Webhook Error:', e);
+      res.status(200).send(); // Завжди 200 для Telegram, щоб він не повторював запит нескінченно
     }
   }
 }
-
-// ТЕСТОВІ ДАНІ ДЛЯ ВИДАЛЕННЯ ТА ВСТАНОВЛЕННЯ ХУКА
-// https://api.telegram.org/bot8486803623:AAG0HdTL6YdCFjUsLhZvc7lz6CFz8Ouoi9Y/deleteWebhook
-// https://api.telegram.org/bot8486803623:AAG0HdTL6YdCFjUsLhZvc7lz6CFz8Ouoi9Y/setWebhook?url=https://d77cd2bc0f20f20.ngrok-free.app/telegram/telegram-webhook
