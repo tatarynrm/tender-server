@@ -16,7 +16,7 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const isProd = config.get<string>('NODE_ENV') === 'production';
-        
+
         return {
           token: config.get<string>('TELEGRAM_BOT_TOKEN')!,
           middlewares: [session()],
@@ -25,7 +25,7 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
              а запити приймаємо через TelegramController.
           */
           launchOptions: isProd ? false : undefined,
-          
+
           telegram: {
             webhookReply: true, // Залишаємо для швидкості
           },

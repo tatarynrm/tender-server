@@ -21,37 +21,28 @@ export class TelegramService implements OnModuleInit {
   async onModuleInit() {
     // Задаємо команди при старті
     // await this.setCommands();
-    // await this.setupWebhook();
+    await this.setupWebhook();
   }
   private async setupWebhook() {
     const isProd = this.configService.get<string>('NODE_ENV') === 'production';
-    if (!isProd) return;
 
-    const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
-    console.log(domain,'DOMAIN');
-    
-    const webhookUrl = `${domain}/telegram/telegram-webhook`;
+    if (isProd) {
+      // ЛОГІКА ДЛЯ ПРОДАКШНУ (Webhook)
+      const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
+      const webhookUrl = `${domain}/telegram/telegram-webhook`;
 
-    try {
-      // 1. Отримуємо поточний стан вебхука
       const webhookInfo = await this.bot.telegram.getWebhookInfo();
-
-      // 2. Якщо URL вже такий самий — нічого не робимо
-      if (webhookInfo.url === webhookUrl) {
-        console.log('✅ Webhook вже налаштований вірно. Пропускаємо.');
-        return;
+      if (webhookInfo.url !== webhookUrl) {
+        await this.bot.telegram.setWebhook(webhookUrl);
+        console.log(`🚀 Webhook встановлено на: ${webhookUrl}`);
       }
-
-      // 3. Якщо URL інший — оновлюємо
-      await this.bot.telegram.setWebhook(webhookUrl);
-      console.log(`🚀 Webhook оновлено на: ${webhookUrl}`);
-    } catch (error) {
-      if (error.response?.error_code === 429) {
-        console.warn(
-          '⚠️ Telegram Rate Limit: зачекайте хвилину перед наступною спробою.',
-        );
-      } else {
-        console.error('❌ Помилка реєстрації Webhook:', error);
+    } else {
+      // ЛОГІКА ДЛЯ РОЗРОБКИ (Polling)
+      // Видаляємо вебхук, щоб Telegram дозволив Polling
+      const webhookInfo = await this.bot.telegram.getWebhookInfo();
+      if (webhookInfo.url !== '') {
+        await this.bot.telegram.deleteWebhook();
+        console.log('🔄 Webhook видалено для роботи в режимі Polling (Dev)');
       }
     }
   }
