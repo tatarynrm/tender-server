@@ -22,7 +22,7 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
           webhook: {
             domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!, // Додаємо !
             hookPath: '/telegram/telegram-webhook',
-            port: config.getOrThrow<number>('APPLICATION_PORT'),
+            // port: config.getOrThrow<number>('APPLICATION_PORT'),
           },
         },
       }),
