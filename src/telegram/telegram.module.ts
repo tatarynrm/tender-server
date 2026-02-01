@@ -15,25 +15,24 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
   imports: [
     TelegrafModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const token = config.get<string>('TELEGRAM_BOT_TOKEN')!;
-        const isProd = config.get<string>('NODE_ENV') === 'production';
-
-        return {
-          token,
-          middlewares: [session()],
-          // На Dev — використовуємо Polling (автоматично, якщо немає webhook)
-          // На Prod — вмикаємо Webhook вбудованими засобами NestJS
-          launchOptions: isProd
+      useFactory: (config: ConfigService) => ({
+        token: config.get('TELEGRAM_BOT_TOKEN')!,
+        middlewares: [session()],
+        // Додаємо налаштування клієнта
+        telegram: {
+          agent: null, // Можна налаштувати проксі, якщо сервер заблоковано
+          webhookReply: true, // Пришвидшує відповіді на вебхуках
+        },
+        launchOptions:
+          config.get('NODE_ENV') === 'production'
             ? {
                 webhook: {
-                  domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!,
+                  domain: config.get('TELEGRAM_WEBHOOK_DOMAIN')!,
                   hookPath: '/telegram/telegram-webhook',
                 },
               }
-            : undefined, // undefined змусить Telegraf працювати в режимі Polling
-        };
-      },
+            : undefined,
+      }),
     }),
     DatabaseModule,
     RedisModule,
