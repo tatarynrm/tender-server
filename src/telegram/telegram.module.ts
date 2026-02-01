@@ -28,6 +28,7 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
                 webhook: {
                   domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!,
                   hookPath: '/api/telegram-webhook', // шлях, за яким Nest чекатиме запити
+                  port: config.getOrThrow<number>('APPLICATION_PORT'),
                 },
               }
             : undefined,
