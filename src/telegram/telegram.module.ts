@@ -18,13 +18,13 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
       useFactory: (config: ConfigService) => ({
         middlewares: [session()],
         token: config.get<string>('TELEGRAM_BOT_TOKEN')!, // Додаємо !
-        // launchOptions: {
-        //   webhook: {
-        //     domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!, // Додаємо !
-        //     hookPath: '/telegram/telegram-webhook',
-        //     // port: config.getOrThrow<number>('APPLICATION_PORT'),
-        //   },
-        // },
+        launchOptions: {
+          webhook: {
+            domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!, // Додаємо !
+            hookPath: '/telegram/telegram-webhook',
+            port: config.getOrThrow<number>('APPLICATION_PORT'),
+          },
+        },
       }),
       inject: [ConfigService],
     }),
