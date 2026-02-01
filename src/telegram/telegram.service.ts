@@ -21,8 +21,28 @@ export class TelegramService implements OnModuleInit {
   async onModuleInit() {
     // Задаємо команди при старті
     // await this.setCommands();
+    await this.setupWebhook();
   }
+private async setupWebhook() {
+    const isProd = this.configService.get<string>('NODE_ENV') === 'production';
+    
+    if (isProd) {
+      const domain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
+      // Шлях має збігатися з тим, що прописаний у вашому TelegramController
+      const webhookUrl = `${domain}/api/telegram-webhook`; 
 
+      try {
+        await this.bot.telegram.setWebhook(webhookUrl);
+        console.log(`🚀 Telegram Webhook зареєстровано: ${webhookUrl}`);
+      } catch (error) {
+        console.error('❌ Помилка реєстрації Webhook:', error);
+      }
+    } else {
+      // На локалці краще видаляти вебхук, щоб працював Long Polling (якщо ви його використовуєте)
+      // Або просто нічого не робити
+      // await this.bot.telegram.deleteWebhook();
+    }
+  }
   // async setCommands() {
   //   await this.bot.telegram.setMyCommands([
   //     { command: 'start', description: '🚀 Запустити бота' },
