@@ -19,25 +19,28 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
   ) {}
 
-async handleConnection(@ConnectedSocket() client: Socket) {
-  const userId = client.handshake.auth?.userId?.toString();
-  if (!userId) return client.disconnect(true);
+  async handleConnection(@ConnectedSocket() client: Socket) {
+    const userId = client.handshake.auth?.userId?.toString();
+    if (!userId) return client.disconnect(true);
 
-  const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000);
 
-  // Запускаємо все разом
-  await Promise.all([
-    this.redisClient.sAdd(`load_sockets:${userId}`, client.id),
-    this.redisClient.set(`socket_load:${client.id}`, userId, { EX: 86400 }),
-    this.redisClient.zAdd(this.ONLINE_TRACKER_KEY, { score: now, value: userId })
-  ]);
+    // Запускаємо все разом
+    await Promise.all([
+      this.redisClient.sAdd(`load_sockets:${userId}`, client.id),
+      this.redisClient.set(`socket_load:${client.id}`, userId, { EX: 86400 }),
+      this.redisClient.zAdd(this.ONLINE_TRACKER_KEY, {
+        score: now,
+        value: userId,
+      }),
+    ]);
 
-  const socketCount = await this.redisClient.sCard(`load_sockets:${userId}`);
-  if (socketCount === 1) {
-    // Broadcast йде миттєво після запису
-    this.server.emit('user_status_change', { userId, isOnline: true });
+    const socketCount = await this.redisClient.sCard(`load_sockets:${userId}`);
+    if (socketCount === 1) {
+      // Broadcast йде миттєво після запису
+      this.server.emit('user_status_change', { userId, isOnline: true });
+    }
   }
-}
 
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     const socketKey = `socket_load:${client.id}`;

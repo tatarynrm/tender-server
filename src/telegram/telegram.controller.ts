@@ -10,10 +10,13 @@ export class TelegramController {
   @Post('telegram-webhook')
   async handleUpdate(@Req() req: Request, @Res() res: Response) {
     try {
+      console.log('Update received:', req.body);
       await this.bot.handleUpdate(req.body, res);
+      res.status(200).send('OK');
     } catch (err) {
       console.error(err);
       res.status(500).send('Error');
+      
     }
   }
 }

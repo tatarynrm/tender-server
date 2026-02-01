@@ -17,6 +17,8 @@ export class TelegramUpdate {
 
   @Start()
   async startCommand(ctx: Context) {
+    console.log(ctx, 'CTX');
+
     try {
       const telegramId = ctx.message?.from?.id;
       if (!telegramId) return ctx.reply('Не вдалося отримати ваш ID');

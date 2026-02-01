@@ -8,6 +8,7 @@ import {
   FilterItem,
 } from 'src/shared/utils/build-filters';
 import { CrmLoadListDto } from './dto/crm-load-list.dto';
+import { TelegramService } from 'src/telegram/telegram.service';
 
 @Injectable()
 export class LoadService {
@@ -16,6 +17,7 @@ export class LoadService {
   constructor(
     private readonly dbservice: DatabaseService,
     private readonly loadGateway: LoadGateway,
+    private readonly telegramService: TelegramService,
   ) {}
 
   /**
@@ -24,7 +26,9 @@ export class LoadService {
   private async emitLoadUpdate(id: number, event: string, extraData = {}) {
     const response = await this.findOne(id);
     const updatedItem = response.content[0];
+    console.log(updatedItem, 'ITEM');
 
+    await this.telegramService.sendNewLoadToTelegramGroup(updatedItem);
     if (updatedItem) {
       this.loadGateway.emitToAll(event, { ...updatedItem, ...extraData });
     }

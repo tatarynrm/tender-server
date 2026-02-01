@@ -1,35 +1,36 @@
+
 import { Module } from '@nestjs/common';
-import { TelegramService } from './telegram.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
-import { TelegramUpdate } from './telegram.update';
-import { DatabaseModule } from 'src/database/database.module';
-import { TelegramGateway } from './telegram.gateway';
 import { TelegramController } from './telegram.controller';
+import { TelegramService } from './telegram.service';
+import { TelegramUpdate } from './telegram.update';
+import { TelegramGateway } from './telegram.gateway';
+import { DatabaseModule } from 'src/database/database.module';
 import { RedisModule } from 'src/libs/common/redis/redis.module';
+// ... ваші інші імпорти
 
 @Module({
   controllers: [TelegramController],
   imports: [
-    ConfigModule.forRoot({
-      envFilePath: '.env',
-    }),
-    TelegrafModule.forRoot({
-      middlewares: [session()],
-      token: process.env.TELEGRAM_BOT_TOKEN!,
-
-      launchOptions: {
-        webhook: {
-          domain: process.env.TELEGRAM_WEBHOOK_DOMAIN!, // наприклад, https://yourdomain.com
-          hookPath: '/telegram/telegram-webhook', // шлях для webhook
-          port: 4001,
-        
-        },
-      },
+    TelegrafModule.forRootAsync({
+      useFactory: (config: ConfigService) => ({
+        middlewares: [session()],
+        token: config.get<string>('TELEGRAM_BOT_TOKEN')!, // Додаємо !
+        // launchOptions: {
+        //   webhook: {
+        //     domain: config.get<string>('TELEGRAM_WEBHOOK_DOMAIN')!, // Додаємо !
+        //     hookPath: '/telegram/telegram-webhook',
+        //     // port: config.getOrThrow<number>('APPLICATION_PORT'),
+        //   },
+        // },
+      }),
+      inject: [ConfigService],
     }),
     DatabaseModule,
     RedisModule,
+   
   ],
   providers: [TelegramService, TelegramUpdate, TelegramGateway],
   exports: [TelegramService],
