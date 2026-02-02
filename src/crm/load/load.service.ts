@@ -23,30 +23,37 @@ export class LoadService {
   /**
    * Універсальний метод для еміту оновленого об'єкта вантажу
    */
-  private async emitLoadUpdate(id: number, event: string, extraData = {}) {
+  private async emitLoadUpdate(
+    id: number,
+    event: string,
+    extraData = {},
+    isNew: boolean = false,
+  ) {
     const response = await this.findOne(id);
     const updatedItem = response.content[0];
-    console.log(updatedItem, 'ITEM');
 
-    await this.telegramService.sendNewLoadToTelegramGroup(updatedItem);
+    // Надсилаємо в Telegram ТІЛЬКИ якщо це новий запис
+    if (isNew && updatedItem) {
+      await this.telegramService.sendNewLoadToTelegramGroup(updatedItem);
+    }
+
     if (updatedItem) {
       this.loadGateway.emitToAll(event, { ...updatedItem, ...extraData });
     }
     return updatedItem;
   }
-
   async save(dto: any) {
     const isEditing = !!dto.id;
     const result = await this.dbservice.callProcedure('crm_load_save', dto);
     const loadId = isEditing ? dto.id : result.content[0];
 
-    // Використовуємо EDIT або NEW з констант
     const event = isEditing ? SOCKET_EVENTS.LOAD.EDIT : SOCKET_EVENTS.LOAD.NEW;
-    await this.emitLoadUpdate(loadId, event);
+
+    // Передаємо параметр !isEditing (якщо не редагування, значить новий)
+    await this.emitLoadUpdate(loadId, event, {}, !isEditing);
 
     return result;
   }
-
   async addCars(dto: any) {
     const result = await this.dbservice.callProcedure(
       'crm_load_car_add_save',
