@@ -24,7 +24,11 @@ import { UserRegisterFromPreDto } from './dto/user-register-from-pre.dto';
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
+  @Authorization()
+  @Post('user-list-ict')
+  public async getUserListIct() {
+    return this.userService.getUserListIct();
+  }
   @HttpCode(HttpStatus.OK)
   @Get('profile')
   public async findProfile(@Authorized('id') id: string) {
@@ -116,6 +120,7 @@ export class UserController {
   ) {
     return this.userService.companyFillFromUsrPreRegister(dto);
   }
+
   // @Authorization()
   // @Post('admin/create-user')
   // public async adminCreateUser(

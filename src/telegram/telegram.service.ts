@@ -18,18 +18,20 @@ export class TelegramService implements OnModuleInit {
   ) {
     this.channelId = this.configService.get<string>('TELEGRAM_CHANNEL_ID')!;
   }
-async onModuleInit() {
+  async onModuleInit() {
     await this.setupPollingMode();
   }
 
   private async setupPollingMode() {
     try {
       const webhookInfo = await this.bot.telegram.getWebhookInfo();
-      
+
       // Якщо встановлений будь-який вебхук — видаляємо його
       if (webhookInfo.url !== '') {
         await this.bot.telegram.deleteWebhook();
-        console.log('🗑️ Старий Webhook видалено. Бот перейшов у режим Polling.');
+        console.log(
+          '🗑️ Старий Webhook видалено. Бот перейшов у режим Polling.',
+        );
       } else {
         console.log('🤖 Бот працює в режимі Polling.');
       }
@@ -140,7 +142,7 @@ async onModuleInit() {
             [
               {
                 text: '🚚 Відкрити заявку на порталі',
-                url: `https://work.ict.lviv.ua/load/${order.id}`,
+                url: `https://tender.ict.lviv.ua/log/load/active`,
               },
             ],
           ],

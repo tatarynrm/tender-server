@@ -96,6 +96,12 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
+
+
+
+
+
+  
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }
 
