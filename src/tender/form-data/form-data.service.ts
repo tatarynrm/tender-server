@@ -18,7 +18,6 @@ export class FormDataService {
       {},
     );
 
-
     return result;
   }
 }

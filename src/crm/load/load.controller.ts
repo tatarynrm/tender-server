@@ -147,6 +147,9 @@ export class LoadController {
   @Post('save')
   @ApiOperation({ summary: 'Створити новий вантаж' })
   create(@Body() dto: CreateLoadDto) {
+
+    console.log(dto,'DTO 151 save load');
+    
     return this.loadService.save(dto);
   }
 

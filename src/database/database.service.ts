@@ -15,6 +15,8 @@ export type DbResponse<T = any> =
   | {
       status: 'ok';
       content: T;
+      props?: T;
+      add_data?: T;
     }
   | {
       status: 'error';
@@ -39,9 +41,9 @@ export class DatabaseService {
   ) {
     const user = this.cls.get('user'); // Дістаємо без Scope.REQUEST
 
-    const authObject = { id_usr: user?.id, id_company: user?.id_company };
+    const authObject = { id_usr: user?.id, id_company: user?.company.id };
 
-    console.log(authObject, 'AUTH OBJECT FOR TARAS');
+    console.log(authObject, 'OBJECTY IN AUTH 44 line database service');
 
     const query = `CALL run($1, $2, $3, $4)`;
 

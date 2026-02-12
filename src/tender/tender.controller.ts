@@ -35,8 +35,6 @@ export class TenderController {
 
   @Post('set-rate')
   tenderSetRate(@Body() dto: any) {
-
-
     return this.tenderService.tenderSetRate(dto);
   }
   @Get(':id')

@@ -3,7 +3,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { hash } from 'argon2';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Pool, QueryResult } from 'pg';
-import { IUser } from './types/user.type';
+
 import { RegisterDto } from 'src/auth/dto/register.dto';
 import type { Request } from 'express';
 import { DatabaseService } from 'src/database/database.service';
@@ -12,6 +12,7 @@ import { CreateUserFromCompany } from './dto/create-user-from-company.dto';
 import { UserRegisterFromPreDto } from './dto/user-register-from-pre.dto';
 import { MailService } from 'src/libs/common/mail/mail.service';
 import type { RedisClientType } from 'redis';
+import { IUserProfile } from './types/user.type';
 @Injectable()
 export class UserService {
   public constructor(
@@ -23,20 +24,16 @@ export class UserService {
   ) {}
 
   public async findById(id: string | number) {
-    const existUser = await this.pool.query(
-      `select a.*,
-      b.company_name,b.company_name_full
+    const existUser = await this.dbservice.callProcedure(
+      'usr_find',
 
+      { id: id },
 
-       from usr  a
-       left join company b on a.id_company = b.id
- 
-
-      where a.id = $1`,
-      [id],
+      {},
     );
 
-    const user = existUser.rows[0];
+    // const user = existUser.rows[0];
+    const user = existUser.content;
 
     if (!user) {
       throw new NotFoundException(
@@ -47,7 +44,7 @@ export class UserService {
     return user;
   }
   public async findByEmail(email: string) {
-    const result: QueryResult<IUser> = await this.pool.query(
+    const result: QueryResult<IUserProfile> = await this.pool.query(
       `select * from usr where email = $1`,
       [email],
     );
@@ -252,7 +249,7 @@ export class UserService {
 
   public async getUserListIct() {
     console.log('usr_list_ict');
-    
+
     const result = await this.dbservice.callProcedure(
       'usr_list_ict',
 

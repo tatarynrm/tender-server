@@ -1,4 +1,3 @@
-
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -20,13 +19,13 @@ import type { RedisClientType } from 'redis';
 export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(UserGateway.name);
-private readonly ONLINE_TRACKER_KEY = 'online_users_active';
+  private readonly ONLINE_TRACKER_KEY = 'online_users_active';
   private readonly HEARTBEAT_INTERVAL = 60; // секунд
   constructor(
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
   ) {}
 
-async handleConnection(@ConnectedSocket() client: Socket) {
+  async handleConnection(@ConnectedSocket() client: Socket) {
     const userId = client.handshake.auth?.userId?.toString();
     if (!userId) return client.disconnect(true);
 
@@ -38,7 +37,10 @@ async handleConnection(@ConnectedSocket() client: Socket) {
 
     // Оновлюємо час останньої активності в Sorted Set
     const now = Math.floor(Date.now() / 1000);
-    await this.redisClient.zAdd(this.ONLINE_TRACKER_KEY, { score: now, value: userId });
+    await this.redisClient.zAdd(this.ONLINE_TRACKER_KEY, {
+      score: now,
+      value: userId,
+    });
 
     const socketCount = await this.redisClient.sCard(userSocketsKey);
     if (socketCount === 1) {
@@ -103,12 +105,15 @@ async handleConnection(@ConnectedSocket() client: Socket) {
 
   // --- ОБРОБНИКИ ПОДІЙ ---
 
-@SubscribeMessage('heartbeat')
+  @SubscribeMessage('heartbeat')
   async handleHeartbeat(@ConnectedSocket() client: Socket) {
     const userId = await this.redisClient.get(`socket_user:${client.id}`);
     if (userId) {
       const now = Math.floor(Date.now() / 1000);
-      await this.redisClient.zAdd(this.ONLINE_TRACKER_KEY, { score: now, value: userId });
+      await this.redisClient.zAdd(this.ONLINE_TRACKER_KEY, {
+        score: now,
+        value: userId,
+      });
       // Продовжуємо життя ключів
       await this.redisClient.expire(`user_sockets:${userId}`, 86400);
     }
@@ -118,6 +123,10 @@ async handleConnection(@ConnectedSocket() client: Socket) {
   async handleGetOnlineUsers() {
     // Повертаємо тільки тих, хто був активний протягом останніх 2 хвилин
     const threshold = Math.floor(Date.now() / 1000) - 120;
-    return await this.redisClient.zRangeByScore(this.ONLINE_TRACKER_KEY, threshold, '+inf');
+    return await this.redisClient.zRangeByScore(
+      this.ONLINE_TRACKER_KEY,
+      threshold,
+      '+inf',
+    );
   }
 }

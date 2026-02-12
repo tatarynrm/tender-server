@@ -10,8 +10,11 @@ export class LocationController {
     return this.service.autocomplete(input);
   }
 
-  @Post("resolve")
-  resolve(@Body("placeId") placeId: string) {
-    return this.service.resolve(placeId);
+@Post("resolve")
+  resolve(
+    @Body("placeId") placeId: string,
+    @Body("displayName") displayName?: string // Додаємо отримання displayName
+  ) {
+    return this.service.resolve(placeId, displayName);
   }
 }

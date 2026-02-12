@@ -20,13 +20,14 @@ import { EmailConfirmationService } from './email-confirmation/email-confirmatio
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service';
 import * as useragent from 'useragent';
 import axios from 'axios';
-import { IUser } from 'src/user/types/user.type';
+
 import { Pool } from 'pg';
 import { PreRegisterDto } from './dto/pre-register.dto';
 import { DatabaseService } from 'src/database/database.service';
 import { RegisterIctUserDto } from './dto/register-ict-user.dto';
 import { MailService } from 'src/libs/common/mail/mail.service';
 import { UserGateway } from 'src/user/user.gateway';
+import { IUserProfile } from 'src/user/types/user.type';
 
 @Injectable()
 export class AuthService {
@@ -73,6 +74,8 @@ export class AuthService {
   }
 
   public async login(req: Request, dto: LoginDto) {
+    console.log(dto, 'DTO----- 76 ');
+
     // const user = await this.userService.findByEmail(dto.email);
     const checkUserExist = await this.dbservice.callProcedure(
       'usr_login',
@@ -83,7 +86,7 @@ export class AuthService {
     );
 
     const user = checkUserExist.content;
-
+    console.log(user, 'USER-----------------');
     if (!user) {
       throw new NotFoundException('Користувач не знайдений.');
     }
@@ -134,11 +137,11 @@ export class AuthService {
     });
   }
 
-  public async saveSession(req: Request, user: IUser) {
+  public async saveSession(req: Request, user: IUserProfile) {
     return new Promise((resolve, reject) => {
       req.session.userId = user.id;
-      req.session.ict = user.is_ict;
-      req.session.id_company = user.id_company; // Парсимо User-Agent
+      req.session.ict = user.role.is_ict;
+      req.session.id_company = user.company.id; // Парсимо User-Agent
       const agent = useragent.parse(req.headers['user-agent'] || '');
 
       // Отримуємо IP користувача

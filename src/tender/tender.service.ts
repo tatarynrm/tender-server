@@ -18,9 +18,10 @@ export class TenderService {
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
+    console.log(filters,'FILTERS');
     
     const result = await this.dbservice.callProcedure(
-      'tender_list',
+      'tender_list_ict',
 
       {
         pagination: {
@@ -91,7 +92,7 @@ export class TenderService {
   }
   public async getOne(id: string) {
     const result = await this.dbservice.callProcedure(
-      'tender_one',
+      'tender_one_ict',
 
       { id: id },
 

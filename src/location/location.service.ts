@@ -14,7 +14,7 @@ export class LocationService {
           input,
           //   components: 'country:ua',
           language: 'uk',
-          // types: 'geocode', 
+          // types: 'geocode',
           // Прибираємо types щоб шукало все повністю
           key: process.env.GOOGLE_API_KEY,
         },
@@ -24,20 +24,20 @@ export class LocationService {
     return data;
   }
 
-  async resolve(placeId: string) {
-    const { data } = await axios.get(
-      'https://maps.googleapis.com/maps/api/place/details/json',
-      {
-        params: {
-          place_id: placeId,
-          fields: 'address_components,geometry,formatted_address',
-          language: 'uk',
-          key: process.env.GOOGLE_API_KEY,
-        },
+async resolve(placeId: string, displayName?: string) { // додаємо displayName
+  const { data } = await axios.get(
+    'https://maps.googleapis.com/maps/api/place/details/json',
+    {
+      params: {
+        place_id: placeId,
+        fields: 'address_components,geometry,formatted_address,name',
+        language: 'uk',
+        key: process.env.GOOGLE_API_KEY,
       },
-    );
-    console.log(JSON.stringify(data, null, 2));
+    },
+  );
 
-    return normalizeGooglePlace(data.result);
-  }
+  // Передаємо displayName в нормалізатор
+  return normalizeGooglePlace(data.result, displayName);
+}
 }
