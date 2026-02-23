@@ -7,7 +7,6 @@ import {
   FilterItem,
 } from 'src/shared/utils/build-filters';
 
-
 @Injectable()
 export class TenderService {
   public constructor(
@@ -18,8 +17,8 @@ export class TenderService {
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
-    console.log(filters,'FILTERS');
-    
+    console.log(filters, 'FILTERS');
+
     const result = await this.dbservice.callProcedure(
       'tender_list_ict',
 
@@ -40,7 +39,7 @@ export class TenderService {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
     const result = await this.dbservice.callProcedure(
-      'tender_list_client',
+      'tender_list',
 
       {
         pagination: {
@@ -88,6 +87,7 @@ export class TenderService {
     );
 
     this.tenderGateway.emitToAll('new_tender', result.content[0]);
+
     return result;
   }
   public async getOne(id: string) {
@@ -103,6 +103,7 @@ export class TenderService {
   }
 
   public async tenderSetRate(dto: any) {
+    console.log(dto, 'DTO');
     const result = await this.dbservice.callProcedure(
       'tender_set_rate',
 
@@ -115,4 +116,33 @@ export class TenderService {
 
     return result;
   }
+
+  public async tenderSetStatus(dto: any) {
+    const result = await this.dbservice.callProcedure(
+      'tender_set_status',
+
+      dto,
+
+      {},
+    );
+
+    // this.tenderGateway.emitToAll('tender_status_updated', dto);
+    return result;
+  }
+  public async tenderSetWinner(dto: any) {
+    console.log(dto,'DTO');
+    
+    const result = await this.dbservice.callProcedure(
+      'tender_set_winner',
+
+      dto,
+
+      {},
+    );
+
+    // this.tenderGateway.emitToAll('tender_status_updated', dto);
+    return result;
+  }
+
+
 }

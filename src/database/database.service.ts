@@ -66,4 +66,9 @@ export class DatabaseService {
 
     return data;
   }
+
+  public async getClient() {
+    const client = await this.pool.connect();
+    return client;
+  }
 }

@@ -46,7 +46,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: ['https://tender.ict.lviv.ua', 'http://localhost:3000'],
+    origin: ['https://tender.ict.lviv.ua', 'http://localhost:3000','http://localhost:3001`'],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [

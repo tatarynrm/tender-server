@@ -12,6 +12,10 @@ export class TenderController {
   getList(@Query() query: any) {
     return this.tenderService.getList(query);
   }
+  @Post('set-status')
+  tenderSetStatus(@Body() dto: any) {
+    return this.tenderService.tenderSetStatus(dto);
+  }
 
   // DASHBOARD
   @Get('client-list')
@@ -36,6 +40,10 @@ export class TenderController {
   @Post('set-rate')
   tenderSetRate(@Body() dto: any) {
     return this.tenderService.tenderSetRate(dto);
+  }
+  @Post('set-winner')
+  tenderSetWinner(@Body() dto: any) {
+    return this.tenderService.tenderSetWinner(dto);
   }
   @Get(':id')
   getOne(@Param('id') id: string) {

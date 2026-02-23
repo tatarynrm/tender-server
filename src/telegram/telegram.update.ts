@@ -18,13 +18,17 @@ export class TelegramUpdate {
   @Start()
   async startCommand(ctx: Context) {
     try {
+      console.log(ctx.message, 'ctx message');
+
       const telegramId = ctx.from?.id;
       if (!telegramId) return ctx.reply('Не вдалося отримати ваш ID');
 
       // Telegraf автоматично парсить посилання типу t.me/bot?start=TOKEN
-      const token = (ctx as any).payload; 
+      const token = (ctx as any).payload;
 
-      console.log(`--- NEW POLLING REQUEST --- ID: ${telegramId}, Token: ${token}`);
+      console.log(
+        `--- NEW POLLING REQUEST --- ID: ${telegramId}, Token: ${token}`,
+      );
 
       if (token) {
         const user = await this.telegramService.findByTelegramToken(token);
@@ -43,12 +47,13 @@ export class TelegramUpdate {
 
       const user = await this.telegramService.checkIfUserExist(telegramId);
       if (!user) {
-        return ctx.reply(MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!).text);
+        return ctx.reply(
+          MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!).text,
+        );
       }
 
       const keyboard = user.isPremium ? PREMIUM_KEYBOARD : DEFAULT_KEYBOARD;
       await ctx.reply('Виберіть опцію:', keyboard);
-
     } catch (err) {
       console.error(err);
       await ctx.reply('Сталася помилка, спробуйте пізніше.');

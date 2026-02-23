@@ -31,13 +31,13 @@ RETURNING *;
     return result.rows[0].token;
   }
   // Новий метод для відключення Telegram
-public async disconnectTelegram(telegram_id: number) {
-  const query = `DELETE FROM usr_telegram WHERE telegram_id = $1`;
-  await this.pool.query(query, [telegram_id]);
+  public async disconnectTelegram(telegram_id: number) {
+    const query = `DELETE FROM person_telegram WHERE telegram_id = $1`;
+    await this.pool.query(query, [telegram_id]);
 
-  return {
-    success: true,
-    telegram_id: null, // щоб фронтенд міг оновити profile.telegram_id
-  };
-}
+    return {
+      success: true,
+      telegram_id: null, // щоб фронтенд міг оновити profile.telegram_id
+    };
+  }
 }

@@ -23,25 +23,44 @@ export class UserService {
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
   ) {}
 
-  public async findById(id: string | number) {
+public async findById(id: string | number) {
+    // 1. Отримуємо основні дані юзера з процедури
     const existUser = await this.dbservice.callProcedure(
       'usr_find',
-
       { id: id },
-
       {},
     );
 
-    // const user = existUser.rows[0];
     const user = existUser.content;
 
     if (!user) {
       throw new NotFoundException(
-        'Користувача не знайдено.Перевірте авторизаційні дані.',
+        'Користувача не знайдено. Перевірте авторизаційні дані.',
       );
     }
 
-    return user;
+    // 2. Запит без аліасів (бо тепер дані будуть в ізольованому об'єкті)
+    const telegramResult = await this.pool.query(
+      `SELECT telegram_id, username, first_name 
+       FROM person_telegram 
+       WHERE id_person = $1`, 
+      [user.person.id]
+    );
+
+    const telegramData = telegramResult.rows[0];
+
+    // 3. Зливаємо дані: додаємо вкладений об'єкт person_telegram
+    // Якщо telegramData немає, повертаємо null
+    const enrichedUser = {
+      ...user,
+      person_telegram: telegramData ? {
+        telegram_id: telegramData.telegram_id,
+        username: telegramData.username,
+        first_name: telegramData.first_name,
+      } : null,
+    };
+
+    return enrichedUser;
   }
   public async findByEmail(email: string) {
     const result: QueryResult<IUserProfile> = await this.pool.query(

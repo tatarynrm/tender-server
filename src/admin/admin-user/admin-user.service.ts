@@ -1,38 +1,78 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import type { RedisClientType } from 'redis';
+import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { MailService } from 'src/libs/common/mail/mail.service';
-import { AdminMailService } from 'src/libs/common/mail/services/admin-mail.service';
-import { AdminCreateUserDto } from './dto/admin-create-user.dto';
+import {
+  buildFiltersFromQuery,
+  FilterItem,
+} from 'src/shared/utils/build-filters';
 
 @Injectable()
 export class AdminUserService {
-  public constructor(
-    private readonly configSerivce: ConfigService,
-    private readonly dbservice: DatabaseService,
-    private readonly adminMailService: AdminMailService, // Використовуємо новий сервіс
-    @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
-  ) {}
+  public constructor(private readonly dbservice: DatabaseService) {}
 
-  public async createUser(dto: AdminCreateUserDto) {
-  
-
+  public async getAllPreRegisterUsers(query: any) {
     const result = await this.dbservice.callProcedure(
-      'usr_register_ict',
-      dto,
+      'usr_pre_register_list',
+
+      {
+        pagination: {
+          per_page: query.limit ?? 10,
+          page: query.page ?? 1,
+        },
+        // filter: filters,
+      },
+
       {},
     );
 
-    // Підготовка даних для листа
-    const emailData = {
-      name: dto.name || 'Користувач',
+    return result;
+  }
+  public async getAdminUserList(query: any) {
+    const filters: FilterItem[] = buildFiltersFromQuery(query);
 
-      loginUrl: this.configSerivce.getOrThrow<string>('APP_CLIENT_URL'),
-    };
+    const result = await this.dbservice.callProcedure(
+      'usr_list',
 
-    // Відправка
-    await this.adminMailService.sendUserCreatedByAdmin(dto.email, emailData);
+      {
+        pagination: {
+          per_page: query.limit ?? 10,
+          page: query.page ?? 1,
+        },
+        filter: filters,
+      },
+
+      {},
+    );
+
+    return result;
+  }
+  public async getAdminOneUser(id: any) {
+    const result = await this.dbservice.callProcedure(
+      'usr_one',
+
+      {
+        id: id,
+      },
+
+      {},
+    );
+
+    return result;
+  }
+
+  public async adminUserSave(dto: any) {
+    // створення нового користувача
+    console.log(dto, 'dto admin 36 in admin-user-service');
+
+    const result = await this.dbservice.callProcedure('usr_save', dto, {});
+    return result;
+  }
+
+  async getUserPre(id: number) {
+    const result = await this.dbservice.callProcedure(
+      'usr_pre_register_one',
+      { id: id },
+      {},
+    );
 
     return result;
   }

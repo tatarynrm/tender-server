@@ -43,7 +43,6 @@ export class LoadService {
     return updatedItem;
   }
   async save(dto: any) {
-
     setTimeout(() => {
       console.log(`Затримка 5 секунд для вантажу ${dto || 'нового'}`);
     }, 1000);
@@ -168,14 +167,13 @@ export class LoadService {
 
   async getList(query: CrmLoadListDto) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-    console.log(filters,'FILTERS');
-    
-    const result = await  this.dbservice.callProcedure('crm_load_list', {
+    console.log(filters, 'FILTERS');
+
+    const result = await this.dbservice.callProcedure('crm_load_list', {
       pagination: { per_page: query.limit, page: query.page },
       filter: filters,
     });
 
-    
     return result;
   }
 

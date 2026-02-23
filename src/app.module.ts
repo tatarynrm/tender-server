@@ -36,9 +36,11 @@ import { FileCleanupService } from './common/services/file-cleanup.service';
 import { ClsModule } from 'nestjs-cls';
 
 import { AdminCompanyModule } from './admin/admin-company/admin-company.module';
-import { AdminUserModule } from './admin/admin-user/admin-user.module';
+
 import { SocketModule } from './socket/socket.module';
 import { SystemsModule } from './systems/systems.module';
+import { DatabaseMonitorService } from './database/database-monitor.service';
+import { AdminUserModule } from './admin/admin-user/admin-user.module';
 
 @Module({
   imports: [
@@ -108,12 +110,12 @@ import { SystemsModule } from './systems/systems.module';
         module: AdminModule,
         children: [
           {
-            path: 'user',
-            module: AdminUserModule,
-          },
-          {
             path: 'company',
             module: AdminCompanyModule,
+          },
+          {
+            path: 'user',
+            module: AdminUserModule,
           },
         ],
       },
@@ -128,6 +130,7 @@ import { SystemsModule } from './systems/systems.module';
     TelegramUpdate,
     LoadGateway,
     FileCleanupService,
+    DatabaseMonitorService,
   ],
   exports: [DatabaseModule],
 })

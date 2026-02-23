@@ -1,28 +1,35 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Req,
-  BadRequestException,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { AdminUserService } from './admin-user.service';
-import type { Request } from 'express';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
-import { AdminCreateUserDto } from './dto/admin-create-user.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('ADMIN USER CONTROLL')
 @Authorization()
-@Controller() // Залиште ПОРОЖНІМ, RouterModule все зробить за вас
+@Controller('')
 export class AdminUserController {
   constructor(private readonly adminUserService: AdminUserService) {}
-  @ApiOperation({ summary: 'Отримати список CRM' })
-  @ApiResponse({ status: 200, description: 'Успішно отримано' })
-  @Post('create') // Тепер це точно POST /admin/user/create
-  public async createUser(
-    @Req() req: Request,
-    @Body() dto: AdminCreateUserDto,
-  ) {
-    return this.adminUserService.createUser(dto);
+
+  @Get('pre-register/list')
+  public async getAllPreRegisterUsers(@Query() query: any) {
+    return this.adminUserService.getAllPreRegisterUsers(query);
+  }
+
+  @Get('list')
+  getAdminUserList(@Query() query: any) {
+    return this.adminUserService.getAdminUserList(query);
+  }
+
+  @Post('save')
+  adminCreateUser(@Body() dto: any) {
+    return this.adminUserService.adminUserSave(dto);
+  }
+  @Get('one/:id')
+  getOneUser(@Param('id') id: string) {
+    // Використовуємо @Param замість @Query
+    return this.adminUserService.getAdminOneUser(id);
+  }
+
+    @Get('pre/:id')
+  async getUserPre(@Param('id') id: string) {
+    // query тепер містить всі ваші фільтри та пагінацію
+    return this.adminUserService.getUserPre(Number(id));
   }
 }

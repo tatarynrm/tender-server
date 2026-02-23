@@ -8,7 +8,7 @@ export function buildFiltersFromQuery(
 ): FilterItem[] {
   const filters: FilterItem[] = [];
 
-  const excludedKeys = ['page', 'limit', 'sort'];
+  const excludedKeys = ['page', 'limit', 'sort','per_page'];
 
   Object.entries(query).forEach(([key, value]) => {
     // Пропускаємо порожні занчення чи ключііі
