@@ -41,6 +41,7 @@ import { SocketModule } from './socket/socket.module';
 import { SystemsModule } from './systems/systems.module';
 import { DatabaseMonitorService } from './database/database-monitor.service';
 import { AdminUserModule } from './admin/admin-user/admin-user.module';
+import { DownloadModule } from './download/download.module';
 
 @Module({
   imports: [
@@ -122,6 +123,7 @@ import { AdminUserModule } from './admin/admin-user/admin-user.module';
     ]),
     SocketModule,
     SystemsModule,
+    DownloadModule,
   ],
   controllers: [],
   providers: [
