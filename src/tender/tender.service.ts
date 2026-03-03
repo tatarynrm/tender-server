@@ -6,12 +6,14 @@ import {
   buildFiltersFromQuery,
   FilterItem,
 } from 'src/shared/utils/build-filters';
+import { LoadGateway } from 'src/crm/load/load.gateway';
 
 @Injectable()
 export class TenderService {
   public constructor(
     private readonly dbservice: DatabaseService,
     private readonly tenderGateway: TenderGateway,
+    private readonly loadGateway: LoadGateway,
   ) {}
 
   public async getList(query: any) {
@@ -85,6 +87,7 @@ export class TenderService {
 
       {},
     );
+    console.log(result.content[0], 'CONTENT 90 line ');
 
     this.tenderGateway.emitToAll('new_tender', result.content[0]);
 
@@ -93,6 +96,17 @@ export class TenderService {
   public async getOne(id: string) {
     const result = await this.dbservice.callProcedure(
       'tender_one_ict',
+
+      { id: id },
+
+      {},
+    );
+
+    return result;
+  }
+  public async getOneList(id: string) {
+    const result = await this.dbservice.callProcedure(
+      'tender_list_ict',
 
       { id: id },
 
@@ -112,7 +126,11 @@ export class TenderService {
       {},
     );
 
+    const tenderForIct = await this.getOneList(result.content[0].tender_id);
+
     this.tenderGateway.emitToAll('new_bid', result.content[0]);
+    // Для наших менеджерів!
+    this.loadGateway.emitToAll('new_bid', tenderForIct.content[0]);
 
     return result;
   }
@@ -130,8 +148,6 @@ export class TenderService {
     return result;
   }
   public async tenderSetWinner(dto: any) {
-    console.log(dto,'DTO');
-    
     const result = await this.dbservice.callProcedure(
       'tender_set_winner',
 
@@ -143,6 +159,4 @@ export class TenderService {
     // this.tenderGateway.emitToAll('tender_status_updated', dto);
     return result;
   }
-
-
 }

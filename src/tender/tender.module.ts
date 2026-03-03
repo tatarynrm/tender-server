@@ -4,11 +4,12 @@ import { TenderController } from './tender.controller';
 import { UserService } from 'src/user/user.service';
 import { UserModule } from 'src/user/user.module';
 import { TenderGateway } from './tender.gateway';
+import { LoadGateway } from 'src/crm/load/load.gateway';
 
 @Module({
   imports: [UserModule],
   controllers: [TenderController],
-  providers: [TenderService, UserService, TenderGateway],
+  providers: [TenderService, UserService, TenderGateway,LoadGateway],
   exports: [TenderGateway],
 })
 export class TenderModule {}

@@ -135,4 +135,9 @@ export class TelegramService implements OnModuleInit {
       this.logger.error('Помилка відправки в групу:', error);
     }
   }
+
+
+
+
+
 }
