@@ -8,18 +8,23 @@ import session from 'express-session';
 import { RedisStore } from 'connect-redis';
 import * as express from 'express';
 import { RedisIoAdapter } from './libs/common/adapters/redis-io.adapter';
-import { json, urlencoded } from 'express'; // Додай ці імпорти
-// ✅ ПРАВИЛЬНИЙ ІМПОРТ
+import { json, urlencoded } from 'express';
+import { WinstonModule, utilities as nestWinstonModuleUtilities } from 'nest-winston';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path'; // Додайте цей іпорт для join
+import { join } from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as winston from 'winston';
+import { loggerConfig } from './libs/common/logger/logger.config';
+
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
-import * as argon2 from 'argon2';
-import { Pool } from 'pg';
+
 async function bootstrap() {
-  // ✅ Generic вказано вірно
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // ✅ Додаємо конфігурацію логера Winston при створенні додатку
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: loggerConfig
+  });
+
   // Конфігурація документації
   const configSwagger = new DocumentBuilder()
     .setTitle('ICT NEW TENDER PLATFORM ALL IN ONE')
@@ -33,6 +38,7 @@ async function bootstrap() {
 
   // Шлях, за яким буде доступна документація (наприклад, http://localhost:7000/docs)
   SwaggerModule.setup('noris-docs', app, document);
+  
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
 
@@ -46,7 +52,11 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: ['https://tender.ict.lviv.ua', 'http://localhost:3000','http://localhost:3001`'],
+    origin: [
+      'https://tender.ict.lviv.ua',
+      'http://localhost:3000',
+      'http://localhost:3001', // Забрав зайвий символ ` після 3001
+    ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
@@ -83,25 +93,18 @@ async function bootstrap() {
     }),
   );
 
-  // ✅ ЗБІЛЬШУЄМО ЛІМІТИ ТУТ:
-  // Замість звичайного app.use(express.json()) робимо так:
+  // Збільшуємо ліміти
   app.use(json({ limit: '100mb' }));
   app.use(urlencoded({ limit: '100mb', extended: true }));
+  
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
 
-  // ✅ ВИПРАВЛЕНО ТУТ: повна назва методу та коректний шлях
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 
-
-
-
-
-
-  
   await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
 }
 

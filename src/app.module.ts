@@ -42,6 +42,9 @@ import { SystemsModule } from './systems/systems.module';
 import { DatabaseMonitorService } from './database/database-monitor.service';
 import { AdminUserModule } from './admin/admin-user/admin-user.module';
 import { DownloadModule } from './download/download.module';
+import { CronTasksModule } from './crons-tasks/crons-tasks.module';
+
+
 
 @Module({
   imports: [
@@ -58,7 +61,6 @@ import { DownloadModule } from './download/download.module';
       useClass: MulterConfigService,
     }),
 
-    ScheduleModule.forRoot(),
     AdminModule,
 
     AuthModule,
@@ -124,6 +126,7 @@ import { DownloadModule } from './download/download.module';
     SocketModule,
     SystemsModule,
     DownloadModule,
+   CronTasksModule
   ],
   controllers: [],
   providers: [

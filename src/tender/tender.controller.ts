@@ -45,6 +45,10 @@ export class TenderController {
   tenderSetWinner(@Body() dto: any) {
     return this.tenderService.tenderSetWinner(dto);
   }
+  @Post('del-winner')
+  tenderDelWinner(@Body() dto: any) {
+    return this.tenderService.tenderDelWinner(dto);
+  }
   @Get(':id')
   getOne(@Param('id') id: string) {
     return this.tenderService.getOne(id);

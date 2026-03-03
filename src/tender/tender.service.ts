@@ -159,4 +159,18 @@ export class TenderService {
     // this.tenderGateway.emitToAll('tender_status_updated', dto);
     return result;
   }
+  public async tenderDelWinner(dto: any) {
+    console.log(dto,'DTO--------------------------------------------- 163');
+    
+    const result = await this.dbservice.callProcedure(
+      'tender_del_winner',
+
+      dto,
+
+      {},
+    );
+
+    // this.tenderGateway.emitToAll('tender_status_updated', dto);
+    return result;
+  }
 }
