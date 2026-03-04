@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TenderCronService } from './services/tender-cron.service';
+import { TenderGateway } from 'src/tender/tender.gateway';
 
 // import { UsersModule } from '../users/users.module';
 
@@ -13,6 +14,7 @@ import { TenderCronService } from './services/tender-cron.service';
   // Реєструємо всі наші крон-сервіси як провайдери
   providers: [
     TenderCronService,
+    TenderGateway
   
   ],
   exports:[CronTasksModule]

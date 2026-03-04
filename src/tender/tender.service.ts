@@ -19,8 +19,6 @@ export class TenderService {
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
-    console.log(filters, 'FILTERS');
-
     const result = await this.dbservice.callProcedure(
       'tender_list_ict',
 
@@ -87,7 +85,6 @@ export class TenderService {
 
       {},
     );
-    console.log(result.content[0], 'CONTENT 90 line ');
 
     this.tenderGateway.emitToAll('new_tender', result.content[0]);
 
@@ -117,7 +114,6 @@ export class TenderService {
   }
 
   public async tenderSetRate(dto: any) {
-    console.log(dto, 'DTO');
     const result = await this.dbservice.callProcedure(
       'tender_set_rate',
 
@@ -156,12 +152,12 @@ export class TenderService {
       {},
     );
 
-    // this.tenderGateway.emitToAll('tender_status_updated', dto);
+    const updatedTenderId = result.content.id_tender;
+
+    this.tenderGateway.emitToAll('tender_status_updated', updatedTenderId);
     return result;
   }
   public async tenderDelWinner(dto: any) {
-    console.log(dto,'DTO--------------------------------------------- 163');
-    
     const result = await this.dbservice.callProcedure(
       'tender_del_winner',
 
@@ -169,8 +165,9 @@ export class TenderService {
 
       {},
     );
+    const updatedTenderId = result.content.id_tender;
 
-    // this.tenderGateway.emitToAll('tender_status_updated', dto);
+    this.tenderGateway.emitToAll('tender_status_updated', updatedTenderId);
     return result;
   }
 }
