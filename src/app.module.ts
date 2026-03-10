@@ -44,14 +44,14 @@ import { AdminUserModule } from './admin/admin-user/admin-user.module';
 import { DownloadModule } from './download/download.module';
 import { CronTasksModule } from './crons-tasks/crons-tasks.module';
 import { SuggestionModule } from './suggestion/suggestion.module';
-
-
+import { AiModule } from './ai/ai.module';
+import { LogisticsModule } from './ai/logistics/logistics.module';
 
 @Module({
   imports: [
     ClsModule.forRoot({
       global: true,
-      middleware: { mount: true }, // автоматично підключає middleware для кожного запиту
+      middleware: { mount: true },
     }),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
@@ -61,78 +61,50 @@ import { SuggestionModule } from './suggestion/suggestion.module';
     MulterModule.registerAsync({
       useClass: MulterConfigService,
     }),
-
     AdminModule,
-
     AuthModule,
     UserModule,
-    // RedisModule,
     ProviderModule,
-
     MailModule,
-
     EmailConfirmationModule,
-
     PasswordRecoveryModule,
-
     TwoFactorAuthModule,
-
     DatabaseModule,
-
     CompanyModule,
-
     OraIctModule,
-
     CrmModule,
-
     ExternalServicesModule,
     NominatimModule,
-    ExternalServicesModule,
-
     TelegramTokenModule,
-
     TelegramModule,
-
     ChatModule,
-
     CurrencyModule,
-
     FormDataModule,
-
     TenderModule,
-
     TransportModule,
-
     LocationModule,
-
     OracleModule,
-
     CocktailsModule,
     RouterModule.register([
       {
         path: 'admin',
         module: AdminModule,
         children: [
-          {
-            path: 'company',
-            module: AdminCompanyModule,
-          },
-          {
-            path: 'user',
-            module: AdminUserModule,
-          },
+          { path: 'company', module: AdminCompanyModule },
+          { path: 'user', module: AdminUserModule },
         ],
       },
     ]),
     SocketModule,
     SystemsModule,
     DownloadModule,
-   CronTasksModule,
-   SuggestionModule
+    CronTasksModule,
+    SuggestionModule,
+    AiModule,
+    LogisticsModule,
   ],
   controllers: [],
   providers: [
-    DatabaseModule,
     UserGateway,
     TelegramUpdate,
     LoadGateway,
