@@ -18,6 +18,7 @@ export class AiService {
             console.log('Gemini AI initialized with key length:', apiKey.length);
         }
         this.genAI = new GoogleGenerativeAI(apiKey || '');
+        // Використовуємо 1.5-flash, бо у 2.5-flash ліміт лише 20 запитів на добу
         this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     }
 
@@ -38,10 +39,10 @@ export class AiService {
     async extractDataAsJson<T>(
         prompt: string,
         schema: Schema,
-        images?: Express.Multer.File[]
+        files?: Express.Multer.File[]
     ): Promise<T> {
         try {
-            const imageParts: Part[] = images?.map((file) => {
+            const fileParts: Part[] = files?.map((file) => {
                 const base64Data = file.buffer
                     ? file.buffer.toString('base64')
                     : fs.readFileSync(file.path).toString('base64');
@@ -55,13 +56,14 @@ export class AiService {
             }) ?? [];
 
             const result = await this.model.generateContent({
-                contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
+                contents: [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }],
                 generationConfig: {
                     responseMimeType: 'application/json',
                     responseSchema: schema,
+                    temperature: 0.1,
                 },
             });
-    
+
             return JSON.parse(result.response.text()) as T;
         } catch (error) {
             console.error('Gemini API Error details:', error);
