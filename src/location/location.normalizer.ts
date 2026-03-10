@@ -35,8 +35,8 @@ function hasType(components: any[], type: string): boolean {
 
 function extractCity(components: any[]): string | null {
   return (
-    getComponent(components, 'sublocality_level_1') || // Спробуйте цей пріоритет
     getComponent(components, 'locality') ||
+    getComponent(components, 'sublocality_level_1') ||
     getComponent(components, 'postal_town') ||
     getComponent(components, 'administrative_area_level_2')
   );
@@ -61,34 +61,40 @@ function extractSettlementType(
 export function normalizeGooglePlace(result: any, displayName?: string): NormalizedLocation {
   const components = result.address_components ?? [];
   const countryCode = getComponent(components, 'country', 'short_name');
-  
+
   const street = extractStreet(components);
   const house = extractHouse(components);
-  
+
   // --- НОВА ЛОГІКА ВИБОРУ МІСТА (City) ---
   let city: string | null = null;
 
-  // 1. Пріоритет №1: Назва, яку юзер бачив у списку (напр. "Синдос, Греція")
-  if (displayName && !street) {
-    // Беремо текст до першої коми (щоб відсікти країну/область)
-    city = displayName.split(',')[0].trim();
-  } 
+  // 1. Пріоритет №1: Офіційні компоненти (locality завжди краще ніж displayName)
+  city = extractCity(components);
 
-  // 2. Пріоритет №2: Якщо displayName немає, або він "кривий", беремо name з Google Details
-  if (!city || city === 'Текелиево') {
-    city = (result.name && result.name !== 'Текелиево') ? result.name : null;
-  }
-  
-  // 3. Пріоритет №3: Шукаємо в офіційних компонентах (locality)
-  if (!city || city === 'Текелиево') {
-     city = extractCity(components);
+  // 2. Пріоритет №2: Назва, яку юзер бачив у списку (якщо не знайшли в компонентах)
+  if (!city && displayName) {
+    // Якщо є стріт, то в displayName може бути "вул. Наукова, Львів", беремо останню частину?
+    // Ні, краще брати те що є, але якщо ми шукаємо місто - то displayName зазвичай теж місто.
+    const parts = displayName.split(',');
+    city = parts[0].trim();
   }
 
-  // 4. Пріоритет №4: Якщо всюди "Текелиево", тягнемо з formatted_address
+  // 3. Пріоритет №3: Якщо все ще порожньо, беремо name з Google Details
+  // АЛЕ тільки якщо це не схоже на адресу (немає вулиці)
+  if (!city || city === 'Текелиево') {
+    if (!street && result.name && result.name !== 'Текелиево') {
+      city = result.name;
+    }
+  }
+
+  // 4. Пріоритет №4: Якщо всюди "Текелиево" або null, тягнемо з formatted_address
   if ((!city || city === 'Текелиево') && result.formatted_address) {
-    const firstPart = result.formatted_address.split(',')[0].trim();
-    if (!/\d/.test(firstPart)) { // перевірка, що це не номер будинку
-       city = firstPart;
+    const parts = result.formatted_address.split(',');
+    // Якщо є вулиця, то місто зазвичай в другій частині? 
+    // Насправді краще покладатися на компоненти вище.
+    const firstPart = parts[0].trim();
+    if (!/\d/.test(firstPart)) {
+      city = firstPart;
     }
   }
 
@@ -99,11 +105,16 @@ export function normalizeGooglePlace(result: any, displayName?: string): Normali
   const lat = result.geometry?.location?.lat ?? null;
   const lng = result.geometry?.location?.lng ?? null;
 
+  const town = getComponent(components, 'town');
+  const village = getComponent(components, 'village');
+
   const baseLocation = {
     street,
     house,
     postCode,
     city,
+    town,
+    village,
     settlementType,
     lat,
     lng,
@@ -114,7 +125,7 @@ export function normalizeGooglePlace(result: any, displayName?: string): Normali
     const isKyiv = city === 'Київ';
     const finalRegion = isKyiv ? 'Київська область' : region;
     let regionCode: string | null = null;
-    
+
     if (isKyiv) {
       regionCode = 'UA-30';
     } else if (finalRegion && UA_REGION_CODES[finalRegion]) {
@@ -124,7 +135,7 @@ export function normalizeGooglePlace(result: any, displayName?: string): Normali
     return {
       ...baseLocation,
       region: finalRegion,
-      regionCode, 
+      regionCode,
       country: 'Україна',
       countryCode: 'UA',
     };
