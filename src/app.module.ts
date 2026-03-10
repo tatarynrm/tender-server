@@ -43,6 +43,7 @@ import { DatabaseMonitorService } from './database/database-monitor.service';
 import { AdminUserModule } from './admin/admin-user/admin-user.module';
 import { DownloadModule } from './download/download.module';
 import { CronTasksModule } from './crons-tasks/crons-tasks.module';
+import { SuggestionModule } from './suggestion/suggestion.module';
 
 
 
@@ -126,7 +127,8 @@ import { CronTasksModule } from './crons-tasks/crons-tasks.module';
     SocketModule,
     SystemsModule,
     DownloadModule,
-   CronTasksModule
+   CronTasksModule,
+   SuggestionModule
   ],
   controllers: [],
   providers: [
