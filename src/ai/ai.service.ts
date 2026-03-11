@@ -20,8 +20,9 @@ export class AiService {
             console.log('Gemini AI initialized with key length:', apiKey.length);
         }
         this.genAI = new GoogleGenerativeAI(apiKey || '');
-        // Використовуємо 1.5-flash, бо у 2.0-flash ліміти на безкоштовному тарифі жорсткіші
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+        // Використовуємо 1.5-flash або 2.0-flash, залежно від доступності. 
+        // 2.5 не існує, 2.0-flash є швидким і дешевим.
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     }
 
     private async preprocessFile(file: Express.Multer.File): Promise<Part> {
@@ -113,7 +114,16 @@ export class AiService {
                 },
             });
 
-            return JSON.parse(result.response.text()) as T;
+            const text = result.response.text();
+            // Gemini іноді може повернути текст у блоку ```json ... ``` навіть при вказаному mimeType
+            const cleanJson = text.replace(/^```json/, '').replace(/```$/, '').trim();
+            
+            try {
+                return JSON.parse(cleanJson) as T;
+            } catch (parseError) {
+                console.error('Failed to parse AI response as JSON:', text);
+                throw new Error('AI повернув некоректний формат JSON');
+            }
         } catch (error) {
             console.error('Gemini API Error details:', error);
             throw error;
