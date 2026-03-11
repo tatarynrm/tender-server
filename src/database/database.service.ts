@@ -71,4 +71,8 @@ export class DatabaseService {
     const client = await this.pool.connect();
     return client;
   }
+
+  public async query(query: string, params: any[] = []) {
+    return this.pool.query(query, params);
+  }
 }

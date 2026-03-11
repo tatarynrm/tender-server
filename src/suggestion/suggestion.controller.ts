@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { SuggestionService } from './suggestion.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 
@@ -14,5 +14,10 @@ export class SuggestionController {
   @Post('save')
   public async suggestionSave(@Body() dto: any) {
     return this.suggestionService.saveSuggestion(dto);
+  }
+
+  @Get('list')
+  public async suggestionList() {
+    return this.suggestionService.getSuggestions();
   }
 }
