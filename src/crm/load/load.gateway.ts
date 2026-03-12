@@ -106,4 +106,12 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
       '+inf',
     );
   }
+
+  // Новий функціонал для адмін-сповіщень
+  sendAdminNotification(payload: {
+    message: string;
+    type: 'warning' | 'advice' | 'request';
+  }) {
+    this.server.emit('admin_notification', payload);
+  }
 }

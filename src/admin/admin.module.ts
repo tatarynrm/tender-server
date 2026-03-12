@@ -5,18 +5,19 @@ import { UserService } from 'src/user/user.service';
 import { MailService } from 'src/libs/common/mail/mail.service';
 import { MailModule } from 'src/libs/common/mail/mail.module';
 
-import { APP_GUARD, RouterModule } from '@nestjs/core';
+
 
 import { AdminCompanyModule } from './admin-company/admin-company.module';
 import { AdminUserModule } from './admin-user/admin-user.module';
+import { LoadModule } from 'src/crm/load/load.module';
 
 
 
 
 @Module({
-  imports: [MailModule, AdminCompanyModule, AdminUserModule],
+  imports: [MailModule, AdminCompanyModule, AdminUserModule, LoadModule],
   controllers: [AdminController],
   providers: [AdminService, UserService, MailService],
   exports: [AdminService],
 })
-export class AdminModule {}
+export class AdminModule { }

@@ -46,6 +46,7 @@ import { CronTasksModule } from './crons-tasks/crons-tasks.module';
 import { SuggestionModule } from './suggestion/suggestion.module';
 import { AiModule } from './ai/ai.module';
 import { LogisticsModule } from './ai/logistics/logistics.module';
+import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { LogisticsModule } from './ai/logistics/logistics.module';
     SuggestionModule,
     AiModule,
     LogisticsModule,
+    DatabaseOracleModule,
   ],
   controllers: [],
   providers: [

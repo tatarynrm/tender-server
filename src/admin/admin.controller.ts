@@ -1,24 +1,26 @@
-import { Controller, Post, Param } from '@nestjs/common';
-import { UserGateway } from 'src/user/user.gateway';
+import { Controller, Post, Param, Body } from '@nestjs/common';
+import { LoadGateway } from 'src/crm/load/load.gateway';
 import { UserService } from 'src/user/user.service';
 
-@Controller('admin')
+@Controller()
 export class AdminController {
   constructor(
     private readonly usersService: UserService,
-    // private readonly userGateway: UserGateway,
-  ) {}
+    private readonly loadGateway: LoadGateway,
+  ) { }
 
   @Post('block/:id')
   async blockUser(@Param('id') id: string) {
     const userId = Number(id);
-
-    // --- міняємо статус в базі ---
     await this.usersService.blockUser(userId);
-
-    // --- відправляємо подію через сокет ---
-    // this.userGateway.blockUser(userId);
-
     return { status: 'ok', message: `User ${userId} blocked` };
   }
+
+  @Post('notification')
+  async sendNotification(@Body() body: { message: string, type: 'warning' | 'advice' | 'request' }) {
+    this.loadGateway.sendAdminNotification(body);
+    return { status: 'ok', message: 'Notification sent to all managers' };
+  }
 }
+
+
