@@ -6,57 +6,56 @@ import { ValidationPipe } from '@nestjs/common';
 import { RedisClientType } from 'redis';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
-import * as express from 'express';
-import { RedisIoAdapter } from './libs/common/adapters/redis-io.adapter';
 import { json, urlencoded } from 'express';
-import { WinstonModule, utilities as nestWinstonModuleUtilities } from 'nest-winston';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as winston from 'winston';
 import { loggerConfig } from './libs/common/logger/logger.config';
+import { RedisIoAdapter } from './libs/common/adapters/redis-io.adapter';
 
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
 async function bootstrap() {
-  // ✅ Додаємо конфігурацію логера Winston при створенні додатку
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: loggerConfig
+    logger: loggerConfig,
   });
 
-  // Конфігурація документації
+  const config = app.get(ConfigService);
+  const isDev = config.get<string>('NODE_ENV') === 'development';
+
   const configSwagger = new DocumentBuilder()
-    .setTitle('ICT NEW TENDER PLATFORM ALL IN ONE')
-    .setDescription('Документація API для логістичної системи')
+    .setTitle('ICT TENDER PLATFORM')
+    .setDescription('API Documentation for Logistics System')
     .setVersion('1.0')
-    // .addTag('admin') // Можна додати теги для групування
-    // .addBearerAuth() // Якщо використовуєте JWT авторизацію
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, configSwagger);
-
-  // Шлях, за яким буде доступна документація (наприклад, http://localhost:7000/docs)
   SwaggerModule.setup('noris-docs', app, document);
-  
+
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
 
-  const config = app.get(ConfigService);
   const redisClient = app.get<RedisClientType>('REDIS_CLIENT');
-  const isDev = process.env.NODE_ENV === 'development';
 
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')));
   app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidNonWhitelisted: true }),
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
   );
 
+  const allowedOrigins = config.get<string>('ALLOWED_ORIGINS')?.split(',') || [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://tender.ict.lviv.ua'
+  ];
+
   app.enableCors({
-    origin: [
-      'https://tender.ict.lviv.ua',
-      'http://localhost:3000',
-      'http://localhost:3001', // Забрав зайвий символ ` після 3001
-    ],
+    origin: allowedOrigins,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
@@ -75,7 +74,7 @@ async function bootstrap() {
       proxy: true,
       secret: config.getOrThrow<string>('SESSION_SECRET'),
       name: config.getOrThrow<string>('SESSION_NAME'),
-      resave: true,
+      resave: false,
       saveUninitialized: false,
       rolling: true,
       cookie: {
@@ -83,7 +82,7 @@ async function bootstrap() {
         secure: !isDev,
         sameSite: isDev ? 'lax' : 'none',
         maxAge: THIRTY_DAYS,
-        domain: isDev ? undefined : '.ict.lviv.ua',
+        domain: config.get<string>('SESSION_DOMAIN'),
       },
       store: new RedisStore({
         client: redisClient,
@@ -93,10 +92,9 @@ async function bootstrap() {
     }),
   );
 
-  // Збільшуємо ліміти
   app.use(json({ limit: '100mb' }));
   app.use(urlencoded({ limit: '100mb', extended: true }));
-  
+
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
@@ -105,7 +103,8 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  await app.listen(config.getOrThrow<number>('APPLICATION_PORT'), '0.0.0.0');
+  const port = config.get<number>('APPLICATION_PORT') || 7000;
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap();

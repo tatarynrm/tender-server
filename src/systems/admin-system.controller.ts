@@ -1,6 +1,6 @@
 // src/systems/admin-system.controller.ts
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { SystemGateway } from './systems.gateaway';
+import { SystemGateway } from './systems.gateway';
 
 
 @Controller('admin/system')

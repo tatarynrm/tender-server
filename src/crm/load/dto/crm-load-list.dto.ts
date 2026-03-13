@@ -99,4 +99,7 @@ export class CrmLoadListDto {
   @ApiPropertyOptional()
   @IsBooleanQuery()
   active?: boolean;
+  @ApiPropertyOptional()
+  @IsBooleanQuery()
+  archive?: boolean;
 }

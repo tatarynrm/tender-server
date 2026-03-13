@@ -9,19 +9,15 @@ export class LogisticsParserService {
 
     async parseCargo(text: string, images?: Express.Multer.File[], audio?: Express.Multer.File[]) {
         const today = new Date().toISOString().split('T')[0];
-        const prompt = `Ти — висококваліфікований логіст-аналітик. Твоя мета — витягти дані про вантаж. Сьогодні ${today}.
-        
-        КРИТИЧНІ ПРАВИЛА:
-        1. ОБОВ'ЯЗКОВО поверни масив 'loads'. Якщо в тексті є хоча б одна згадка маршруту — створи об'єкт.
-        2. РОЗПІЗНАВАННЯ АДРЕС: Якщо вказано "Львів Наукова 37", то місто — Львів, вулиця — Наукова, будинок — 37.
-        3. ЦІНА ТА ВАЛЮТА: Якщо вказано "грн" — валюта "UAH". "50900 грн" -> price: 50900, currency: "UAH".
-        4. ВАНТАЖ: "борошно на палетах 20 тон" — cargoName: "Борошно на палетах", weight: 20.
-        5. ТРАНСПОРТ: "теннт" або подібне — це тип "Тент". "20 тон" — це вага (weight).
-        6. МОВА: ПЕРЕКЛАДАЙ ВСЕ НА УКРАЇНСЬКУ.
-        7. ФОРМАТ: Тільки JSON.
-        
-        ВХІДНИЙ ТЕКСТ: 
-        """${text}"""`;
+        const prompt = `Експерт-логіст. Витягни дані про вантажі (масив 'loads'). Дата: ${today}.
+        ПРАВИЛА:
+        - Адреси: розбивай на місто, вулицю, будинок (напр. "Київ" (city), "Бажана" (street), "12" (house)). НЕ пиши номер будинку в вулицю!
+        - Гроші: "грн" -> currency: "UAH". "50к" -> price: 50000.
+        - Транспорт: "20т" - це вага. "Тент/Реф" - це truckTypes.
+        - Якщо є температурний режим це Реф.
+        - Дати: dateLoad (початок), dateLoad2 (кінець завантаження), dateUnload.
+        - Мова: ПЕРЕКЛАДАЙ НА УКРАЇНСЬКУ.
+        ВХІД: """${text}"""`;
 
         const allFiles = [...(images || []), ...(audio || [])];
 
@@ -30,7 +26,7 @@ export class LogisticsParserService {
             properties: {
                 address: { type: SchemaType.STRING, description: 'Повна адреса або місто' },
                 city: { type: SchemaType.STRING, description: 'Місто' },
-                country: { type: SchemaType.STRING, description: 'Країна ISO' },
+                ids_country: { type: SchemaType.STRING, description: 'Країна ISO (напр. UA, PL)' },
                 lat: { type: SchemaType.NUMBER },
                 lon: { type: SchemaType.NUMBER },
                 ids_region: { type: SchemaType.STRING, description: 'ISO код регіону (наприклад, UA-46 для Львова або UA-37)' },
@@ -52,6 +48,7 @@ export class LogisticsParserService {
                 truckCount: { type: SchemaType.NUMBER },
                 truckTypes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
                 dateLoad: { type: SchemaType.STRING },
+                dateLoad2: { type: SchemaType.STRING },
                 dateUnload: { type: SchemaType.STRING },
                 isCollective: { type: SchemaType.BOOLEAN },
                 isPriceRequest: { type: SchemaType.BOOLEAN },

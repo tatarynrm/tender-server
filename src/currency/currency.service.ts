@@ -1,87 +1,52 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import axios from 'axios';
-import { Pool } from 'pg';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class CurrencyService implements OnModuleInit {
   private readonly logger = new Logger(CurrencyService.name);
 
-  // 1. ВИКОНУЄТЬСЯ ПРИ СТАРТІ СЕРВЕРА
+  constructor(
+    @InjectQueue('currency-tasks') private readonly currencyQueue: Queue,
+  ) { }
+
   async onModuleInit() {
-    this.logger.log('🚀 Server started. Initial fetch of currency rates...');
-    await this.fetchCurrencyRates();
+    this.logger.log('📡 Налаштування масштабованих задач для валют...');
+
+    // 1. Одноразовий запуск при старті (лише один раз на весь кластер)
+    // Використовуємо jobId, щоб запобігти дублюванню
+    await this.currencyQueue.add(
+      'fetch-nbu-rates',
+      {},
+      { jobId: `initial-fetch-${new Date().toISOString().split('T')[0]}` }
+    );
+
+
+    // 2. Розклад: 07:50
+    await this.addRepeatableJob('morning-early', '0 50 7 * * *');
+
+    // 3. Розклад: 09:00
+    await this.addRepeatableJob('morning', '0 0 9 * * *');
+
+    // 4. Розклад: 18:00
+    await this.addRepeatableJob('evening-seven', '0 0 18 * * *');
+
+    // 5. Розклад: 23:00
+    await this.addRepeatableJob('evening', '0 0 23 * * *');
+
+    this.logger.log('✅ Всі валютні крони переведено на масштабовану чергу BullMQ');
   }
 
-  // 2. НОВИЙ РОЗКЛАД: 07:50
-  @Cron('0 50 7 * * *', {
-    timeZone: 'Europe/Kyiv',
-  })
-  async handleMorningEarlyRates() {
-    this.logger.log('Fetching currency rates at 07:50...');
-    await this.fetchCurrencyRates();
-  }
-
-  // 3. НОВИЙ РОЗКЛАД: 18:00
-  @Cron('0 0 18 * * *', {
-    timeZone: 'Europe/Kyiv',
-  })
-  async handleEveningSevenRates() {
-    this.logger.log('Fetching currency rates at 19:00...');
-    await this.fetchCurrencyRates();
-  }
-
-  // --- Ваші існуючі крони ---
-
-  @Cron('0 0 9 * * *', { timeZone: 'Europe/Kyiv' })
-  async handleMorningRates() {
-    await this.fetchCurrencyRates();
-  }
-
-  @Cron('0 0 23 * * *', { timeZone: 'Europe/Kyiv' })
-  async handleEveningRates() {
-    await this.fetchCurrencyRates();
-  }
-
-  // 🔹 Основна логіка запиту курсів валют
-  private async fetchCurrencyRates() {
-    try {
-      const url = `https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json`;
-      const { data } = await axios.get(url);
-
-      this.logger.log(`Отримано ${data.length} курсів валют`);
-
-      await this.saveRatesToDb(data);
-      this.logger.log(`✅ Курс валют успішно оброблено`);
-    } catch (error) {
-      this.logger.error('Помилка при отриманні курсів валют', error.message);
-    }
-  }
-
-  // 🔹 Збереження даних у БД
-  private async saveRatesToDb(data: any[]) {
-    // Рекомендується винести конфігурацію пула в окремий сервіс або модуль,
-    // щоб не створювати новий пул при кожному виклику!
-    const pool = new Pool({
-      host: process.env.POSTGRES_HOST,
-      port: +process.env.POSTGRES_PORT!,
-      user: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
-      database: process.env.POSTGRES_DB,
-    });
-
-    try {
-      const res = await pool.query(`CALL run($1, $2, $3, $4)`, [
-        'valut_rate_set_by_array',
-        {},
-        JSON.stringify(data),
-        {},
-      ]);
-      this.logger.log('DB Response processed');
-    } catch (error) {
-      this.logger.error('Помилка при збереженні курсів у БД', error.message);
-    } finally {
-      await pool.end();
-    }
+  private async addRepeatableJob(name: string, cron: string) {
+    await this.currencyQueue.add(
+      'fetch-nbu-rates',
+      {},
+      {
+        repeat: { pattern: cron, tz: 'Europe/Kyiv' },
+        removeOnComplete: true,
+        removeOnFail: 100,
+      }
+    );
   }
 }

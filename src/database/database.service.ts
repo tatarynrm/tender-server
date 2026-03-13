@@ -40,8 +40,9 @@ export class DatabaseService {
     resultObject: any = {},
   ) {
     const user = this.cls.get('user'); // Дістаємо без Scope.REQUEST
-
-    const authObject = { id_usr: user?.id, id_company: user?.company.id };
+    const authObject = user?.id
+      ? { id_usr: user.id, id_company: user.company?.id }
+      : {};
 
     console.log(authObject, 'OBJECTY IN AUTH 44 line database service');
 

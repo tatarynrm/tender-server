@@ -1,22 +1,19 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { TenderCronService } from './services/tender-cron.service';
-import { TenderGateway } from 'src/tender/tender.gateway';
-
-// import { UsersModule } from '../users/users.module';
+import { TenderProcessor } from './processors/tender.processor';
+import { TenderModule } from 'src/tender/tender.module';
 
 @Module({
-  // Якщо вашим крон-сервісам потрібні інші модулі (наприклад, для роботи з БД), 
-  // імпортуйте їх сюди:
   imports: [
-    // UsersModule,
-    // EmailsModule
+    // Реєструємо чергу для цього модуля
+    BullModule.registerQueue({
+      name: 'tender-tasks',
+    }),
+    // Потрібен TenderGateway, який зазвичай в TenderModule або окремо
+    TenderModule,
   ],
-  // Реєструємо всі наші крон-сервіси як провайдери
-  providers: [
-    TenderCronService,
-    TenderGateway
-  
-  ],
-  exports:[CronTasksModule]
+  providers: [TenderCronService, TenderProcessor],
+  exports: [TenderCronService],
 })
 export class CronTasksModule {}

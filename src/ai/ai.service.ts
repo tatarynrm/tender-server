@@ -117,7 +117,7 @@ export class AiService {
             const text = result.response.text();
             // Gemini іноді може повернути текст у блоку ```json ... ``` навіть при вказаному mimeType
             const cleanJson = text.replace(/^```json/, '').replace(/```$/, '').trim();
-            
+
             try {
                 return JSON.parse(cleanJson) as T;
             } catch (parseError) {

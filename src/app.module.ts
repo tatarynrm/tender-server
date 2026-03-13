@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { IS_DEV_ENV } from './libs/common/utils/is-dev.util';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
@@ -11,7 +11,6 @@ import { TwoFactorAuthModule } from './auth/two-factor-auth/two-factor-auth.modu
 import { DatabaseModule } from './database/database.module';
 import { RouterModule } from '@nestjs/core';
 import { CompanyModule } from './company/company.module';
-import { OraIctModule } from './ora-ict/ora-ict.module';
 import { CrmModule } from './crm/crm.module';
 import { ExternalServicesModule } from './external-services/external-services.module';
 import { NominatimModule } from './external-services/nominatim/nominatim.module';
@@ -34,9 +33,9 @@ import { MulterConfigService } from './config/multer.config.service';
 import { CocktailsModule } from './cocktails/cocktails.module';
 import { FileCleanupService } from './common/services/file-cleanup.service';
 import { ClsModule } from 'nestjs-cls';
+import { BullModule } from '@nestjs/bullmq';
 
 import { AdminCompanyModule } from './admin/admin-company/admin-company.module';
-
 import { SocketModule } from './socket/socket.module';
 import { SystemsModule } from './systems/systems.module';
 import { DatabaseMonitorService } from './database/database-monitor.service';
@@ -47,6 +46,7 @@ import { SuggestionModule } from './suggestion/suggestion.module';
 import { AiModule } from './ai/ai.module';
 import { LogisticsModule } from './ai/logistics/logistics.module';
 import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -59,9 +59,21 @@ import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
       ignoreEnvFile: !IS_DEV_ENV,
       isGlobal: true,
     }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('REDIS_HOST'),
+          port: config.get<number>('REDIS_PORT'),
+          username: config.get<string>('REDIS_USER'),
+          password: config.get<string>('REDIS_PASSWORD'),
+        },
+      }),
+    }),
     MulterModule.registerAsync({
       useClass: MulterConfigService,
     }),
+    HealthModule,
     AdminModule,
     AuthModule,
     UserModule,
@@ -72,7 +84,6 @@ import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
     TwoFactorAuthModule,
     DatabaseModule,
     CompanyModule,
-    OraIctModule,
     CrmModule,
     ExternalServicesModule,
     NominatimModule,
@@ -115,4 +126,4 @@ import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
   ],
   exports: [DatabaseModule],
 })
-export class AppModule {}
+export class AppModule { }
