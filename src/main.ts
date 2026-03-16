@@ -77,20 +77,20 @@ async function bootstrap() {
       resave: false,
       saveUninitialized: false,
       rolling: true,
-      // cookie: {
-      //   httpOnly: true,
-      //   secure: !isDev,
-      //   sameSite: isDev ? 'lax' : 'none',
-      //   maxAge: THIRTY_DAYS,
-      //   domain: config.get<string>('SESSION_DOMAIN'),
-      // },
       cookie: {
         httpOnly: true,
-        secure: false, // обов'язково для HTTPS
-        sameSite: 'lax', // краще для безпеки та сумісності
+        secure: !isDev,
+        sameSite: isDev ? 'lax' : 'none',
         maxAge: THIRTY_DAYS,
-        // domain: '.ict.lviv.ua', // крапка на початку дозволяє куки для всіх піддоменів
+        domain: config.get<string>('SESSION_DOMAIN'),
       },
+      // cookie: {
+      //   httpOnly: true,
+      //   secure: false, // обов'язково для HTTPS
+      //   sameSite: 'lax', // краще для безпеки та сумісності
+      //   maxAge: THIRTY_DAYS,
+      //   // domain: '.ict.lviv.ua', // крапка на початку дозволяє куки для всіх піддоменів
+      // },
       store: new RedisStore({
         client: redisClient,
         prefix: config.getOrThrow<string>('SESSION_FOLDER'),
