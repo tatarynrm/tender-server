@@ -72,9 +72,6 @@ import { FilesModule } from './files/files.module';
         },
       }),
     }),
-    MulterModule.registerAsync({
-      useClass: MulterConfigService,
-    }),
     HealthModule,
     AdminModule,
     AuthModule,
