@@ -13,6 +13,8 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { loggerConfig } from './libs/common/logger/logger.config';
 import { RedisIoAdapter } from './libs/common/adapters/redis-io.adapter';
 import { existsSync, mkdirSync } from 'fs';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { HttpAdapterHost } from '@nestjs/core';
 
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
@@ -45,7 +47,11 @@ async function bootstrap() {
     next();
   });
 
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
+
   app.use(cookieParser(config.getOrThrow<string>('COOKIES_SECRET')));
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -54,7 +60,7 @@ async function bootstrap() {
     }),
   );
 
-  const allowedOrigins = config.get<string>('ALLOWED_ORIGINS')?.split(',') || [
+  const allowedOrigins = config.getOrThrow<string>('ALLOWED_ORIGINS')?.split(',') || [
     'http://localhost:3000',
     'http://localhost:3001',
     'https://tender.ict.lviv.ua'
