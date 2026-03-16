@@ -59,15 +59,15 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'Accept',
-      'X-Requested-With',
-      'Pragma',
-      'Cache-Control',
-      'Expires',
-    ],
+    // allowedHeaders: [
+    //   'Content-Type',
+    //   'Authorization',
+    //   'Accept',
+    //   'X-Requested-With',
+    //   'Pragma',
+    //   'Cache-Control',
+    //   'Expires',
+    // ],
   });
 
   app.use(
