@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, Part, Schema } from '@google/generative-ai';
 import * as fs from 'fs';
 import sharp from 'sharp';
-import pdf from 'pdf-parse';
+import * as pdf from 'pdf-parse';
 
 import { ConfigService } from '@nestjs/config';
 
@@ -18,44 +18,46 @@ export class AiService {
             console.error('GEMINI_API_KEY is missing in configuration!');
         }
         this.genAI = new GoogleGenerativeAI(apiKey || '');
-        // Використовуємо 1.5-flash або 2.0-flash, залежно від доступності. 
-        // 2.5 не існує, 2.0-flash є швидким і дешевим.
-        this.model = this.genAI.getGenerativeModel({ model: 'emini-2.5-flash-lite' });
+        // gemini-2.0-flash - найсучасніша і стабільна безкоштовна модель
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     }
 
     private async preprocessFile(file: Express.Multer.File): Promise<Part> {
         try {
-            const buffer = file.buffer || fs.readFileSync(file.path);
+            const buffer = file.buffer;
 
-            // Оптимізація зображень: зменшуємо роздільну здатність для економії токенів
-            if (file.mimetype.startsWith('image/')) {
-                const optimizedBuffer = await sharp(buffer)
-                    .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-
-                    .jpeg({ quality: 80 })
-                    .toBuffer();
-
-
-                return {
-                    inlineData: {
-                        data: optimizedBuffer.toString('base64'),
-                        mimeType: 'image/jpeg',
-                    },
-                };
+            if (!buffer) {
+                throw new Error(`Buffer is missing for file: ${file.originalname}`);
             }
 
-            // Для PDF можна було б витягувати текст, але Gemini сам добре працює з PDF.
-            // Проте великі PDF споживають багато токенів (кожна сторінка = як фото).
-            // Якщо PDF текстовий, можна було б передавати лише текст, щоб зекономити в 100 разів.
+            // Оптимізація зображень
+            if (file.mimetype.startsWith('image/')) {
+                try {
+                    const optimizedBuffer = await sharp(buffer)
+                        .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+                        .jpeg({ quality: 80 })
+                        .toBuffer();
+
+                    return {
+                        inlineData: {
+                            data: optimizedBuffer.toString('base64'),
+                            mimeType: 'image/jpeg',
+                        },
+                    };
+                } catch (sharpError) {
+                    console.warn(`Sharp optimization failed for ${file.originalname}, using original:`, sharpError.message);
+                    // Якщо sharp зламався (наприклад, на Ubuntu), просто йдемо далі і шлемо оригінал
+                }
+            }
+
+            // PDF text extraction (optional)
             if (file.mimetype === 'application/pdf') {
                 try {
-                    // pdf-parse can be tricky with imports, using await pdf(buffer)
                     // @ts-ignore
-                    const pdfData = await pdf(buffer);
-                    if (pdfData.text && pdfData.text.trim().length > 100) {
-                    }
+                    const pdfData = await (pdf as any)(buffer);
+                    // Тут можна було б додати логіку лише тексту, але поки шлемо файл
                 } catch (pdfError) {
-                    console.warn(`Could not parse PDF text for ${file.originalname}, sending as-is`, pdfError);
+                    console.warn(`PDF parse log for ${file.originalname}:`, pdfError.message);
                 }
             }
 
@@ -66,15 +68,18 @@ export class AiService {
                 },
             };
         } catch (error) {
-            console.error(`Error preprocessing file ${file.originalname}:`, error);
-            // У разі помилки повертаємо як є
-            const buffer = file.buffer || fs.readFileSync(file.path);
-            return {
-                inlineData: {
-                    data: buffer.toString('base64'),
-                    mimeType: file.mimetype,
-                },
-            };
+            console.error(`Critical error preprocessing file ${file.originalname}:`, error.message);
+
+            // Якщо все пішло не так, але у нас є хоча б буфер
+            if (file.buffer) {
+                return {
+                    inlineData: {
+                        data: file.buffer.toString('base64'),
+                        mimeType: file.mimetype,
+                    },
+                };
+            }
+            throw error;
         }
     }
 
