@@ -6,14 +6,17 @@ import { AiModule } from '../ai.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from '../../config/multer.config.service';
 
+import { memoryStorage } from 'multer';
+
 @Module({
   imports: [
     AiModule,
-    MulterModule.registerAsync({
-      useClass: MulterConfigService,
+    MulterModule.register({
+      storage: memoryStorage(),
+      limits: { fileSize: 1024 * 1024 * 100 }, // 100MB
     }),
   ],
   controllers: [LogisticsController],
-  providers: [LogisticsService, LogisticsParserService, MulterConfigService],
+  providers: [LogisticsService, LogisticsParserService],
 })
 export class LogisticsModule { }

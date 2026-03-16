@@ -8,15 +8,18 @@ import { LoadGateway } from 'src/crm/load/load.gateway';
 import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from '../config/multer.config.service';
 
+import { memoryStorage } from 'multer';
+
 @Module({
   imports: [
     UserModule,
-    MulterModule.registerAsync({
-      useClass: MulterConfigService,
+    MulterModule.register({
+      storage: memoryStorage(),
+      limits: { fileSize: 1024 * 1024 * 100 }, // 100MB
     }),
   ],
   controllers: [TenderController],
-  providers: [TenderService, UserService, TenderGateway, LoadGateway, MulterConfigService],
+  providers: [TenderService, UserService, TenderGateway, LoadGateway],
   exports: [TenderGateway],
 })
 export class TenderModule {}

@@ -39,8 +39,9 @@ export class TenderController {
     @UploadedFiles() files: Express.Multer.File[],
     @Session() session: any
   ) {
-
-    console.log('ANYTHING LOG IN 43', '43', 'TENMDER');
+    console.log('--- REQUEST REACHED TENDER CONTROLLER ---');
+    console.log('Body keys:', Object.keys(body || {}));
+    console.log('Files count:', files?.length || 0);
 
     /**
      * Reverting to any temporarily as requested.
