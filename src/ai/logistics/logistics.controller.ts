@@ -15,6 +15,9 @@ export class LogisticsController {
     @Body('text') text: string,
     @UploadedFiles() files: { images?: Express.Multer.File[], audio?: Express.Multer.File[] }
   ) {
+    console.log(text, 'text 18 ai controller');
+    console.log(files, 'files 19 ai controller');
+    console.log('TEXT -f ilessss 20 ai controller');
 
     if (!files) {
       throw new BadRequestException('Файл не передано або неправильний Content-Type --------------------------------------');
