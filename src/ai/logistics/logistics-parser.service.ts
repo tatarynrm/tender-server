@@ -9,7 +9,8 @@ export class LogisticsParserService {
 
     async parseCargo(text: string, images?: Express.Multer.File[], audio?: Express.Multer.File[]) {
         const today = new Date().toISOString().split('T')[0];
-        const prompt = `Експерт-логіст. Витягни дані про вантажі (масив 'loads'). Дата: ${today}.
+        const prompt = `Експерт-логіст. Витягни дані про вантажі (масив 'loads') з наданого тексту та/або ПРИКРІПЛЕНИХ ФАЙЛІВ (фото документів, скріншоти, аудіо).
+        Дата: ${today}.
         ПРАВИЛА:
         - Адреси: розбивай на місто, вулицю, будинок (напр. "Київ" (city), "Бажана" (street), "12" (house)). НЕ пиши номер будинку в вулицю!
         - Гроші: "грн" -> currency: "UAH". "50к" -> price: 50000.
@@ -17,7 +18,8 @@ export class LogisticsParserService {
         - Якщо є температурний режим це Реф.
         - Дати: dateLoad (початок), dateLoad2 (кінець завантаження), dateUnload.
         - Мова: ПЕРЕКЛАДАЙ НА УКРАЇНСЬКУ.
-        ВХІД: """${text}"""`;
+        ВХІДНИЙ ТЕКСТ: """${text}"""
+        АНАЛІЗУЙ ФОТО ТА АУДІО ЯКЩО ВОНИ Є.`;
 
         const allFiles = [...(images || []), ...(audio || [])];
 

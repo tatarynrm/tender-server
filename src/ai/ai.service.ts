@@ -18,7 +18,10 @@ export class AiService {
         }
         this.genAI = new GoogleGenerativeAI(apiKey || '');
         // gemini-2.0-flash - найсучасніша і стабільна безкоштовна модель
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        this.model = this.genAI.getGenerativeModel({
+            model: 'gemini-2.5-flash',
+            systemInstruction: 'Ти експерт-логіст. Твоє завдання - аналізувати вхідні дані (текст, фото документів, аудіо) та витягувати структуровану інформацію про вантажі. Відповідай ТІЛЬКИ у форматі JSON згідно з наданою схемою. Не додавай жодних пояснень поза JSON.',
+        });
     }
 
     private async preprocessFile(file: Express.Multer.File): Promise<Part> {
@@ -94,13 +97,25 @@ export class AiService {
             });
 
             const text = result.response.text();
-            // Gemini іноді може повернути текст у блоку ```json ... ``` навіть при вказаному mimeType
-            const cleanJson = text.replace(/^```json/, '').replace(/```$/, '').trim();
+            // Покращене очищення JSON для різних моделей
+            const cleanJson = text
+                .replace(/^```json\n?/, '')
+                .replace(/```$/, '')
+                .trim();
 
             try {
                 return JSON.parse(cleanJson) as T;
             } catch (parseError) {
                 console.error('Failed to parse AI response as JSON:', text);
+                // Спробуємо витягти JSON якщо він десь всередині тексту
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    try {
+                        return JSON.parse(jsonMatch[0]) as T;
+                    } catch (innerError) {
+                        throw new Error('AI повернув некоректний формат JSON');
+                    }
+                }
                 throw new Error('AI повернув некоректний формат JSON');
             }
         } catch (error) {
