@@ -39,6 +39,9 @@ export class TenderController {
     @UploadedFiles() files: Express.Multer.File[],
     @Session() session: any
   ) {
+
+    console.log('ANYTHING LOG IN 43', '43', 'TENMDER');
+
     /**
      * Reverting to any temporarily as requested.
      */
