@@ -12,6 +12,7 @@ import { join } from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { loggerConfig } from './libs/common/logger/logger.config';
 import { RedisIoAdapter } from './libs/common/adapters/redis-io.adapter';
+import { existsSync, mkdirSync } from 'fs';
 
 const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
@@ -82,7 +83,7 @@ async function bootstrap() {
         secure: !isDev, // true на продакшені (HTTPS), false локально
         sameSite: isDev ? 'lax' : 'none', // 'none' дозволяє крос-доменні куки
         maxAge: THIRTY_DAYS,
-        domain: isDev ? 'localhost' : '.ict.lviv.ua', 
+        domain: isDev ? 'localhost' : '.ict.lviv.ua',
       },
       store: new RedisStore({
         client: redisClient,
@@ -99,7 +100,13 @@ async function bootstrap() {
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
 
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  const uploadDir = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadDir)) {
+    mkdirSync(uploadDir, { recursive: true });
+  }
+
+  // 2. Роздаємо статику
+  app.useStaticAssets(uploadDir, {
     prefix: '/uploads/',
   });
 
