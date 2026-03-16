@@ -20,6 +20,7 @@ const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: loggerConfig,
+    bodyParser: false, // Disabling default parser to use custom limits below
   });
 
   const config = app.get(ConfigService);
@@ -36,7 +37,7 @@ async function bootstrap() {
   SwaggerModule.setup('noris-docs', app, document);
 
   const expressApp = app.getHttpAdapter().getInstance();
-  // expressApp.set('trust proxy', 1);
+  expressApp.set('trust proxy', 1);
 
   const redisClient = app.get<RedisClientType>('REDIS_CLIENT');
 
@@ -59,15 +60,15 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    // allowedHeaders: [
-    //   'Content-Type',
-    //   'Authorization',
-    //   'Accept',
-    //   'X-Requested-With',
-    //   'Pragma',
-    //   'Cache-Control',
-    //   'Expires',
-    // ],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+      'Pragma',
+      'Cache-Control',
+      'Expires',
+    ],
   });
 
   app.use(

@@ -73,6 +73,7 @@ import { FilesModule } from './files/files.module';
       }),
     }),
     MulterModule.registerAsync({
+      isGlobal: true, // Додай цей рядок
       useClass: MulterConfigService,
     }),
     HealthModule,
