@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { Controller, Post, Body, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { LogisticsParserService } from './logistics-parser.service';
 
@@ -15,6 +15,10 @@ export class LogisticsController {
     @Body('text') text: string,
     @UploadedFiles() files: { images?: Express.Multer.File[], audio?: Express.Multer.File[] }
   ) {
+
+    if (!files) {
+      throw new BadRequestException('Файл не передано або неправильний Content-Type --------------------------------------');
+    }
     console.log(text, 'text');
     console.log(files, 'files');
     console.log('TEXT -f ilessss');
