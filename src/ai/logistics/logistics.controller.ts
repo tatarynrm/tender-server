@@ -15,6 +15,11 @@ export class LogisticsController {
     @Body('text') text: string,
     @UploadedFiles() files: { images?: Express.Multer.File[], audio?: Express.Multer.File[] }
   ) {
+    console.log(text, 'text');
+    console.log(files, 'files');
+    console.log('TEXT -f ilessss');
+
+
     return this.parserService.parseCargo(text, files.images, files.audio);
   }
 }

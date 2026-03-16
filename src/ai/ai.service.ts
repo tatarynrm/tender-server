@@ -20,7 +20,7 @@ export class AiService {
         this.genAI = new GoogleGenerativeAI(apiKey || '');
         // Використовуємо 1.5-flash або 2.0-flash, залежно від доступності. 
         // 2.5 не існує, 2.0-flash є швидким і дешевим.
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     }
 
     private async preprocessFile(file: Express.Multer.File): Promise<Part> {
@@ -31,6 +31,7 @@ export class AiService {
             if (file.mimetype.startsWith('image/')) {
                 const optimizedBuffer = await sharp(buffer)
                     .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+
                     .jpeg({ quality: 80 })
                     .toBuffer();
 
