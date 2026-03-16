@@ -60,7 +60,12 @@ async function bootstrap() {
     }),
   );
 
-  const allowedOrigins = config.getOrThrow<string>('ALLOWED_ORIGINS')?.split(',') || [
+  // const allowedOrigins = config.getOrThrow<string>('ALLOWED_ORIGINS')?.split(',') || [
+  //   'http://localhost:3000',
+  //   'http://localhost:3001',
+  //   'https://tender.ict.lviv.ua'
+  // ];
+  const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
     'https://tender.ict.lviv.ua'
