@@ -36,7 +36,7 @@ async function bootstrap() {
   SwaggerModule.setup('noris-docs', app, document);
 
   const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.set('trust proxy', 1);
+  // expressApp.set('trust proxy', 1);
 
   const redisClient = app.get<RedisClientType>('REDIS_CLIENT');
 
