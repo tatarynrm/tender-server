@@ -2,7 +2,6 @@
 import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, Part, Schema } from '@google/generative-ai';
 import * as fs from 'fs';
-import sharp from 'sharp';
 import * as pdf from 'pdf-parse';
 
 import { ConfigService } from '@nestjs/config';
@@ -19,7 +18,7 @@ export class AiService {
         }
         this.genAI = new GoogleGenerativeAI(apiKey || '');
         // gemini-2.0-flash - найсучасніша і стабільна безкоштовна модель
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     }
 
     private async preprocessFile(file: Express.Multer.File): Promise<Part> {
@@ -30,34 +29,13 @@ export class AiService {
                 throw new Error(`Buffer is missing for file: ${file.originalname}`);
             }
 
-            // Оптимізація зображень
-            if (file.mimetype.startsWith('image/')) {
-                try {
-                    const optimizedBuffer = await sharp(buffer)
-                        .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-                        .jpeg({ quality: 80 })
-                        .toBuffer();
-
-                    return {
-                        inlineData: {
-                            data: optimizedBuffer.toString('base64'),
-                            mimeType: 'image/jpeg',
-                        },
-                    };
-                } catch (sharpError) {
-                    console.warn(`Sharp optimization failed for ${file.originalname}, using original:`, sharpError.message);
-                    // Якщо sharp зламався (наприклад, на Ubuntu), просто йдемо далі і шлемо оригінал
-                }
-            }
-
-            // PDF text extraction (optional)
+            // PDF text extraction (optional) check
             if (file.mimetype === 'application/pdf') {
                 try {
                     // @ts-ignore
-                    const pdfData = await (pdf as any)(buffer);
-                    // Тут можна було б додати логіку лише тексту, але поки шлемо файл
+                    await (pdf as any)(buffer);
                 } catch (pdfError) {
-                    console.warn(`PDF parse log for ${file.originalname}:`, pdfError.message);
+                    console.warn(`PDF parse check for ${file.originalname}:`, pdfError.message);
                 }
             }
 
@@ -70,7 +48,6 @@ export class AiService {
         } catch (error) {
             console.error(`Critical error preprocessing file ${file.originalname}:`, error.message);
 
-            // Якщо все пішло не так, але у нас є хоча б буфер
             if (file.buffer) {
                 return {
                     inlineData: {
