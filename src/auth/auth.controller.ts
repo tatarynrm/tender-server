@@ -171,7 +171,6 @@ export class AuthController {
   @Get('me')
   async getProfile(@Req() req: Request, @Res() res: ExpressResponse) {
     const sessionUser = req.session?.userId;
-    console.log(sessionUser, 'SESS USER GET ME 174');
 
     if (!sessionUser) {
       res.clearCookie('centrifuge', { path: '/' });
@@ -180,10 +179,8 @@ export class AuthController {
     }
     // Отримуємо актуальні дані з бази
     const user = await this.userService.findById(sessionUser);
-    console.log(user, 'USER 182');
 
     const { password_hash, ...safeUser } = user;
-    console.log(safeUser, 'SAFE USER');
 
     return res.json(safeUser);
   }

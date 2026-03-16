@@ -16,14 +16,10 @@ import { createClient, RedisClientType } from 'redis';
         const port = configService.get<string>('REDIS_PORT');
 
         const url = `redis://${user}:${password}@${host}:${port}`;
-        console.log('✅ Redis URL:', url); // для перевірки
 
         const client: RedisClientType = createClient({ url });
 
         client.on('error', (err) => console.error('Redis Client Error:', err));
-        client.on('connect', () =>
-          console.log('✅ Redis connected successfully'),
-        );
 
         await client.connect();
         return client;

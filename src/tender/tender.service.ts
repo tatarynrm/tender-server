@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
+import { FilesService } from 'src/files/files.service';
+// import { TenderSaveDto } from './interfaces/tender-save.interface';
 
 import { TenderGateway } from './tender.gateway';
 import {
@@ -14,7 +16,8 @@ export class TenderService {
     private readonly dbservice: DatabaseService,
     private readonly tenderGateway: TenderGateway,
     private readonly loadGateway: LoadGateway,
-  ) {}
+    private readonly filesService: FilesService, // Added this line
+  ) { }
 
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
@@ -77,19 +80,38 @@ export class TenderService {
 
     return result;
   }
-  public async save(dto: any) {
+  public async save(dto: any, files: Express.Multer.File[] = [], id_company?: string | number) {
     const result = await this.dbservice.callProcedure(
       'tender_save',
-
       dto,
-
       {},
     );
+
+    // After saving tender, sync its files
+    try {
+
+      const savedTender = result.content[0];
+      const tenderId = savedTender || savedTender?.id_tender || dto.id;
+
+
+      if (tenderId) {
+        const currentFileIds = Array.isArray(dto.current_file_ids)
+          ? dto.current_file_ids.map(Number)
+          : [];
+
+        await this.filesService.syncFiles('tender', Number(tenderId), currentFileIds, files, id_company);
+      }
+    } catch (fileError) {
+      console.error('Error syncing files for tender:', fileError);
+      // We don't want to fail the whole tender save if file sync fails
+    }
 
     this.tenderGateway.emitToAll('new_tender', result.content[0]);
 
     return result;
   }
+
+
   public async getOne(id: string) {
     const result = await this.dbservice.callProcedure(
       'tender_one_ict',

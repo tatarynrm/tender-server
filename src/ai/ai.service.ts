@@ -16,8 +16,6 @@ export class AiService {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY')?.trim();
         if (!apiKey) {
             console.error('GEMINI_API_KEY is missing in configuration!');
-        } else {
-            console.log('Gemini AI initialized with key length:', apiKey.length);
         }
         this.genAI = new GoogleGenerativeAI(apiKey || '');
         // Використовуємо 1.5-flash або 2.0-flash, залежно від доступності. 
@@ -36,7 +34,6 @@ export class AiService {
                     .jpeg({ quality: 80 })
                     .toBuffer();
 
-                console.log(`Image optimized: ${file.originalname} (${(buffer.length / 1024).toFixed(1)}KB -> ${(optimizedBuffer.length / 1024).toFixed(1)}KB)`);
 
                 return {
                     inlineData: {
@@ -55,7 +52,6 @@ export class AiService {
                     // @ts-ignore
                     const pdfData = await pdf(buffer);
                     if (pdfData.text && pdfData.text.trim().length > 100) {
-                        console.log(`PDF text extracted (${pdfData.text.length} chars) from ${file.originalname}`);
                     }
                 } catch (pdfError) {
                     console.warn(`Could not parse PDF text for ${file.originalname}, sending as-is`, pdfError);

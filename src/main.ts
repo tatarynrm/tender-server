@@ -86,10 +86,10 @@ async function bootstrap() {
       // },
       cookie: {
         httpOnly: true,
-        secure: true, // обов'язково для HTTPS
+        secure: false, // обов'язково для HTTPS
         sameSite: 'lax', // краще для безпеки та сумісності
         maxAge: THIRTY_DAYS,
-        domain: '.ict.lviv.ua', // крапка на початку дозволяє куки для всіх піддоменів
+        // domain: '.ict.lviv.ua', // крапка на початку дозволяє куки для всіх піддоменів
       },
       store: new RedisStore({
         client: redisClient,

@@ -43,11 +43,11 @@ export class LoadService {
     return updatedItem;
   }
   async save(dto: any) {
-    setTimeout(() => {
-      console.log(`Затримка 5 секунд для вантажу ${dto || 'нового'}`);
-    }, 1000);
     const isEditing = !!dto.id;
     const result = await this.dbservice.callProcedure('crm_load_save', dto);
+
+
+
     const loadId = isEditing ? dto.id : result.content[0];
 
     const event = isEditing ? SOCKET_EVENTS.LOAD.EDIT : SOCKET_EVENTS.LOAD.NEW;

@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Session, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { TenderService } from './tender.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
+// import { TenderSaveDto } from './interfaces/tender-save.interface';
 
 @Authorization()
 @Controller('tender')
 export class TenderController {
-  constructor(private readonly tenderService: TenderService) {}
+  constructor(private readonly tenderService: TenderService) { }
 
   // Тендер CRM
   @Get('list')
@@ -31,8 +33,20 @@ export class TenderController {
     return this.tenderService.getListFormData(query);
   }
   @Post('save')
-  save(@Body() dto: any) {
-    return this.tenderService.save(dto);
+  @UseInterceptors(FilesInterceptor('files'))
+  async save(
+    @Body() body: { dto?: string;[key: string]: any },
+    @UploadedFiles() files: Express.Multer.File[],
+    @Session() session: any
+  ) {
+    /**
+     * Reverting to any temporarily as requested.
+     */
+    const processedDto: any = typeof body.dto === 'string'
+      ? JSON.parse(body.dto)
+      : (body.dto || body);
+
+    return this.tenderService.save(processedDto, files, session.id_company);
   }
 
   // Тендер CRM
@@ -53,4 +67,6 @@ export class TenderController {
   getOne(@Param('id') id: string) {
     return this.tenderService.getOne(id);
   }
+
+
 }

@@ -60,7 +60,6 @@ export class TenderGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   emitToAll(event: string, payload: any) {
-    console.log('EMIT IS WORKING');
 
     this.server.emit(event, payload);
   }

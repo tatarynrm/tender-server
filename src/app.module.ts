@@ -30,7 +30,7 @@ import { LocationModule } from './location/location.module';
 import { OracleModule } from './oracle/oracle.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { MulterConfigService } from './config/multer.config.service';
-import { CocktailsModule } from './cocktails/cocktails.module';
+
 import { FileCleanupService } from './common/services/file-cleanup.service';
 import { ClsModule } from 'nestjs-cls';
 import { BullModule } from '@nestjs/bullmq';
@@ -47,6 +47,8 @@ import { AiModule } from './ai/ai.module';
 import { LogisticsModule } from './ai/logistics/logistics.module';
 import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
 import { HealthModule } from './health/health.module';
+import { FilesModule } from './files/files.module';
+
 
 @Module({
   imports: [
@@ -96,7 +98,7 @@ import { HealthModule } from './health/health.module';
     TransportModule,
     LocationModule,
     OracleModule,
-    CocktailsModule,
+
     RouterModule.register([
       {
         path: 'admin',
@@ -115,6 +117,7 @@ import { HealthModule } from './health/health.module';
     AiModule,
     LogisticsModule,
     DatabaseOracleModule,
+    FilesModule,
   ],
   controllers: [],
   providers: [

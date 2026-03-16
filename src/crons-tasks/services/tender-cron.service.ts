@@ -8,14 +8,13 @@ export class TenderCronService implements OnModuleInit {
 
   constructor(
     @InjectQueue('tender-tasks') private readonly tenderQueue: Queue,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     this.logger.log('📡 Ініціалізація масштабованих черг для тендерів...');
-    
+
     // Видаляємо старі повторювані мети, якщо потрібно (опціонально)
     // await this.tenderQueue.drain(); 
-
     // Додаємо повторювану задачу (кожні 10 секунд)
     // BullMQ гарантує, що вона буде виконуватись лише ОДНИМ екземпляром сервера в кластері
     await this.tenderQueue.add(
