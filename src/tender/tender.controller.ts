@@ -46,7 +46,8 @@ export class TenderController {
       ? JSON.parse(body.dto)
       : (body.dto || body);
 
-    return this.tenderService.save(processedDto, files, session.id_company);
+    const companyId = session?.id_company || null;
+    return this.tenderService.save(processedDto, files, companyId);
   }
 
   // Тендер CRM
