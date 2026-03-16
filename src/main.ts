@@ -20,7 +20,6 @@ const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: loggerConfig,
-    bodyParser: false, // Disabling default parser to use custom limits below
   });
 
   const config = app.get(ConfigService);

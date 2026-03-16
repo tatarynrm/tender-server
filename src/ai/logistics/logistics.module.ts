@@ -14,6 +14,6 @@ import { MulterConfigService } from '../../config/multer.config.service';
     }),
   ],
   controllers: [LogisticsController],
-  providers: [LogisticsService, LogisticsParserService],
+  providers: [LogisticsService, LogisticsParserService, MulterConfigService],
 })
 export class LogisticsModule { }

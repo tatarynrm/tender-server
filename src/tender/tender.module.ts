@@ -16,7 +16,7 @@ import { MulterConfigService } from '../config/multer.config.service';
     }),
   ],
   controllers: [TenderController],
-  providers: [TenderService, UserService, TenderGateway, LoadGateway],
+  providers: [TenderService, UserService, TenderGateway, LoadGateway, MulterConfigService],
   exports: [TenderGateway],
 })
 export class TenderModule {}
