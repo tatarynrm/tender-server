@@ -19,7 +19,7 @@ export class AiService {
         }
         this.genAI = new GoogleGenerativeAI(apiKey || '');
         // gemini-2.0-flash - найсучасніша і стабільна безкоштовна модель
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     }
 
     private async preprocessFile(file: Express.Multer.File): Promise<Part> {
