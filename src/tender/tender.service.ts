@@ -81,6 +81,16 @@ export class TenderService {
     return result;
   }
   public async save(dto: any, files: Express.Multer.File[] = [], id_company?: string | number) {
+    if (Array.isArray(dto.tender_permission)) {
+      dto.tender_permission = dto.tender_permission.filter((x: any) => x && x.ids_permission_type);
+    }
+    if (Array.isArray(dto.tender_trailer)) {
+      dto.tender_trailer = dto.tender_trailer.filter((x: any) => x && x.ids_trailer_type);
+    }
+    if (Array.isArray(dto.tender_load)) {
+      dto.tender_load = dto.tender_load.filter((x: any) => x && x.ids_load_type);
+    }
+
     const result = await this.dbservice.callProcedure(
       'tender_save',
       dto,

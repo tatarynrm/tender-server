@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Post, Query, Session, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Session,
+  UploadedFiles,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { TenderService } from './tender.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
@@ -7,7 +17,7 @@ import { Authorization } from 'src/auth/decorators/auth.decorator';
 @Authorization()
 @Controller('tender')
 export class TenderController {
-  constructor(private readonly tenderService: TenderService) { }
+  constructor(private readonly tenderService: TenderService) {}
 
   // Тендер CRM
   @Get('list')
@@ -35,20 +45,15 @@ export class TenderController {
   @Post('save')
   @UseInterceptors(FilesInterceptor('files'))
   async save(
-    @Body() body: { dto?: string;[key: string]: any },
+    @Body() body: { dto?: string; [key: string]: any },
     @UploadedFiles() files: Express.Multer.File[],
-    @Session() session: any
+    @Session() session: any,
   ) {
-    console.log('--- REQUEST REACHED TENDER CONTROLLER ---');
-    console.log('Body keys:', Object.keys(body || {}));
-    console.log('Files count:', files?.length || 0);
-
     /**
      * Reverting to any temporarily as requested.
      */
-    const processedDto: any = typeof body.dto === 'string'
-      ? JSON.parse(body.dto)
-      : (body.dto || body);
+    const processedDto: any =
+      typeof body.dto === 'string' ? JSON.parse(body.dto) : body.dto || body;
 
     const companyId = session?.id_company || null;
     return this.tenderService.save(processedDto, files, companyId);
@@ -72,6 +77,4 @@ export class TenderController {
   getOne(@Param('id') id: string) {
     return this.tenderService.getOne(id);
   }
-
-
 }
