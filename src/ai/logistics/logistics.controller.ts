@@ -29,4 +29,20 @@ export class LogisticsController {
 
     return this.parserService.parseCargo(text, files.images, files.audio);
   }
+
+  @Post('parse-tender')
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'images', maxCount: 10 },
+    { name: 'audio', maxCount: 1 }
+  ]))
+  async parseTender(
+    @Body('text') text: string,
+    @UploadedFiles() files: { images?: Express.Multer.File[], audio?: Express.Multer.File[] }
+  ) {
+    if (!files) {
+      throw new BadRequestException('Файл не передано або неправильний Content-Type');
+    }
+
+    return this.parserService.parseTender(text, files.images, files.audio);
+  }
 }
