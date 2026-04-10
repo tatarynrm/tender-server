@@ -11,4 +11,5 @@ export type NormalizedLocation = {
   countryCode: string | null;
   lat: number | null;
   lng: number | null;
+  postCode: string | null;
 };

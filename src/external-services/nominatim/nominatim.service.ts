@@ -17,13 +17,15 @@ export class NominatimService {
         `https://nominatim.openstreetmap.org/search?` +
         `format=json&` +
         `addressdetails=1&` +
-        `limit=5&` +
-        `accept-language=uk&` + // повертає назви українською
-        `featuretype=city&` + // тільки міста
-        `dedupe=1&` + // уникнути дублікатів
+        `limit=3&` +
+        `accept-language=uk&` +
         `q=${encodeURIComponent(query)}`;
       const searchResults = await this.httpService
-        .get(url)
+        .get(url, {
+          headers: {
+            'User-Agent': `ICT_Tender_Parser_${Math.random().toString(36).substring(7)}/1.0 (rt@example.com)`,
+          },
+        })
         .pipe(map((res) => res.data))
         .toPromise();
 
@@ -68,7 +70,8 @@ export class NominatimService {
 
       return formatted;
     } catch (error) {
-      throw new Error('Failed to fetch data from Nominatim API');
+      console.error('Nominatim API Error:', error.response?.data || error.message);
+      throw new Error(`Failed to fetch data from Nominatim API: ${error.message}`);
     }
   }
 }

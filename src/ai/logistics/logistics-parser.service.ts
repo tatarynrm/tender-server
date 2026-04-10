@@ -1,142 +1,64 @@
 // src/logistics/logistics-parser.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SchemaType, Schema } from '@google/generative-ai';
 import { AiService } from '../ai.service';
+import { LocationService } from '../../location/location.service';
 
 @Injectable()
 export class LogisticsParserService {
-  constructor(private readonly aiService: AiService) {}
+  private readonly logger = new Logger(LogisticsParserService.name);
 
-  async parseCargo(
-    text: string,
-    images?: Express.Multer.File[],
-    audio?: Express.Multer.File[],
-  ) {
+  constructor(
+    private readonly aiService: AiService,
+    private readonly locationService: LocationService,
+  ) { }
+
+  private async geocodeLocations(locations: any[]) {
+    if (!locations || !Array.isArray(locations)) return [];
+
+    return Promise.all(
+      locations.map(async (loc) => {
+        const query = loc.address || loc.city || '';
+        if (!query || query.length < 2) {
+            return { ...loc, ids_country: loc.ids_country || 'UA' };
+        }
+
+        try {
+          const googleResult = await this.locationService.geocode(query);
+          if (googleResult) {
+            return {
+              ...loc,
+              lat: googleResult.lat ? Number(googleResult.lat.toFixed(6)) : undefined,
+              lon: googleResult.lon ? Number(googleResult.lon.toFixed(6)) : undefined,
+              ids_country: googleResult.countryCode || loc.ids_country || 'UA',
+              city: googleResult.city || loc.city,
+              ids_region: googleResult.regionCode || loc.ids_region,
+              post_code: googleResult.postCode || loc.post_code,
+              street: googleResult.street || loc.street,
+              house: googleResult.house || loc.house,
+            };
+          }
+        } catch (err) {
+          this.logger.warn(`Google Geocoding failed for ${query}: ${err.message}`);
+        }
+        return {
+          ...loc,
+          ids_country: loc.ids_country || 'UA',
+        };
+      }),
+    );
+  }
+
+  async parseCargo(text: string, images?: Express.Multer.File[], audio?: Express.Multer.File[]) {
     const today = new Date().toISOString().split('T')[0];
     const prompt = `Експерт-логіст. Витягни дані про вантажі (масив 'loads') з наданого тексту та/або ПРИКРІПЛЕНИХ ФАЙЛІВ (фото документів, скріншоти, аудіо).
         Дата: ${today}.
         ПРАВИЛА:
-        - Адреси: розбивай на місто, вулицю, будинок (напр. "Київ" (city), "Бажана" (street), "12" (house)). НЕ пиши номер будинку в вулицю!
+        - Адреси: розбивай на місто, вулицю, будинок. НЕ пиши номер будинку в вулицю!
         - Гроші: "грн" -> currency: "UAH". "50к" -> price: 50000.
         - Транспорт: "20т" - це вага. "Тент/Реф" - це truckTypes.
-        - Якщо є температурний режим це Реф.
-        - Дати: dateLoad (початок), dateLoad2 (кінець завантаження), dateUnload.
-        - Опис вантажу: description. Додавай максимально деталізований опис вантажу!
-        - Якщо в тексті є щось про замитнення та розмитення не додавай ці пункти в точки загрузки чи вигрузки, лише додай цю інформацію в опис.        - Мова: ПЕРЕКЛАДАЙ НА УКРАЇНСЬКУ.
-        ВХІДНИЙ ТЕКСТ: """${text}"""
-        АНАЛІЗУЙ ФОТО ТА АУДІО ЯКЩО ВОНИ Є.ЯКЩО ФОТО ДЕКІЛКЬКА - АНАЛІЗУЙ ВСІ,ЩОБ К-СТЬ РЕЗУЛЬТАТІВ ЗБІГАЛАСЬ З К-СТЮ ФОТО. `;
-
-    const allFiles = [...(images || []), ...(audio || [])];
-
-    const locationSchema: Schema = {
-      type: SchemaType.OBJECT,
-      properties: {
-        address: {
-          type: SchemaType.STRING,
-          description: 'Повна адреса або місто',
-        },
-        city: { type: SchemaType.STRING, description: 'Місто' },
-        ids_country: {
-          type: SchemaType.STRING,
-          description: 'Країна ISO (напр. UA, PL)',
-        },
-        lat: { type: SchemaType.NUMBER },
-        lon: { type: SchemaType.NUMBER },
-        ids_region: {
-          type: SchemaType.STRING,
-          description:
-            'ISO код регіону (наприклад, UA-46 для Львова або UA-37)',
-        },
-        street: {
-          type: SchemaType.STRING,
-          description: 'Вулиця (наприклад, Наукова)',
-        },
-        house: {
-          type: SchemaType.STRING,
-          description: 'Номер будинку (наприклад, 37)',
-        },
-      },
-    };
-
-    const cargoSchema: Schema = {
-      type: SchemaType.OBJECT,
-      properties: {
-        origins: { type: SchemaType.ARRAY, items: locationSchema },
-        destinations: { type: SchemaType.ARRAY, items: locationSchema },
-        cargoName: { type: SchemaType.STRING },
-        weight: { type: SchemaType.NUMBER },
-        volume: { type: SchemaType.NUMBER },
-        price: { type: SchemaType.NUMBER },
-        currency: { type: SchemaType.STRING },
-        truckCount: { type: SchemaType.NUMBER },
-        truckTypes: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
-        },
-        dateLoad: { type: SchemaType.STRING },
-        dateLoad2: { type: SchemaType.STRING },
-        dateUnload: { type: SchemaType.STRING },
-        isCollective: { type: SchemaType.BOOLEAN },
-        isPriceRequest: { type: SchemaType.BOOLEAN },
-        description: { type: SchemaType.STRING },
-        companyName: {
-          type: SchemaType.STRING,
-          description: 'Назва компанії або замовника',
-        },
-      },
-      required: ['origins', 'destinations'],
-    };
-
-    const schema: Schema = {
-      type: SchemaType.OBJECT,
-      properties: {
-        loads: {
-          type: SchemaType.ARRAY,
-          items: cargoSchema,
-          description: 'Список знайдених заявок',
-        },
-      },
-      required: ['loads'],
-    };
-
-    return this.aiService.extractDataAsJson<{
-      loads: Array<{
-        origins: any[];
-        destinations: any[];
-        cargoName?: string;
-        weight?: number;
-        volume?: number;
-        price?: number;
-        currency?: string;
-        truckCount?: number;
-        truckTypes?: string[];
-        dateLoad?: string;
-        dateUnload?: string;
-        isCollective?: boolean;
-        isPriceRequest?: boolean;
-        description?: string;
-        companyName?: string;
-      }>;
-    }>(prompt, schema, allFiles);
-  }
-
-  async parseTender(
-    text: string,
-    images?: Express.Multer.File[],
-    audio?: Express.Multer.File[],
-  ) {
-    const today = new Date().toISOString().split('T')[0];
-    const prompt = `Експерт-логіст. Витягни дані про тендери (масив 'loads') з наданого тексту та/або ПРИКРІПЛЕНИХ ФАЙЛІВ (фото документів, скріншоти, аудіо).
-        Дата: ${today}.
-        ПРАВИЛА:
-        - ТЕНДЕР: це запит на перевезення вантажу. 
-        - Адреси: розбивай на місто, вулицю, будинок (напр. "Київ" (city), "Бажана" (street), "12" (house)). НЕ пиши номер будинку в вулицю!
-        - Гроші: "грн" -> currency: "UAH". "50к" -> price: 50000.
-        - Транспорт: "20т" - це вага. "Тент/Реф" - це truckTypes.
-        - Акцент на деталізацію вантажу та вимоги.
         - Мова: ПЕРЕКЛАДАЙ НА УКРАЇНСЬКУ.
-        ВХІДНИЙ ТЕКСТ: """${text}"""
-        АНАЛІЗУЙ ФОТО ТА АУДІО ЯКЩО ВОНИ Є.`;
+        ВХІДНИЙ ТЕКСТ: """${text}"""`;
 
     const allFiles = [...(images || []), ...(audio || [])];
 
@@ -144,13 +66,10 @@ export class LogisticsParserService {
       type: SchemaType.OBJECT,
       properties: {
         address: { type: SchemaType.STRING, description: 'Повна адреса або місто' },
-        city: { type: SchemaType.STRING, description: 'Місто' },
-        ids_country: { type: SchemaType.STRING, description: 'Країна ISO (напр. UA, PL)' },
+        city: { type: SchemaType.STRING },
+        ids_country: { type: SchemaType.STRING, description: 'ISO код країни (UA, PL...)' },
         lat: { type: SchemaType.NUMBER },
         lon: { type: SchemaType.NUMBER },
-        ids_region: { type: SchemaType.STRING, description: 'ISO код регіону' },
-        street: { type: SchemaType.STRING, description: 'Вулиця' },
-        house: { type: SchemaType.STRING, description: 'Номер будинку' },
       },
     };
 
@@ -167,12 +86,8 @@ export class LogisticsParserService {
         truckCount: { type: SchemaType.NUMBER },
         truckTypes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
         dateLoad: { type: SchemaType.STRING },
-        dateLoad2: { type: SchemaType.STRING },
         dateUnload: { type: SchemaType.STRING },
-        isCollective: { type: SchemaType.BOOLEAN },
-        isPriceRequest: { type: SchemaType.BOOLEAN },
         description: { type: SchemaType.STRING },
-        companyName: { type: SchemaType.STRING, description: 'Назва компанії' },
       },
       required: ['origins', 'destinations'],
     };
@@ -180,50 +95,103 @@ export class LogisticsParserService {
     const schema: Schema = {
       type: SchemaType.OBJECT,
       properties: {
-        loads: { type: SchemaType.ARRAY, items: cargoSchema, description: 'Список знайдених тендерів' },
+        loads: { type: SchemaType.ARRAY, items: cargoSchema },
       },
       required: ['loads'],
     };
 
-    return this.aiService.extractDataAsJson<{
-      loads: Array<{
-        origins: any[];
-        destinations: any[];
-        cargoName?: string;
-        weight?: number;
-        volume?: number;
-        price?: number;
-        currency?: string;
-        truckCount?: number;
-        truckTypes?: string[];
-        dateLoad?: string;
-        dateUnload?: string;
-        isCollective?: boolean;
-        isPriceRequest?: boolean;
-        description?: string;
-        companyName?: string;
-      }>;
-    }>(prompt, schema, allFiles);
+    const result = await this.aiService.extractDataAsJson<{ loads: any[] }>(prompt, schema, allFiles);
+
+    if (result?.loads) {
+      for (const load of result.loads) {
+        load.origins = await this.geocodeLocations(load.origins);
+        load.destinations = await this.geocodeLocations(load.destinations);
+      }
+    }
+
+    return result;
   }
 
-  async parseTruckDocument(images: Express.Multer.File[]) {
-    const prompt = `Проаналізуй фото документа і витягни характеристики вантажівки.`;
+  async parseTender(text: string, images?: Express.Multer.File[], audio?: Express.Multer.File[]) {
+    const today = new Date().toISOString().split('T')[0];
+    const prompt = `Експерт-логіст. Витягни дані про тендери (масив 'loads') з наданого тексту та/або фото/аудіо документів.
+        Дата: ${today}.
+        ПРАВИЛА:
+        - ТЕНДЕР: це запит на перевезення вантажу. 
+        - Адреси: ПРІОРИТЕТ - витягнути координати (lat, lon), поштовий індекс (post_code) та деталі.
+        - ids_country: ЗАВЖДИ вказуй ISO код країни (UA, RO, PL, DE, MD).
+        - Мова: ПЕРЕКЛАДАЙ НА УКРАЇНСЬКУ.
+        ВХІДНИЙ ТЕКСТ: """${text}"""`;
+
+    const allFiles = [...(images || []), ...(audio || [])];
+
+    const locationSchema: Schema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        address: { type: SchemaType.STRING, description: 'Повна адреса для відображення' },
+        city: { type: SchemaType.STRING, description: 'Місто' },
+        ids_country: { type: SchemaType.STRING, description: 'ISO код країни (UA, PL, RO...)' },
+        post_code: { type: SchemaType.STRING, description: 'Поштовий індекс' },
+        street: { type: SchemaType.STRING, description: 'Вулиця' },
+        house: { type: SchemaType.STRING, description: 'Номер будинку' },
+        lat: { type: SchemaType.NUMBER, description: 'Широта' },
+        lon: { type: SchemaType.NUMBER, description: 'Довгота' },
+      },
+    };
+
+    const cargoSchema: Schema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        origins: { type: SchemaType.ARRAY, items: locationSchema },
+        destinations: { type: SchemaType.ARRAY, items: locationSchema },
+        cargoName: { type: SchemaType.STRING, description: 'Назва вантажу (макс 25 симв)' },
+        weight: { type: SchemaType.NUMBER, description: 'Вага (т)' },
+        volume: { type: SchemaType.NUMBER, description: 'Об`єм (м3)' },
+        price: { type: SchemaType.NUMBER, description: 'Бюджет тендеру / Стартова ціна' },
+        currency: { type: SchemaType.STRING, description: 'Валюта (UAH, EUR, USD)' },
+        truckCount: { type: SchemaType.NUMBER, description: 'Кількість машин' },
+        truckTypes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: 'Типи транспорту' },
+        dateLoad: { type: SchemaType.STRING, description: 'Дата початку завантаження (YYYY-MM-DD)' },
+        dateLoad2: { type: SchemaType.STRING, description: 'Дата кінця завантаження' },
+        dateUnload: { type: SchemaType.STRING, description: 'Дата розвантаження' },
+        tenderStart: { type: SchemaType.STRING, description: 'Дата/час початку самого тендеру' },
+        tenderEnd: { type: SchemaType.STRING, description: 'Дата/час завершення прийому ставок' },
+        description: { type: SchemaType.STRING, description: 'Усі деталі вантажу, температурний режим, особливі умови' },
+        companyName: { type: SchemaType.STRING, description: 'Замовник' },
+      },
+      required: ['origins', 'destinations'],
+    };
 
     const schema: Schema = {
       type: SchemaType.OBJECT,
       properties: {
-        plateNumber: { type: SchemaType.STRING },
-        truckType: {
-          type: SchemaType.STRING,
-          description: 'Наприклад: Тент, Зерновоз, Рефрижератор',
-        },
-        carryingCapacity: {
-          type: SchemaType.NUMBER,
-          description: 'Вантажопідйомність (т)',
-        },
+        loads: { type: SchemaType.ARRAY, items: cargoSchema },
       },
+      required: ['loads'],
     };
 
+    const result = await this.aiService.extractDataAsJson<{ loads: any[] }>(prompt, schema, allFiles);
+
+    if (result?.loads) {
+      for (const load of result.loads) {
+        load.origins = await this.geocodeLocations(load.origins);
+        load.destinations = await this.geocodeLocations(load.destinations);
+      }
+    }
+
+    return result;
+  }
+
+  async parseTruckDocument(images: Express.Multer.File[]) {
+    const prompt = `Проаналізуй фото документа і витягни характеристики вантажівки.`;
+    const schema: Schema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        plateNumber: { type: SchemaType.STRING },
+        truckType: { type: SchemaType.STRING },
+        carryingCapacity: { type: SchemaType.NUMBER },
+      },
+    };
     return this.aiService.extractDataAsJson(prompt, schema, images);
   }
 }

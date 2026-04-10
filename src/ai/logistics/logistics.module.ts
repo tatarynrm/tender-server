@@ -8,9 +8,12 @@ import { MulterConfigService } from '../../config/multer.config.service';
 
 import { memoryStorage } from 'multer';
 
+import { LocationModule } from '../../location/location.module';
+
 @Module({
   imports: [
     AiModule,
+    LocationModule,
     MulterModule.register({
       storage: memoryStorage(),
       limits: { fileSize: 1024 * 1024 * 100 }, // 100MB

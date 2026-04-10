@@ -12,10 +12,7 @@ export class LocationService {
       {
         params: {
           input,
-          //   components: 'country:ua',
           language: 'uk',
-          // types: 'geocode',
-          // Прибираємо types щоб шукало все повністю
           key: process.env.GOOGLE_API_KEY,
         },
       },
@@ -24,20 +21,48 @@ export class LocationService {
     return data;
   }
 
-async resolve(placeId: string, displayName?: string) { // додаємо displayName
-  const { data } = await axios.get(
-    'https://maps.googleapis.com/maps/api/place/details/json',
-    {
-      params: {
-        place_id: placeId,
-        fields: 'address_components,geometry,formatted_address,name',
-        language: 'uk',
-        key: process.env.GOOGLE_API_KEY,
+  async resolve(placeId: string, displayName?: string) {
+    const { data } = await axios.get(
+      'https://maps.googleapis.com/maps/api/place/details/json',
+      {
+        params: {
+          place_id: placeId,
+          fields: 'address_components,geometry,formatted_address,name',
+          language: 'uk',
+          key: process.env.GOOGLE_API_KEY,
+        },
       },
-    },
-  );
+    );
 
-  // Передаємо displayName в нормалізатор
-  return normalizeGooglePlace(data.result, displayName);
-}
+    return normalizeGooglePlace(data.result, displayName);
+  }
+
+  async geocode(address: string) {
+    try {
+      const { data } = await axios.get(
+        'https://maps.googleapis.com/maps/api/geocode/json',
+        {
+          params: {
+            address,
+            language: 'uk',
+            key: process.env.GOOGLE_API_KEY,
+          },
+        },
+      );
+
+      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+        return null;
+      }
+
+      const result = normalizeGooglePlace(data.results[0]);
+      
+      return {
+        ...result,
+        lon: result.lng, // Для сумісності з DTO
+      };
+    } catch (error) {
+      console.error('Google Geocoding Error:', error.message);
+      return null;
+    }
+  }
 }

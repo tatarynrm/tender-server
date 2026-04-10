@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import createSubscriber, { Subscriber } from 'pg-listen';
 import { DbEventsProcessor } from './db-events.processor';
@@ -13,11 +18,11 @@ export class DbEventsListener implements OnModuleInit, OnModuleDestroy {
     private readonly processor: DbEventsProcessor,
   ) {
     this.subscriber = createSubscriber({
-      host: this.configService.get<string>('POSTGRES_HOST'),
-      port: this.configService.get<number>('POSTGRES_PORT'),
-      user: this.configService.get<string>('POSTGRES_USER'),
-      password: this.configService.get<string>('POSTGRES_PASSWORD'),
-      database: this.configService.get<string>('POSTGRES_DB'),
+      host: this.configService.getOrThrow<string>('POSTGRES_HOST'),
+      port: this.configService.getOrThrow<number>('POSTGRES_PORT'),
+      user: this.configService.getOrThrow<string>('POSTGRES_USER'),
+      password: this.configService.getOrThrow<string>('POSTGRES_PASSWORD'),
+      database: this.configService.getOrThrow<string>('POSTGRES_DB'),
     });
 
     this.subscriber.events.on('error', (error) => {
@@ -29,7 +34,7 @@ export class DbEventsListener implements OnModuleInit, OnModuleDestroy {
     try {
       await this.subscriber.connect();
       await this.subscriber.listenTo('db_notification');
-      
+
       this.logger.log('Listening for "db_notification" channel...');
 
       this.subscriber.notifications.on('db_notification', async (payload) => {
@@ -37,7 +42,6 @@ export class DbEventsListener implements OnModuleInit, OnModuleDestroy {
         // Викликаємо процесор для обробки подій, передаючи payload якщо він є
         await this.processor.processEvents(payload);
       });
-
     } catch (error) {
       this.logger.error('Failed to connect to Postgres for listening', error);
     }

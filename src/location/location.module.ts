@@ -5,5 +5,6 @@ import { LocationController } from './location.controller';
 @Module({
   controllers: [LocationController],
   providers: [LocationService],
+  exports: [LocationService],
 })
 export class LocationModule {}
