@@ -1,75 +1,86 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Pool } from 'pg';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class DbEventsProcessor {
   private readonly logger = new Logger(DbEventsProcessor.name);
 
-  constructor(@Inject('PG_POOL') private readonly pgPool: Pool) {}
+  constructor(
+    @Inject('PG_POOL') private readonly pgPool: Pool,
+    @InjectQueue('notifications') private readonly notificationQueue: Queue,
+  ) {}
 
   async processEvents(payload?: any) {
-    this.logger.log(`Processing database events. Notification signal: ${JSON.stringify(payload) || 'empty'}`);
+    this.logger.log(
+      `Processing database events dispatching to queue. Notification signal: ${JSON.stringify(payload) || 'empty'}`,
+    );
 
     const client = await this.pgPool.connect();
     try {
-      await client.query('BEGIN');
+      let hasMore = true;
 
-      // 1. Отримуємо список сповіщень через вашу процедуру
-      const result = await client.query('SELECT notify_list()');
-      const notifications = result.rows[0]?.notify_list;
+      do {
+        const result = await client.query('SELECT notify_list()');
+        const notifications = result.rows[0]?.notify_list;
 
-      if (!notifications || !Array.isArray(notifications) || notifications.length === 0) {
-        this.logger.debug('No pending notifications found in notify_list().');
-        await client.query('COMMIT');
-        return;
-      }
-
-      this.logger.log(`Found ${notifications.length} notifications to process.`);
-
-      for (const item of notifications) {
-        try {
-          // 2. Виклик відповідної логіки для типу сповіщення
-          // Враховуємо список отримувачів (item.id_person_list) та контент (item.content)
-          await this.dispatch(item.ids_notify_type, item);
-
-          // 3. Відмітка про завершення (можна викликати іншу процедуру або UPDATE)
-          // Припускаємо, що у вас є таблиця для маркування або процедура mark_as_completed(id)
-          await client.query('UPDATE sys_notifications SET status = $1, processed_at = NOW() WHERE id = $2', ['PROCESSED', item.id]);
-
-        } catch (e) {
-          this.logger.error(`Error processing notification ${item.id} (${item.ids_notify_type}): ${e.message}`);
-          await client.query('UPDATE sys_notifications SET status = $1, error_message = $2 WHERE id = $3', ['ERROR', e.message, item.id]);
+        if (
+          !notifications ||
+          !Array.isArray(notifications) ||
+          notifications.length === 0
+        ) {
+          this.logger.debug('No more pending notifications.');
+          hasMore = false;
+          continue;
         }
-      }
 
-      await client.query('COMMIT');
+        this.logger.log(
+          `Found ${notifications.length} notifications to dispatch to queue.`,
+        );
+
+        for (const item of notifications) {
+          try {
+            await this.dispatch(item.ids_notify_type, item);
+
+            // Позначаємо як оброблене диспетчером (відправлено в чергу)
+            await client.query(
+              'UPDATE sys_notifications SET status = $1, processed_at = NOW() WHERE id = $2',
+              ['DISPATCHED', item.id],
+            );
+          } catch (e) {
+            this.logger.error(
+              `Error dispatching notification ${item.id} (${item.ids_notify_type}): ${e.message}`,
+            );
+            await client.query(
+              'UPDATE sys_notifications SET status = $1, error_message = $2 WHERE id = $3',
+              ['ERROR', e.message, item.id],
+            );
+          }
+        }
+      } while (hasMore);
     } catch (e) {
-      await client.query('ROLLBACK');
-      this.logger.error(`Batch processing failed: ${e.message}`);
+      this.logger.error(`Batch dispatching failed: ${e.message}`);
     } finally {
       client.release();
     }
   }
 
-  /**
-   * Розподіл логіки за типами сповіщень
-   */
   private async dispatch(notifyType: string, data: any) {
-    const { id_person_list, content, id_tblref, tblref } = data;
-    
-    this.logger.log(`Dispatching notification type: ${notifyType} for table: ${tblref}`);
+    const { person_list, id_person_list, content, id_tblref, tblref, id: notificationId } = data;
+    const final_person_list = person_list || id_person_list;
+
+    this.logger.log(
+      `Dispatching notification type: ${notifyType} for table: ${tblref} to queue`,
+    );
 
     switch (notifyType) {
-      case 'TENDER_STATUS_CHANGED':
-        // Логіка зміни статусу тендеру
-        // Наприклад: сповістити всіх через сокети, що статус став 'ACTIVE'
-        await this.handleTenderStatusChanged(id_tblref, content);
-        break;
-      
       case 'TENDER_ACTUAL':
-        // Логіка для "Актуального тендеру" для конкретних людей
-        // Тут використовуємо id_person_list
-        await this.handleTenderActual(id_person_list, content);
+        await this.handleTenderActual(notificationId, final_person_list, content);
+        break;
+
+      case 'TENDER_STATUS_CHANGED':
+        await this.handleTenderStatusChanged(notificationId, id_tblref, content);
         break;
 
       default:
@@ -77,13 +88,25 @@ export class DbEventsProcessor {
     }
   }
 
-  private async handleTenderStatusChanged(tenderId: number, content: any) {
-      this.logger.log(`Tender ${tenderId} changed status to ${content.ids_status}`);
-      // Тут викликаєте сервіс сокетів або пуш-нотифікацій для всіх
+  private async handleTenderStatusChanged(notificationId: number, tenderId: number, content: any) {
+    await this.notificationQueue.add('tender-status-changed', {
+        notificationId,
+        tenderId,
+        content
+    });
   }
 
-  private async handleTenderActual(personIds: number[], content: any) {
-      this.logger.log(`Tender Actual for users: ${personIds.join(', ')}`);
-      // Тут викликаєте сервіс для відправки персональних повідомлень (Telegram/Email/Socket)
+  private async handleTenderActual(notificationId: number, personList: any[], content: any) {
+    if (!personList || personList.length === 0) return;
+
+    this.logger.log(`Adding ${personList.length} notification jobs for tender ${content.id}`);
+
+    for (const person of personList) {
+      await this.notificationQueue.add('send-personal-notification', {
+        notificationId,
+        person,
+        content,
+      });
+    }
   }
 }

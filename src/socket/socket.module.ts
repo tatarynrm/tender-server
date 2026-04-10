@@ -7,6 +7,7 @@ import { UserGateway } from 'src/user/user.gateway';
 @Module({
   imports:[UserModule],
   controllers: [SocketController],
-  providers: [SocketService,UserGateway],
+  providers: [SocketService],
+  exports: [SocketService],
 })
 export class SocketModule {}

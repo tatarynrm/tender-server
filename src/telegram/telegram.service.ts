@@ -135,9 +135,24 @@ export class TelegramService implements OnModuleInit {
       this.logger.error('Помилка відправки в групу:', error);
     }
   }
+  async sendMessageToUser(personId: number, message: string) {
+    try {
+      const result = await this.pool.query(
+        `SELECT telegram_id FROM person_telegram WHERE id_person = $1`,
+        [personId],
+      );
+      const telegramId = result.rows[0]?.telegram_id;
 
-
-
-
-
+      if (telegramId) {
+        await this.bot.telegram.sendMessage(telegramId, message, {
+          parse_mode: 'HTML',
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      this.logger.error(`Failed to send TG message to person ${personId}: ${err.message}`);
+      return false;
+    }
+  }
 }
