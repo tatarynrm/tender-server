@@ -8,10 +8,11 @@ import { MailModule } from 'src/libs/common/mail/mail.module';
 import { UserGateway } from './user.gateway';
 
 
+import { TelegramTokenModule } from 'src/telegram/telegram-token/telegram-token.module';
 @Module({
-  imports: [forwardRef(() => AuthModule),MailModule],
+  imports: [forwardRef(() => AuthModule), MailModule, TelegramTokenModule],
   controllers: [UserController],
-  providers: [UserService,MailService,UserGateway],
-  exports: [UserService,UserGateway],
+  providers: [UserService, MailService, UserGateway],
+  exports: [UserService, UserGateway],
 })
 export class UserModule {}

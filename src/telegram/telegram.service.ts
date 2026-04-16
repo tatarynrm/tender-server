@@ -51,15 +51,22 @@ export class TelegramService implements OnModuleInit {
   }
 
   async findByTelegramToken(token: string) {
-    // Змінено: Використовуємо таблицю usr_token та об'єднуємо по email
     const result = await this.pool.query(
-      `SELECT p.*, ut.token 
-       FROM person p
-       INNER JOIN usr_token ut ON p.email = ut.email
+      `SELECT u.id as user_id, p.id as person_id, u.email, ut.token 
+       FROM usr_token ut
+       JOIN usr u ON ut.email = u.email
+       LEFT JOIN person p ON u.email = p.email
        WHERE ut.token = $1 AND ut.token_type = 'TELEGRAM_CONNECT'`,
       [token],
     );
-    return result.rows[0];
+    
+    const row = result.rows[0];
+    if (!row) return null;
+
+    return {
+      id: row.person_id || row.user_id, // Пріоритет на person_id для Telegram-зв'язку
+      email: row.email,
+    };
   }
 
   async updateTelegramId(

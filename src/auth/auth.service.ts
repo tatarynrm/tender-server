@@ -141,6 +141,7 @@ export class AuthService {
     return new Promise((resolve, reject) => {
       req.session.userId = user.id;
       req.session.ict = user.role.is_ict;
+      req.session.email = user.email;
       req.session.id_company = user.company.id; // Парсимо User-Agent
       const agent = useragent.parse(req.headers['user-agent'] || '');
 

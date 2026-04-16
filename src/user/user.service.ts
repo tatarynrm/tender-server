@@ -13,6 +13,7 @@ import { UserRegisterFromPreDto } from './dto/user-register-from-pre.dto';
 import { MailService } from 'src/libs/common/mail/mail.service';
 import type { RedisClientType } from 'redis';
 import { IUserProfile } from './types/user.type';
+import { TelegramTokenService } from 'src/telegram/telegram-token/telegram-token.service';
 @Injectable()
 export class UserService {
   public constructor(
@@ -21,9 +22,10 @@ export class UserService {
     @Inject('PG_POOL') private readonly pool: Pool,
     private readonly mailService: MailService,
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
+    private readonly telegramTokenService: TelegramTokenService,
   ) {}
 
-public async findById(id: string | number) {
+  public async findById(id: string | number) {
     // 1. Отримуємо основні дані юзера з процедури
     const existUser = await this.dbservice.callProcedure(
       'usr_find',
@@ -43,8 +45,8 @@ public async findById(id: string | number) {
     const telegramResult = await this.pool.query(
       `SELECT telegram_id, username, first_name 
        FROM person_telegram 
-       WHERE id_person = $1`, 
-      [user.person.id]
+       WHERE id_person = $1`,
+      [user.person.id],
     );
 
     const telegramData = telegramResult.rows[0];
@@ -53,11 +55,13 @@ public async findById(id: string | number) {
     // Якщо telegramData немає, повертаємо null
     const enrichedUser = {
       ...user,
-      person_telegram: telegramData ? {
-        telegram_id: telegramData.telegram_id,
-        username: telegramData.username,
-        first_name: telegramData.first_name,
-      } : null,
+      person_telegram: telegramData
+        ? {
+            telegram_id: telegramData.telegram_id,
+            username: telegramData.username,
+            first_name: telegramData.first_name,
+          }
+        : null,
     };
 
     return enrichedUser;
@@ -245,18 +249,12 @@ public async findById(id: string | number) {
    * Генерація одноразового токена для прив'язки Telegram
    */
   async generateTelegramToken(userId: number) {
-    const token = Math.floor(100000 + Math.random() * 900000).toString(); // 6-значний код
+    const user = await this.findById(userId);
+    if (!user || !user.email) throw new Error('Користувача не знайдено');
 
-    const client = await this.pool.connect();
-    try {
-      await client.query(`UPDATE usr SET telegram_token = $1 WHERE id = $2`, [
-        token,
-        userId,
-      ]);
-      return token;
-    } finally {
-      client.release();
-    }
+    return this.telegramTokenService.createOrUpdateTelegramConnectToken(
+      user.email,
+    );
   }
 
   // public async unblockUser(userId: number) {
