@@ -39,11 +39,13 @@ import { TelegramUpdate } from './telegram.update';
 import { TelegramGateway } from './telegram.gateway';
 import { DatabaseModule } from 'src/database/database.module';
 import { RedisModule } from 'src/libs/common/redis/redis.module';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
     DatabaseModule,
     RedisModule,
+    UserModule,
     TelegrafModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

@@ -10,12 +10,13 @@ import { MailModule } from 'src/libs/common/mail/mail.module';
 import { AdminCompanyModule } from './admin-company/admin-company.module';
 import { AdminUserModule } from './admin-user/admin-user.module';
 import { LoadModule } from 'src/crm/load/load.module';
+import { TelegramModule } from 'src/telegram/telegram.module';
 
 
 
 
 @Module({
-  imports: [MailModule, AdminCompanyModule, AdminUserModule, LoadModule],
+  imports: [MailModule, AdminCompanyModule, AdminUserModule, LoadModule, TelegramModule],
   controllers: [AdminController],
   providers: [AdminService, UserService, MailService],
   exports: [AdminService],

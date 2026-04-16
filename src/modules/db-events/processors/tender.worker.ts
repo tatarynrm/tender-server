@@ -7,9 +7,9 @@ import { SocketService } from 'src/socket/socket.service';
 import { MailService } from 'src/libs/common/mail/mail.service';
 
 @Injectable()
-@Processor('notifications')
-export class NotificationWorker extends WorkerHost {
-  private readonly logger = new Logger(NotificationWorker.name);
+@Processor('tender_notifications')
+export class TenderWorker extends WorkerHost {
+  private readonly logger = new Logger(TenderWorker.name);
 
   constructor(
     @Inject('PG_POOL') private readonly pgPool: Pool,
@@ -36,10 +36,19 @@ export class NotificationWorker extends WorkerHost {
 
       switch (notifyType) {
         case 'TENDER_ACTUAL':
-          await this.handlePersonalBulkNotification(personList, content);
+        case 'TENDER_PLAN':
+        case 'TENDER_CHANGED':
+        case 'TENDER_PROLONGATION':
+        case 'TENDER_CLOSED':
+        case 'TENDER_RESULT':
+          await this.handlePersonalBulkNotification(
+            personList,
+            content,
+            notifyType,
+          );
           break;
         case 'TENDER_STATUS_CHANGED':
-          await this.handleStatusChangedNotification(tenderId, content);
+          // await this.handleStatusChangedNotification(tenderId, content);
           break;
         default:
           this.logger.warn(`Unknown notifyType: ${notifyType}`);
@@ -67,31 +76,32 @@ export class NotificationWorker extends WorkerHost {
     }
   }
 
-  private async handleStatusChangedNotification(
-    tenderId: number,
-    content: any,
-  ) {
-    if (!tenderId) return;
+  // private async handleStatusChangedNotification(
+  //   tenderId: number,
+  //   content: any,
+  // ) {
+  //   if (!tenderId) return;
 
-    this.logger.log(
-      `Processing status change notification for tender ${tenderId}`,
-    );
-    try {
-      await this.socketService.sendNotification(
-        'ALL',
-        `Тендер №${tenderId} змінив статус на ${content?.ids_status || 'НЕВІДОМИЙ'}`,
-      );
-    } catch (err) {
-      this.logger.error(`Failed to send status notification: ${err.message}`);
-      // Usually better not to throw if we want the DB marked DONE,
-      // but if we want BullMQ to retry, we throw.
-      // For now, let's log it.
-    }
-  }
+  //   this.logger.log(
+  //     `Processing status change notification for tender ${tenderId}`,
+  //   );
+  //   try {
+  //     await this.socketService.sendNotification(
+  //       'ALL',
+  //       `Тендер №${tenderId} змінив статус на ${content?.ids_status || 'НЕВІДОМИЙ'}`,
+  //     );
+  //   } catch (err) {
+  //     this.logger.error(`Failed to send status notification: ${err.message}`);
+  //     // Usually better not to throw if we want the DB marked DONE,
+  //     // but if we want BullMQ to retry, we throw.
+  //     // For now, let's log it.
+  //   }
+  // }
 
   private async handlePersonalBulkNotification(
     personList: any[],
     content: any,
+    notifyType: string,
   ) {
     if (!personList || personList.length === 0) {
       this.logger.debug(`No persons to notify for tender ${content?.id}`);
@@ -159,9 +169,32 @@ export class NotificationWorker extends WorkerHost {
             }
 
             // 3. Email
-            if (to_email) {
-              this.logger.debug(
-                `Email notification requested for person ${id_person}`,
+            if (to_email && person.email) {
+              const emailPayload = {
+                type: notifyType,
+                tenderId: content.id,
+                data: {
+                  date: content.date_start,
+                  endDate: content.date_end,
+                  cargo: content.cargo,
+                  requirements: trailer,
+                  route: `${from} ➡️ ${to}`,
+                  duration: content.duration
+                    ? `${content.duration} хв.`
+                    : undefined,
+                  step: content.step_price
+                    ? `${content.step_price} ${content.ids_valut || 'грн'}`
+                    : undefined,
+                  buyout: content.is_buyout,
+                  message: content.message || content.comments,
+                  isWinner: person.is_winner,
+                  tenderType: content.tender_type,
+                },
+              };
+
+              await this.mailService.sendTenderNotification(
+                person.email,
+                emailPayload,
               );
             }
           } catch (err) {

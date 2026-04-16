@@ -7,12 +7,14 @@ import {
 } from './common/telegram.keyboards';
 import { BUTTON_NAMES } from './common/telegra.buttons-text';
 import { MESSAGES } from './common/telegram.messages';
+import { UserGateway } from 'src/user/user.gateway';
 
 @Update()
 export class TelegramUpdate {
   constructor(
     @InjectBot() private readonly bot: Telegraf<Context>,
     private readonly telegramService: TelegramService,
+    private readonly userGateway: UserGateway,
   ) {}
 
   @Start()
@@ -39,17 +41,26 @@ export class TelegramUpdate {
             ctx.from.username ?? '',
             ctx.from.first_name ?? '',
           );
-          return ctx.reply('✅ Telegram успішно підключено!', PREMIUM_KEYBOARD);
+          
+          // Сповіщаємо фронтенд через Socket, щоб UI оновився миттєво
+          await this.userGateway.emitToUser(String(user.id), 'telegram_connected', {
+            telegram_id: telegramId,
+          });
+
+          await ctx.reply('✅ Telegram успішно підключено!', PREMIUM_KEYBOARD);
+          return;
         } else {
-          return ctx.reply('❌ Токен не знайдено або він вже використаний.');
+          await ctx.reply('❌ Токен не знайдено або він вже використаний.');
+          return;
         }
       }
 
       const user = await this.telegramService.checkIfUserExist(telegramId);
       if (!user) {
-        return ctx.reply(
+        await ctx.reply(
           MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!).text,
         );
+        return;
       }
 
       const keyboard = user.isPremium ? PREMIUM_KEYBOARD : DEFAULT_KEYBOARD;

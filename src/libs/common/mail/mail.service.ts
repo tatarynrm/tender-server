@@ -7,6 +7,7 @@ import { ResetPasswordTemplate } from './templates/reset-password.template';
 import { TwoFactorAuthTemplate } from './templates/two-factor-auth.template';
 import { SuccessfulPreRegistrationTemplate } from './templates/pre-register-greeting';
 import { SuccessfulPreRegistrationAccountTemplate } from './templates/pre-register-success-greeting';
+import { TenderNotificationTemplate } from './templates/tender-notification.template';
 
 @Injectable()
 export class MailService {
@@ -67,4 +68,20 @@ export class MailService {
   //   const html = await render(TwoFactorAuthTemplate({ token }));
   //   return this.sendMail(email, 'Підтвердження особистості', html);
   // }
+
+  public async sendTenderNotification(email: string, payload: any) {
+    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+    const { type, tenderId, subject, data } = payload;
+
+    const html = await render(
+        TenderNotificationTemplate({
+            type,
+            tenderId,
+            domain,
+            data
+        })
+    );
+
+    return this.sendMail(email, subject || `Сповіщення по тендеру №${tenderId}`, html);
+  }
 }

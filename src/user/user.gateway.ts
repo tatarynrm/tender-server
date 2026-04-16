@@ -35,6 +35,9 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.redisClient.set(socketKey, userId, { EX: 86400 });
     await this.redisClient.sAdd(userSocketsKey, client.id);
 
+    // Додаємо сокет у його особисту кімнату для приватних повідомлень
+    client.join(`user_room:${userId}`);
+
     // Оновлюємо час останньої активності в Sorted Set
     const now = Math.floor(Date.now() / 1000);
     await this.redisClient.zAdd(this.ONLINE_TRACKER_KEY, {

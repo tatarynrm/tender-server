@@ -9,7 +9,7 @@ export class DbEventsProcessor {
 
   constructor(
     @Inject('PG_POOL') private readonly pgPool: Pool,
-    @InjectQueue('notifications') private readonly notificationQueue: Queue,
+    @InjectQueue('tender_notifications') private readonly tenderQueue: Queue,
   ) {}
 
   async processEvents(payload?: any) {
@@ -19,46 +19,46 @@ export class DbEventsProcessor {
 
     const client = await this.pgPool.connect();
     try {
-      let hasMore = true;
+      const result = await client.query('SELECT notify_list()');
+      const notifications = result.rows[0]?.notify_list;
 
-      do {
-        const result = await client.query('SELECT notify_list()');
-        const notifications = result.rows[0]?.notify_list;
+      if (
+        !notifications ||
+        !Array.isArray(notifications) ||
+        notifications.length === 0
+      ) {
+        this.logger.debug('No more pending notifications.');
+        return;
+      }
 
-        if (
-          !notifications ||
-          !Array.isArray(notifications) ||
-          notifications.length === 0
-        ) {
-          this.logger.debug('No more pending notifications.');
-          hasMore = false;
-          continue;
+      this.logger.log(
+        `Found ${notifications.length} notifications to dispatch to queue.`,
+      );
+
+      for (const item of notifications) {
+        try {
+          this.logger.log(
+            `Queueing notification ${item.id} (${item.ids_notify_type})`,
+          );
+
+          // 1. Позначаємо в таблиці notify як PROCESSING
+          await client.query(
+            "UPDATE notify SET ids_status = 'PROCESSING' WHERE id = $1",
+            [item.id],
+          );
+
+          // 2. Додаємо в чергу
+          await this.dispatch(item.ids_notify_type, item);
+        } catch (e) {
+          this.logger.error(
+            `Error dispatching notification ${item.id} (${item.ids_notify_type}): ${e.message}`,
+          );
+          await client.query(
+            "UPDATE notify SET ids_status = 'FAILED' WHERE id = $1",
+            [item.id],
+          );
         }
-
-        this.logger.log(
-          `Found ${notifications.length} notifications to dispatch to queue.`,
-        );
-
-        for (const item of notifications) {
-          try {
-            await this.dispatch(item.ids_notify_type, item);
-
-            // Позначаємо як оброблене диспетчером (відправлено в чергу)
-            await client.query(
-              'UPDATE sys_notifications SET status = $1, processed_at = NOW() WHERE id = $2',
-              ['DISPATCHED', item.id],
-            );
-          } catch (e) {
-            this.logger.error(
-              `Error dispatching notification ${item.id} (${item.ids_notify_type}): ${e.message}`,
-            );
-            await client.query(
-              'UPDATE sys_notifications SET status = $1, error_message = $2 WHERE id = $3',
-              ['ERROR', e.message, item.id],
-            );
-          }
-        }
-      } while (hasMore);
+      }
     } catch (e) {
       this.logger.error(`Batch dispatching failed: ${e.message}`);
     } finally {
@@ -67,46 +67,36 @@ export class DbEventsProcessor {
   }
 
   private async dispatch(notifyType: string, data: any) {
-    const { person_list, id_person_list, content, id_tblref, tblref, id: notificationId } = data;
-    const final_person_list = person_list || id_person_list;
+    const {
+      person_list,
+      id_person_list,
+      content,
+      id_tblref,
+      tblref,
+      notify_part,
+      id: notificationId,
+    } = data;
+    const final_person_list = person_list || id_person_list || [];
 
     this.logger.log(
-      `Dispatching notification type: ${notifyType} for table: ${tblref} to queue`,
+      `Dispatching notification type: ${notifyType} for part: ${notify_part} for table: ${tblref} to queue`,
     );
 
-    switch (notifyType) {
-      case 'TENDER_ACTUAL':
-        await this.handleTenderActual(notificationId, final_person_list, content);
-        break;
-
-      case 'TENDER_STATUS_CHANGED':
-        await this.handleTenderStatusChanged(notificationId, id_tblref, content);
-        break;
-
-      default:
-        this.logger.warn(`No handler for notification type: ${notifyType}`);
-    }
-  }
-
-  private async handleTenderStatusChanged(notificationId: number, tenderId: number, content: any) {
-    await this.notificationQueue.add('tender-status-changed', {
+    if (notify_part === 'TENDER') {
+      await this.tenderQueue.add('process-notification', {
         notificationId,
-        tenderId,
-        content
-    });
-  }
-
-  private async handleTenderActual(notificationId: number, personList: any[], content: any) {
-    if (!personList || personList.length === 0) return;
-
-    this.logger.log(`Adding ${personList.length} notification jobs for tender ${content.id}`);
-
-    for (const person of personList) {
-      await this.notificationQueue.add('send-personal-notification', {
-        notificationId,
-        person,
+        notifyType,
+        tenderId: id_tblref,
         content,
+        personList: final_person_list,
       });
+    } else {
+      this.logger.warn(`No configured queue for notify_part: ${notify_part}`);
+      // Можемо також зразу замінити статус на помилку або відкладено:
+      await this.pgPool.query(
+        "UPDATE notify SET ids_status = 'FAILED' WHERE id = $1",
+        [notificationId],
+      );
     }
   }
 }

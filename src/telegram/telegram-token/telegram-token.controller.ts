@@ -25,9 +25,10 @@ export class TelegramTokenController {
   ) {
     console.log(dto.email, 'email');
 
-    return this.telegramTokenService.createOrUpdateTelegramConnectToken(
+    const token = await this.telegramTokenService.createOrUpdateTelegramConnectToken(
       dto.email,
     );
+    return { token };
   }
   @Post('disconnect')
   async disconnectTelegram(

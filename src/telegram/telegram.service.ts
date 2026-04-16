@@ -135,13 +135,17 @@ export class TelegramService implements OnModuleInit {
       this.logger.error('Помилка відправки в групу:', error);
     }
   }
-  async sendMessageToUser(personId: number, message: string) {
+  async sendMessageToUser(personId: number, message: string, providedTelegramId?: number) {
     try {
-      const result = await this.pool.query(
-        `SELECT telegram_id FROM person_telegram WHERE id_person = $1`,
-        [personId],
-      );
-      const telegramId = result.rows[0]?.telegram_id;
+      let telegramId = providedTelegramId;
+      
+      if (!telegramId) {
+        const result = await this.pool.query(
+          `SELECT telegram_id FROM person_telegram WHERE id_person = $1`,
+          [personId],
+        );
+        telegramId = result.rows[0]?.telegram_id;
+      }
 
       if (telegramId) {
         await this.bot.telegram.sendMessage(telegramId, message, {
@@ -154,5 +158,77 @@ export class TelegramService implements OnModuleInit {
       this.logger.error(`Failed to send TG message to person ${personId}: ${err.message}`);
       return false;
     }
+  }
+
+  async broadcastMessage(payload: { 
+    message: string, 
+    filter?: { 
+      companyIds?: number[], 
+      roles?: string[],
+      onlyICT?: boolean 
+    } 
+  }) {
+    const { message, filter } = payload;
+    
+    let query = `
+      SELECT pt.telegram_id, p.id as person_id 
+      FROM person_telegram pt
+      JOIN person p ON pt.id_person = p.id
+      JOIN usr u ON p.email = u.email
+    `;
+    
+    const params: any[] = [];
+    const conditions: string[] = [];
+
+    if (filter?.companyIds?.length) {
+      params.push(filter.companyIds);
+      conditions.push(`u.id_company = ANY($${params.length})`);
+    }
+
+    if (filter?.onlyICT) {
+      conditions.push(`u.id_company = 1`);
+    }
+
+    if (conditions.length) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    const { rows } = await this.pool.query(query, params);
+    
+    let successCount = 0;
+    let failCount = 0;
+
+    // Send in batches to avoid rate limits (25 per sec is Telegram's recommended safe limit)
+    for (const row of rows) {
+      try {
+        await this.bot.telegram.sendMessage(row.telegram_id, message, {
+          parse_mode: 'HTML',
+        });
+        successCount++;
+      } catch (err) {
+        this.logger.error(`Broadcast failed for TG ${row.telegram_id}: ${err.message}`);
+        failCount++;
+      }
+      
+      // Small sleep to be safe
+      if (successCount % 25 === 0) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    return { total: rows.length, success: successCount, failed: failCount };
+  }
+
+  async getSubscriberStats() {
+    const { rows } = await this.pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN u.id_company = 1 THEN 1 END) as ict_count,
+        COUNT(CASE WHEN u.id_company != 1 THEN 1 END) as carrier_count
+      FROM person_telegram pt
+      JOIN person p ON pt.id_person = p.id
+      JOIN usr u ON p.email = u.email
+    `);
+    return rows[0];
   }
 }

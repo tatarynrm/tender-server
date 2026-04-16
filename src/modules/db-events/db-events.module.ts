@@ -7,7 +7,7 @@ import { SocketModule } from 'src/socket/socket.module';
 import { MailModule } from 'src/libs/common/mail/mail.module';
 import { BullModule } from '@nestjs/bullmq';
 
-import { NotificationWorker } from './processors/notification.worker';
+import { TenderWorker } from './processors/tender.worker';
 
 @Module({
   imports: [
@@ -15,10 +15,10 @@ import { NotificationWorker } from './processors/notification.worker';
     SocketModule,
     MailModule,
     BullModule.registerQueue({
-      name: 'notifications',
+      name: 'tender_notifications',
     }),
   ],
-  providers: [DbEventsListener, DbEventsProcessor, NotificationWorker],
+  providers: [DbEventsListener, DbEventsProcessor, TenderWorker],
   exports: [DbEventsProcessor],
 })
 export class DbEventsModule {}

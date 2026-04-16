@@ -13,7 +13,9 @@ export class SocketService {
       timestamp: new Date().toISOString(),
     };
 
-    if (Array.isArray(userIds)) {
+    if (userIds === 'ALL') {
+      this.userGateway.emitToAll('new_notification', payload);
+    } else if (Array.isArray(userIds)) {
       // Використовуємо масив кімнат
       const rooms = userIds.map(id => `user_room:${id}`);
       this.userGateway.server.to(rooms).emit('new_notification', payload);

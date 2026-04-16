@@ -11,8 +11,6 @@ export class NotificationService {
   }
 
   async updateNotificationSettings(payload: any) {
-    console.log(payload, 'PAYLOAD');
-
     const result = await this.dbservice.callProcedure(
       'tender_notify_save',
       JSON.stringify(payload),
