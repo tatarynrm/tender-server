@@ -86,7 +86,7 @@ export class AuthService {
     );
 
     const user = checkUserExist.content;
-    console.log(user, 'USER-----------------');
+
     if (!user) {
       throw new NotFoundException('Користувач не знайдений.');
     }

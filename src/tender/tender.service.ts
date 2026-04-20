@@ -17,7 +17,7 @@ export class TenderService {
     private readonly tenderGateway: TenderGateway,
     private readonly loadGateway: LoadGateway,
     private readonly filesService: FilesService, // Added this line
-  ) { }
+  ) {}
 
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
@@ -80,36 +80,46 @@ export class TenderService {
 
     return result;
   }
-  public async save(dto: any, files: Express.Multer.File[] = [], id_company?: string | number) {
+  public async save(
+    dto: any,
+    files: Express.Multer.File[] = [],
+    id_company?: string | number,
+  ) {
     if (Array.isArray(dto.tender_permission)) {
-      dto.tender_permission = dto.tender_permission.filter((x: any) => x && x.ids_permission_type);
+      dto.tender_permission = dto.tender_permission.filter(
+        (x: any) => x && x.ids_permission_type,
+      );
     }
     if (Array.isArray(dto.tender_trailer)) {
-      dto.tender_trailer = dto.tender_trailer.filter((x: any) => x && x.ids_trailer_type);
+      dto.tender_trailer = dto.tender_trailer.filter(
+        (x: any) => x && x.ids_trailer_type,
+      );
     }
     if (Array.isArray(dto.tender_load)) {
-      dto.tender_load = dto.tender_load.filter((x: any) => x && x.ids_load_type);
+      dto.tender_load = dto.tender_load.filter(
+        (x: any) => x && x.ids_load_type,
+      );
     }
 
-    const result = await this.dbservice.callProcedure(
-      'tender_save',
-      dto,
-      {},
-    );
+    const result = await this.dbservice.callProcedure('tender_save', dto, {});
 
     // After saving tender, sync its files
     try {
-
       const savedTender = result.content[0];
       const tenderId = savedTender || savedTender?.id_tender || dto.id;
-
 
       if (tenderId) {
         const currentFileIds = Array.isArray(dto.current_file_ids)
           ? dto.current_file_ids.map(Number)
           : [];
 
-        await this.filesService.syncFiles('tender', Number(tenderId), currentFileIds, files, id_company);
+        await this.filesService.syncFiles(
+          'tender',
+          Number(tenderId),
+          currentFileIds,
+          files,
+          id_company,
+        );
       }
     } catch (fileError) {
       console.error('Error syncing files for tender:', fileError);
@@ -120,7 +130,6 @@ export class TenderService {
 
     return result;
   }
-
 
   public async getOne(id: string) {
     const result = await this.dbservice.callProcedure(
@@ -156,9 +165,24 @@ export class TenderService {
 
     const tenderForIct = await this.getOneList(result.content[0].tender_id);
 
-    this.tenderGateway.emitToAll('new_bid', result.content[0]);
+    console.log(tenderForIct.content[0], 'TENDER FOR ICT');
+    setTimeout(() => {
+      console.log(result.content[0], 'TENDER FOR MANAGERS');
+    }, 4000);
+
+    const preparedResult = { ...result.content[0] };
+    delete preparedResult.person_price_proposed;
+    delete preparedResult.person_offer_car_count;
+    delete preparedResult.person_winner_car_count;
+
+    const preparedTenderIct = { ...tenderForIct.content[0] };
+    delete preparedTenderIct.person_price_proposed;
+    delete preparedTenderIct.person_offer_car_count;
+    delete preparedTenderIct.person_winner_car_count;
+
+    this.tenderGateway.emitToAll('new_bid', preparedResult);
     // Для наших менеджерів!
-    this.loadGateway.emitToAll('new_bid', tenderForIct.content[0]);
+    this.loadGateway.emitToAll('new_bid', preparedTenderIct);
 
     return result;
   }
