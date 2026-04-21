@@ -77,4 +77,9 @@ export class TenderController {
   getOne(@Param('id') id: string) {
     return this.tenderService.getOne(id);
   }
+
+  @Post(':id/notify')
+  sendCustomNotification(@Param('id') id: string, @Body() body: any) {
+    return this.tenderService.sendCustomNotification(body);
+  }
 }

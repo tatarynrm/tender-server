@@ -228,4 +228,15 @@ export class TenderService {
     this.tenderGateway.emitToAll('tender_status_updated', updatedTenderId);
     return result;
   }
+
+  public async sendCustomNotification(dto: any) {
+    console.log(dto, 'DTO 233 send custom notification');
+
+    const result = await this.dbservice.callProcedure(
+      'tender_notify_message',
+      dto,
+      {},
+    );
+    return result;
+  }
 }

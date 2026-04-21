@@ -212,6 +212,18 @@ ${content.managerMessage || 'Див. деталі в системі'}
 
 ${details}`;
 
+    case 'TENDER_MESSAGE_ANY':
+      return `
+🔔 <b>Важливе повідомлення по тендеру №${content.id}</b>
+
+${content.managerMessage || content.message || content.notes || 'Будь ласка, зверніть увагу на нову інформацію від менеджера.'}
+
+<a href="${tenderUrl}">Переглянути тендер</a>
+
+<b>Деталі тендеру:</b>
+
+${details}`;
+
     default:
       return `📢 <b>Подія по тендеру №${content.id}</b>\nТип: ${notifyType}\n${tenderUrl}`;
   }
@@ -278,6 +290,11 @@ ${commonInfo}
 🆕 Тендер №${content.id} 📍 ${from} - ${to} ЗМІНИ!
 ${content.managerMessage || 'Див. деталі'}`.trim();
 
+    case 'TENDER_MESSAGE_ANY':
+      return `
+🔔 Повідомлення по тендеру №${content.id}
+${content.managerMessage || content.message || content.notes || 'Нова інформація від менеджера'}`.trim();
+
     default:
       return `📢 Тендер №${content.id}`;
   }
@@ -310,7 +327,12 @@ export function getEmailData(
         ? `${content.price_step} ${content.ids_valut || 'EUR'}`
         : '—',
       buyout: content.price_redemption ? 'так' : 'ні',
-      message: content.notes || content.comments || '—',
+      message:
+        content.managerMessage ||
+        content.message ||
+        content.notes ||
+        content.comments ||
+        '—',
       resultText: winnerText,
       tenderType: content.tender_type || 'Редукціон',
       url: tenderUrl,

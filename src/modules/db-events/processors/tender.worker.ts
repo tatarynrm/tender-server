@@ -51,6 +51,15 @@ export class TenderWorker extends WorkerHost {
             notifyType,
           );
           break;
+        case 'TENDER_MESSAGE_ANY':
+          console.log(job.data, 'JOB DATA ANY');
+
+          await this.handlePersonalBulkNotification(
+            personList,
+            content,
+            notifyType,
+          );
+          break;
         default:
           this.logger.warn(`Unknown notifyType: ${notifyType}`);
       }
