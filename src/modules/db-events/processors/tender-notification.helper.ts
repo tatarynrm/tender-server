@@ -31,6 +31,7 @@ export interface NotificationContent {
   ref_temperature_from?: number;
   ref_temperature_to?: number;
   best_bid?: number;
+  message?: string;
 }
 
 export function formatDuration(minutes?: number) {
