@@ -32,4 +32,14 @@ export class AdminUserController {
     // query тепер містить всі ваші фільтри та пагінацію
     return this.adminUserService.getUserPre(Number(id));
   }
+
+  @Post('delete')
+  adminDeleteUser(@Body('id') id: string) {
+    return this.adminUserService.adminDeleteUser(id);
+  }
+
+  @Post('pre-register/register')
+  registerFromPre(@Body() dto: any) {
+    return this.adminUserService.registerFromPre(dto);
+  }
 }

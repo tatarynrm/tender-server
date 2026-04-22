@@ -58,7 +58,7 @@ export class AuthService {
     };
   }
   // Передреєстрація -----!!!!!!!!!!!!!!!!!!
-  public async preRegister(dto: PreRegisterDto) {
+  public async preRegister(dto: any) {
     const password_hash = await hash(dto.password);
     const preRegisterData = { ...dto, password_hash };
     const { password, passwordRepeat, ...safeData } = preRegisterData;
@@ -74,9 +74,27 @@ export class AuthService {
   }
 
   public async login(req: Request, dto: LoginDto) {
-    console.log(dto, 'DTO----- 76 ');
+    const userFromDb = await this.userService.findByEmail(dto.email);
 
-    // const user = await this.userService.findByEmail(dto.email);
+    if (!userFromDb) {
+      throw new NotFoundException('Користувач не знайдений.');
+    }
+
+    if (!userFromDb.password_hash) {
+      throw new UnauthorizedException(
+        'Для цього акаунту не встановлено пароль. Будь ласка, зверніться до адміністратора.',
+      );
+    }
+
+    const isValidPassword = await verify(
+      userFromDb.password_hash,
+      dto.password,
+    );
+
+    if (!isValidPassword) {
+      throw new UnauthorizedException('Невірний пароль');
+    }
+
     const checkUserExist = await this.dbservice.callProcedure(
       'usr_login',
 
@@ -88,11 +106,7 @@ export class AuthService {
     const user = checkUserExist.content;
 
     if (!user) {
-      throw new NotFoundException('Користувач не знайдений.');
-    }
-    const isValidPassword = await verify(user.password_hash, dto.password);
-    if (!isValidPassword) {
-      throw new UnauthorizedException('Невірний пароль');
+      throw new NotFoundException('Помилка при отриманні профілю користувача.');
     }
 
     if (!user.verified) {

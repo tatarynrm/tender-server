@@ -76,4 +76,13 @@ export class AdminUserService {
 
     return result;
   }
+
+  public async adminDeleteUser(id: number | string) {
+    return this.dbservice.callProcedure('usr_delete', { id }, {});
+  }
+
+  public async registerFromPre(dto: any) {
+    console.log(dto, 'dto admin 87 in admin-user-service');
+    return this.dbservice.callProcedure('usr_register_from_pre', dto, {});
+  }
 }

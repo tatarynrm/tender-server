@@ -57,7 +57,7 @@ export class AuthController {
   // @Recaptcha()
   @Post('pre-register')
   @HttpCode(HttpStatus.OK)
-  public async preRegister(@Req() req: Request, @Body() dto: PreRegisterDto) {
+  public async preRegister(@Req() req: Request, @Body() dto: any) {
     return this.authService.preRegister(dto);
   }
   @Post('register-ict-user')

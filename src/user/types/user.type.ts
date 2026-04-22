@@ -7,6 +7,7 @@ export interface IUserProfile {
   verified: boolean;
   department: IDepartment;
   is_blocked: boolean;
+  password_hash?: string;
 }
 
 export interface IUserRole {

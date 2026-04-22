@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsEmail, IsOptional, IsNumber, IsPhoneNumber, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  IsOptional,
+  IsNumber,
+  IsPhoneNumber,
+  Min,
+} from 'class-validator';
 
 export class UserRegisterFromPreDto {
   @IsString()
@@ -12,6 +20,10 @@ export class UserRegisterFromPreDto {
   @IsString()
   @IsNotEmpty({ message: 'Прізвище обов’язкове' })
   surname: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Пароль хешований обовязковий' })
+  password_hash: string;
 
   @IsEmail({}, { message: 'Невірний email' })
   email: string;
