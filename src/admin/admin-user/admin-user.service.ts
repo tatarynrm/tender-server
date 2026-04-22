@@ -30,7 +30,7 @@ export class AdminUserService {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
     const result = await this.dbservice.callProcedure(
-      'usr_list',
+      'usr_list_ict',
 
       {
         pagination: {
@@ -47,7 +47,7 @@ export class AdminUserService {
   }
   public async getAdminOneUser(id: any) {
     const result = await this.dbservice.callProcedure(
-      'usr_one',
+      'usr_one_ict',
 
       {
         id: id,
@@ -63,7 +63,7 @@ export class AdminUserService {
     // створення нового користувача
     console.log(dto, 'dto admin 36 in admin-user-service');
 
-    const result = await this.dbservice.callProcedure('usr_save', dto, {});
+    const result = await this.dbservice.callProcedure('usr_save_ict', dto, {});
     return result;
   }
 

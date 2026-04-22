@@ -8,6 +8,7 @@ export interface NotificationContent {
   time_end?: string;
   date_load?: string;
   date_load2?: string;
+  date_unload?: string;
   ids_valut?: string;
   valut_name?: string;
   price_start?: number;
@@ -114,7 +115,7 @@ export function getTenderMetadata(content: NotificationContent) {
     vatStatus,
     tempRegime,
     carCount: content.car_count || 1,
-    tenderUrl: `https://tender.ict.lviv.ua/dashboard/tender/${content.id}`,
+    tenderUrl: `https://tender.ict.lviv.ua/dashboard/tender/active`,
   };
 }
 
@@ -129,14 +130,43 @@ export function getTelegramMessage(
   const durationStr = formatDuration(content.duration);
   const typeStr = content.tender_type || 'Редукціон';
 
+  const datesPart: string[] = [];
+  if (content.date_load)
+    datesPart.push(
+      `📅 Завантаження: ${formatTenderDate(content.date_load, true)}`,
+    );
+  if (content.date_load2)
+    datesPart.push(
+      `📅 Завантаження 2: ${formatTenderDate(content.date_load2, true)}`,
+    );
+  if (content.date_unload)
+    datesPart.push(
+      `📅 Вивантаження: ${formatTenderDate(content.date_unload, true)}`,
+    );
+  const datesStr = datesPart.length > 0 ? datesPart.join('\n') : '';
+
+  let priceInfo = `💰 Тип: ${typeStr}`;
+  if (content.price_start && content.price_start > 0) {
+    priceInfo += `, старт торгів ${content.price_start}${currency}`;
+    if (content.price_step && content.price_step > 0) {
+      priceInfo += ` (крок ставки ${content.price_step}${currency})`;
+    }
+  }
+  if (content.price_redemption && content.price_redemption > 0) {
+    priceInfo += `\n💰 Викупити рейс: ${content.price_redemption}${currency}!`;
+  }
+
+  const timeEndStr = content.time_end
+    ? `закінчення - ${formatTenderDate(content.time_end)}`
+    : 'безстроковий';
+
   const details = `
-📅Завантаження: ${formatTenderDate(content.date_load, true)}
+${datesStr}
 📦 Вантаж: ${content.cargo || '—'} (${content.weight || 0}т / ${content.volume || 0}м³)
 📍 Звідки: ${from}
 🏁 Куди: ${to}
 🚛 Транспорт: ${trailer} (${carCount} авто)
-💰 Тип: ${typeStr}, старт торгів ${content.price_start || 0}${currency} (крок ставки ${content.price_step || 0}${currency})
-${content.price_redemption ? `💰Викупити рейс: ${content.price_redemption}${currency}!` : ''}
+${priceInfo}
 `.trim();
 
   switch (notifyType) {
@@ -153,7 +183,7 @@ ${details}`;
     case 'TENDER_ACTUAL':
       return `
 🆕 Тендер запущено (${typeStr})
-Повідомляємо, що по замовленню №${content.id} - запущено тендер (Тривалість - ${durationStr}, закінчення - ${formatTenderDate(content.time_end)})
+Повідомляємо, що по замовленню №${content.id} - запущено тендер (Тривалість - ${durationStr}, ${timeEndStr})
 <a href="${tenderUrl}">Переглянути тендер</a>
 
 Деталі тендеру:
@@ -196,7 +226,7 @@ ${bidStatus}`;
     case 'TENDER_PROLONGATION':
       return `
 🆕 Змінено часові рамки тендеру.
-Повідомляємо Вам, що по тендеру №${content.id} нова дата закінчення ${formatTenderDate(content.time_end)}.
+Повідомляємо Вам, що по тендеру №${content.id} нова дата ${timeEndStr}.
 <a href="${tenderUrl}">Переглянути тендер</a>
 
 Деталі тендеру:
@@ -239,19 +269,39 @@ export function getWebMessage(
   const currency = content.ids_valut === 'EUR' ? 'Є' : content.ids_valut || 'Є';
   const durationStr = formatDuration(content.duration);
   const typeStr = content.tender_type || 'Редукціон';
-  const dateLoad = formatTenderDate(content.date_load, true);
-  const timeStart =
-    formatTenderDate(content.time_start).split(' об ')[1] || '—';
-  const timeEnd = formatTenderDate(content.time_end).split(' об ')[1] || '—';
+
+  const timeStart = content.time_start
+    ? formatTenderDate(content.time_start).split(' об ')[1] || '—'
+    : '—';
+  const timeEnd = content.time_end
+    ? `Закінчення ${formatTenderDate(content.time_end).split(' об ')[1] || '—'}`
+    : 'Безстроковий';
+
+  const datesPart: string[] = [];
+  if (content.date_load)
+    datesPart.push(`📅 Зав: ${formatTenderDate(content.date_load, true)}`);
+  if (content.date_load2)
+    datesPart.push(`📅 Зав 2: ${formatTenderDate(content.date_load2, true)}`);
+  if (content.date_unload)
+    datesPart.push(`📅 Вив: ${formatTenderDate(content.date_unload, true)}`);
+  const datesStr = datesPart.length > 0 ? datesPart.join(', ') : '';
+
+  let priceInfo = `💰 ${typeStr}`;
+  if (content.price_start && content.price_start > 0) {
+    priceInfo += `, старт ${content.price_start}${currency}`;
+    if (content.price_step && content.price_step > 0)
+      priceInfo += ` (крок ${content.price_step}${currency})`;
+  }
+
+  const buyoutInfo =
+    content.price_redemption && content.price_redemption > 0
+      ? `\n💰 Викуп: ${content.price_redemption}${currency}!`
+      : '';
 
   const commonInfo = `
-📅 Завант: ${dateLoad}, 📦 ${content.cargo || '—'} (${content.weight || 0}т / ${content.volume || 0}м³)
+${datesStr ? datesStr + '\n' : ''}📦 ${content.cargo || '—'} (${content.weight || 0}т / ${content.volume || 0}м³)
 📍 ${from} - ${to} 🚛 ${trailer} (${carCount})
-💰 ${typeStr}, старт ${content.price_start || 0}${currency} (крок ${content.price_step || 0}${currency})`.trim();
-
-  const buyoutInfo = content.price_redemption
-    ? `\n💰 Викуп: ${content.price_redemption}${currency}!`
-    : '';
+${priceInfo}`.trim();
 
   switch (notifyType) {
     case 'TENDER_PLAN':
@@ -261,7 +311,7 @@ ${commonInfo}${buyoutInfo}`.trim();
 
     case 'TENDER_ACTUAL':
       return `
-🆕 Тендер запущено. №${content.id}, початок ${timeStart}, тривалість ${durationStr}.
+🆕 Тендер запущено. №${content.id}, початок ${timeStart}, тривалість ${durationStr}. ( ${timeEnd} )
 ${commonInfo}${buyoutInfo}`.trim();
 
     case 'TENDER_CLOSED':
@@ -282,7 +332,7 @@ ${commonInfo}
 
     case 'TENDER_PROLONGATION':
       return `
-🆕 Тендер №${content.id} змінено час. Закінчення ${timeEnd}
+🆕 Тендер №${content.id} змінено час. ${timeEnd}
 ${commonInfo}
 💰 Краща ${content.best_bid || '—'}${currency}${buyoutInfo}`.trim();
 
@@ -301,7 +351,6 @@ ${content.managerMessage || content.message || content.notes || 'Нова інф
   }
 }
 
-
 export function getEmailData(
   content: NotificationContent,
   notifyType: string,
@@ -313,21 +362,40 @@ export function getEmailData(
     ? 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати <b>Вас переможцем</b>.'
     : 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати переможцем по лоту іншого учасника.';
 
+  const combinedDates =
+    [
+      content.date_load
+        ? `Завантаження: ${formatTenderDate(content.date_load, true)}`
+        : null,
+      content.date_load2
+        ? `Завантаження 2: ${formatTenderDate(content.date_load2, true)}`
+        : null,
+      content.date_unload
+        ? `Вивантаження: ${formatTenderDate(content.date_unload, true)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(', ') || '—';
+
   return {
     type: notifyType,
     tenderId: content.id,
     data: {
       id: content.id,
-      date: formatTenderDate(content.date_load, true),
-      endDate: formatTenderDate(content.time_end),
+      date: combinedDates,
+      endDate: content.time_end
+        ? formatTenderDate(content.time_end)
+        : 'Безстроковий',
       cargo: content.cargo || '—',
       requirements: `${trailer}, ${content.weight || 0}т, ${content.volume || 0}м³, Завантаження: ${loads}`,
       route: routeInfo,
       duration: content.duration ? `${content.duration} хв.` : '—',
-      step: content.price_step
-        ? `${content.price_step} ${content.ids_valut || 'EUR'}`
-        : '—',
-      buyout: content.price_redemption ? 'так' : 'ні',
+      step:
+        content.price_step && content.price_step > 0
+          ? `${content.price_step} ${content.ids_valut || 'EUR'}`
+          : '—',
+      buyout:
+        content.price_redemption && content.price_redemption > 0 ? 'так' : 'ні',
       message:
         content.managerMessage ||
         content.message ||
