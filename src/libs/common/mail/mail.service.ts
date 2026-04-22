@@ -17,7 +17,6 @@ export class MailService {
   ) {}
   public async sendMail(email: string, subject: string, html: string) {
     return this.mailerService.sendMail({
-      from: 'cargo-info@ict.lviv.ua',
       to: email,
       subject: subject,
       html,
