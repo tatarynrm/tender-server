@@ -122,7 +122,7 @@ export function getTenderMetadata(content: NotificationContent) {
     vatStatus,
     tempRegime,
     carCount: content.car_count || 1,
-    tenderUrl: `https://tender.ict.lviv.ua/dashboard/tender/active`,
+    tenderUrl: `${process.env.APP_CLIENT_URL || 'https://tender.ict.lviv.ua'}/dashboard/tender/${content.id}`,
   };
 }
 

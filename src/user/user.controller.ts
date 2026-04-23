@@ -19,6 +19,7 @@ import type { Request } from 'express';
 import { CompanyFillPreRegister } from './dto/company-fill-pre-register.dto';
 import { CreateUserFromCompany } from './dto/create-user-from-company.dto';
 import { UserRegisterFromPreDto } from './dto/user-register-from-pre.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Authorization()
 @Controller('users')
@@ -50,6 +51,16 @@ export class UserController {
     @Req() req: Request,
   ) {
     return this.userService.update(userId, dto);
+  }
+
+  @Authorization()
+  @HttpCode(HttpStatus.OK)
+  @Patch('change-password')
+  public async changePassword(
+    @Authorized('id') userId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.userService.changePassword(userId, dto);
   }
 
   // @Authorization()

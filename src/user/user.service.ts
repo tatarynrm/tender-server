@@ -1,6 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
-import { hash } from 'argon2';
+import { hash, verify } from 'argon2';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Pool, QueryResult } from 'pg';
 
@@ -278,5 +283,52 @@ export class UserService {
     );
 
     return result;
+  }
+
+  public async changePassword(userId: string | number, dto: any) {
+    const { oldPassword, newPassword } = dto;
+
+    // 1. Отримуємо профілі через існуючий метод (там є ім'я та пошта)
+    const userProfile = await this.findById(userId);
+
+    // 2. Отримуємо хеш пароля з таблиці usr
+    const authResult = await this.pool.query(
+      `SELECT password_hash FROM usr WHERE id = $1`,
+      [userId],
+    );
+    const authData = authResult.rows[0];
+
+    if (!authData) {
+      throw new NotFoundException(
+        'Користувача не знайдено в системі авторизації',
+      );
+    }
+
+    // 3. Перевіряємо старий пароль
+    const isPasswordValid = await verify(authData.password_hash, oldPassword);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Невірний старий пароль');
+    }
+
+    // 4. Хешуємо новий пароль
+    const newHash = await hash(newPassword);
+
+    // 5. Оновлюємо в БД
+    await this.pool.query(`UPDATE usr SET password_hash = $1 WHERE id = $2`, [
+      newHash,
+      userId,
+    ]);
+
+    // 6. Відправляємо лист
+    try {
+      await this.mailService.sendPasswordChangeSuccessEmail(
+        userProfile.email,
+        userProfile.person.name,
+      );
+    } catch (e) {
+      console.error('Failed to send password change email', e);
+    }
+
+    return { message: 'Пароль успішно змінено' };
   }
 }

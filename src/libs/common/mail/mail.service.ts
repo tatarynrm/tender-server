@@ -8,6 +8,8 @@ import { TwoFactorAuthTemplate } from './templates/two-factor-auth.template';
 import { SuccessfulPreRegistrationTemplate } from './templates/pre-register-greeting';
 import { SuccessfulPreRegistrationAccountTemplate } from './templates/pre-register-success-greeting';
 import { TenderNotificationTemplate } from './templates/tender-notification.template';
+import { PasswordChangedTemplate } from './templates/password-changed.template';
+
 
 @Injectable()
 export class MailService {
@@ -82,5 +84,10 @@ export class MailService {
     );
 
     return this.sendMail(email, subject || `Сповіщення по тендеру №${tenderId}`, html);
+  }
+
+  public async sendPasswordChangeSuccessEmail(email: string, userName?: string) {
+    const html = await render(PasswordChangedTemplate({ userName }));
+    return this.sendMail(email, 'Пароль успішно змінено', html);
   }
 }
