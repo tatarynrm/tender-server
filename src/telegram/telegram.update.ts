@@ -1,11 +1,6 @@
-import { Action, Hears, InjectBot, Start, Update } from 'nestjs-telegraf';
-import { Context, Markup, Telegraf } from 'telegraf';
+import { Action, Command, Hears, InjectBot, Start, Update } from 'nestjs-telegraf';
+import { Context, Telegraf } from 'telegraf';
 import { TelegramService } from './telegram.service';
-import {
-  DEFAULT_KEYBOARD,
-  PREMIUM_KEYBOARD,
-} from './common/telegram.keyboards';
-import { BUTTON_NAMES } from './common/telegra.buttons-text';
 import { MESSAGES } from './common/telegram.messages';
 import { UserGateway } from 'src/user/user.gateway';
 
@@ -20,17 +15,10 @@ export class TelegramUpdate {
   @Start()
   async startCommand(ctx: Context) {
     try {
-      console.log(ctx.message, 'ctx message');
-
       const telegramId = ctx.from?.id;
       if (!telegramId) return ctx.reply('Не вдалося отримати ваш ID');
 
-      // Telegraf автоматично парсить посилання типу t.me/bot?start=TOKEN
       const token = (ctx as any).payload;
-
-      console.log(
-        `--- NEW POLLING REQUEST --- ID: ${telegramId}, Token: ${token}`,
-      );
 
       if (token) {
         const user = await this.telegramService.findByTelegramToken(token);
@@ -42,12 +30,11 @@ export class TelegramUpdate {
             ctx.from.first_name ?? '',
           );
           
-          // Сповіщаємо фронтенд через Socket, щоб UI оновився миттєво
           await this.userGateway.emitToUser(String(user.id), 'telegram_connected', {
             telegram_id: telegramId,
           });
 
-          await ctx.reply('✅ Telegram успішно підключено!', PREMIUM_KEYBOARD);
+          await ctx.reply('✅ Telegram успішно підключено!');
           return;
         } else {
           await ctx.reply('❌ Токен не знайдено або він вже використаний.');
@@ -63,16 +50,20 @@ export class TelegramUpdate {
         return;
       }
 
-      const keyboard = user.isPremium ? PREMIUM_KEYBOARD : DEFAULT_KEYBOARD;
-      await ctx.reply('Виберіть опцію:', keyboard);
+      await ctx.reply('👋 Ласкаво просимо! Ви підключені до системи сповіщень ICT Tender. Використовуйте меню для навігації.');
     } catch (err) {
       console.error(err);
       await ctx.reply('Сталася помилка, спробуйте пізніше.');
     }
   }
 
-  @Hears(BUTTON_NAMES.MY_TRANSPORTATIONS)
-  async getMyTransportations(ctx: Context) {
-    await ctx.reply('Список справ');
+  @Command('info')
+  async infoCommand(ctx: Context) {
+    await ctx.reply(
+      'ℹ️ *Про бота*\n\n' +
+      'На даному етапі цей бот буде використовуватись для надсилання сповіщень про тендери та важливі події.\n\n' +
+      '🚀 У подальшому тут з’явиться багато корисних функцій для керування вашими заявками та документами прямо з Telegram!',
+      { parse_mode: 'Markdown' }
+    );
   }
 }

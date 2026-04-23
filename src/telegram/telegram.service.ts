@@ -21,6 +21,19 @@ export class TelegramService implements OnModuleInit {
 
   async onModuleInit() {
     await this.setupWebhookMode();
+    await this.setupBotCommands();
+  }
+
+  private async setupBotCommands() {
+    try {
+      await this.bot.telegram.setMyCommands([
+        { command: 'start', description: 'Запустити / Перезапустити бота' },
+        { command: 'info', description: 'Інформація про бота' },
+      ]);
+      this.logger.log('✅ Команди бота успішно встановлено');
+    } catch (error) {
+      this.logger.error('❌ Помилка при встановленні команд бота:', error);
+    }
   }
 
   private async setupWebhookMode() {
