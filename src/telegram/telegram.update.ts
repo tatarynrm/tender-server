@@ -34,19 +34,18 @@ export class TelegramUpdate {
             telegram_id: telegramId,
           });
 
-          await ctx.reply('✅ Telegram успішно підключено!');
+          await ctx.reply('✅ Telegram успішно підключено!', Markup.removeKeyboard());
           return;
         } else {
-          await ctx.reply('❌ Токен не знайдено або він вже використаний.');
+          await ctx.reply('❌ Токен не знайдено або він вже використаний.', Markup.removeKeyboard());
           return;
         }
       }
 
       const user = await this.telegramService.checkIfUserExist(telegramId);
       if (!user) {
-        await ctx.reply(
-          MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!).text,
-        );
+        const unregistered = MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!);
+        await ctx.reply(unregistered.text, unregistered.options);
         return;
       }
 
@@ -63,10 +62,12 @@ export class TelegramUpdate {
             ])
           }
         );
+        // Також примусово прибираємо стару клавіатуру, якщо вона була
+        await ctx.reply('Клавіатуру очищено.', Markup.removeKeyboard());
         return;
       }
 
-      await ctx.reply('👋 Ласкаво просимо! Ви підключені до системи сповіщень ICT Tender. Використовуйте меню для навігації.');
+      await ctx.reply('👋 Ласкаво просимо! Ви підключені до системи сповіщень ICT Tender.', Markup.removeKeyboard());
     } catch (err) {
       console.error(err);
       await ctx.reply('Сталася помилка, спробуйте пізніше.');
