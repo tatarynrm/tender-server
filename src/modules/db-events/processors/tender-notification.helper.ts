@@ -37,15 +37,20 @@ export interface NotificationContent {
 
 export function formatDuration(minutes?: number) {
   if (!minutes) return '—';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours > 0) {
-    return `${hours} год${mins > 0 ? ` ${mins} хв` : ''}`;
-  }
-  return `${mins} хв`;
+  const days = Math.floor(minutes / (60 * 24));
+  const remainingMins = minutes % (60 * 24);
+  const hours = Math.floor(remainingMins / 60);
+  const mins = remainingMins % 60;
+  
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days} дн`);
+  if (hours > 0) parts.push(`${hours} год`);
+  if (mins > 0) parts.push(`${mins} хв`);
+  
+  return parts.length > 0 ? parts.join(' ') : '—';
 }
 
-export function formatTenderDate(dateStr?: string, dateOnly = false) {
+export function formatTenderDate(dateStr?: string, forceDateOnly = false, hideZeroTime = false) {
   if (!dateStr) return '—';
   try {
     const d = new Date(dateStr);
@@ -57,7 +62,9 @@ export function formatTenderDate(dateStr?: string, dateOnly = false) {
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
 
-    if (dateOnly) return `${day}.${month}.${year}`;
+    if (forceDateOnly) return `${day}.${month}.${year}`;
+    if (hideZeroTime && hours === '00' && minutes === '00') return `${day}.${month}.${year}`;
+    
     return `${day}.${month}.${year} об ${hours}:${minutes}`;
   } catch (e) {
     return dateStr;
@@ -127,33 +134,46 @@ export function getTelegramMessage(
   const { from, to, trailer, carCount, tenderUrl } = getTenderMetadata(content);
 
   const currency = content.ids_valut === 'EUR' ? 'Є' : content.ids_valut || 'Є';
-  const durationStr = formatDuration(content.duration);
+
+  const startMs = content.time_start ? new Date(content.time_start).getTime() : 0;
+  const endMs = content.time_end ? new Date(content.time_end).getTime() : 0;
+  
+  let durationStr = formatDuration(content.duration);
+  if (startMs && !endMs) {
+    durationStr = 'Безстроковий';
+  } else if (startMs && endMs) {
+    const diffMins = Math.max(0, Math.floor((endMs - startMs) / 60000));
+    durationStr = formatDuration(diffMins);
+  }
+
   const typeStr = content.tender_type || 'Редукціон';
 
   const datesPart: string[] = [];
-  if (content.date_load)
+  if (content.date_load && !content.date_load2) {
     datesPart.push(
-      `📅 Завантаження: ${formatTenderDate(content.date_load, true)}`,
+      `📅 Завантаження: ${formatTenderDate(content.date_load, false, true)}`,
     );
-  if (content.date_load2)
+  } else if (content.date_load && content.date_load2) {
     datesPart.push(
-      `📅 Завантаження 2: ${formatTenderDate(content.date_load2, true)}`,
+      `📅 Завантаження: ${formatTenderDate(content.date_load, false, true)} — ${formatTenderDate(content.date_load2, false, true)}`,
     );
-  if (content.date_unload)
+  }
+  if (content.date_unload) {
     datesPart.push(
-      `📅 Вивантаження: ${formatTenderDate(content.date_unload, true)}`,
+      `📅 Вивантаження: ${formatTenderDate(content.date_unload, false, true)}`,
     );
+  }
   const datesStr = datesPart.length > 0 ? datesPart.join('\n') : '';
 
   let priceInfo = `💰 Тип: ${typeStr}`;
   if (content.price_start && content.price_start > 0) {
-    priceInfo += `, старт торгів ${content.price_start}${currency}`;
+    priceInfo += `, старт торгів ${content.price_start} ${currency}`;
     if (content.price_step && content.price_step > 0) {
-      priceInfo += ` (крок ставки ${content.price_step}${currency})`;
+      priceInfo += ` (крок ставки ${content.price_step} ${currency})`;
     }
   }
   if (content.price_redemption && content.price_redemption > 0) {
-    priceInfo += `\n💰 Викупити рейс: ${content.price_redemption}${currency}!`;
+    priceInfo += `\n💰 Викупити рейс: ${content.price_redemption} ${currency}!`;
   }
 
   const timeEndStr = content.time_end
@@ -173,8 +193,7 @@ ${priceInfo}
     case 'TENDER_PLAN':
       return `
 🆕 Тендер заплановано.
-Повідомляємо, що ${formatTenderDate(content.time_start)} заплановано проведення тендеру №${content.id}. Тривалість ${durationStr}.
-<a href="${tenderUrl}">Переглянути тендер</a>
+Повідомляємо, що ${formatTenderDate(content.time_start)} заплановано проведення тендеру <a href="${tenderUrl}">№${content.id}</a>. Тривалість ${durationStr}.
 
 Деталі тендеру:
 
@@ -183,8 +202,7 @@ ${details}`;
     case 'TENDER_ACTUAL':
       return `
 🆕 Тендер запущено (${typeStr})
-Повідомляємо, що по замовленню №${content.id} - запущено тендер (Тривалість - ${durationStr}, ${timeEndStr})
-<a href="${tenderUrl}">Переглянути тендер</a>
+Повідомляємо, що по замовленню <a href="${tenderUrl}">№${content.id}</a> - запущено тендер (Тривалість - ${durationStr}, ${timeEndStr})
 
 Деталі тендеру:
 
@@ -194,9 +212,8 @@ ${details}`;
       return `
 🆕 Прийом пропозицій завершено.
 
-Повідомляємо, що прийом пропозицій по тендеру №${content.id} - завершено.
+Повідомляємо, що прийом пропозицій по тендеру <a href="${tenderUrl}">№${content.id}</a> - завершено.
 Просимо вас слідкувати за подальшими етапами тендеру у системі або звертати увагу на повідомлення, які надходитимуть на вашу електронну адресу.
-<a href="${tenderUrl}">Переглянути тендер</a>
 
 Деталі тендеру:
 
@@ -209,11 +226,11 @@ ${details}`;
         : `Після ретельного розгляду всіх пропозицій було прийнято рішення обрати переможцем по лоту іншого учасника.`;
 
       const bidStatus = isWinner
-        ? `💳 Ваша ставка ${person?.bid_price || '—'}${currency} перемогла!`
-        : `💳 Ваша ставка ${person?.bid_price || '—'}${currency} не перемогла, краща ставка ${content.best_bid || '—'}${currency}`;
+        ? `💳 Ваша ставка ${person?.bid_price || '—'} ${currency} перемогла!`
+        : `💳 Ваша ставка ${person?.bid_price || '—'} ${currency} не перемогла, краща ставка ${content.best_bid || '—'} ${currency}`;
 
       return `
-🆕 Результати тендеру №${content.id} .
+🆕 Результати тендеру <a href="${tenderUrl}">№${content.id}</a> .
 
 ${resultMessage}
 
@@ -226,8 +243,7 @@ ${bidStatus}`;
     case 'TENDER_PROLONGATION':
       return `
 🆕 Змінено часові рамки тендеру.
-Повідомляємо Вам, що по тендеру №${content.id} нова дата ${timeEndStr}.
-<a href="${tenderUrl}">Переглянути тендер</a>
+Повідомляємо Вам, що по тендеру <a href="${tenderUrl}">№${content.id}</a> нова дата ${timeEndStr}.
 
 Деталі тендеру:
 
@@ -235,9 +251,8 @@ ${details}`;
 
     case 'TENDER_CHANGED':
       return `
-🆕 Повідомляємо Вам, що в тендері №${content.id} відбулися зміни: 
+🆕 Повідомляємо Вам, що в тендері <a href="${tenderUrl}">№${content.id}</a> відбулися зміни: 
 ${content.managerMessage || 'Див. деталі в системі'}
-<a href="${tenderUrl}">Переглянути тендер</a>
 
 Деталі тендеру:
 
@@ -245,18 +260,16 @@ ${details}`;
 
     case 'TENDER_MESSAGE_ANY':
       return `
-🔔 <b>Важливе повідомлення по тендеру №${content.id}</b>
+🔔 <b>Важливе повідомлення по тендеру <a href="${tenderUrl}">№${content.id}</a></b>
 
 ${content.managerMessage || content.message || content.notes || 'Будь ласка, зверніть увагу на нову інформацію від менеджера.'}
-
-<a href="${tenderUrl}">Переглянути тендер</a>
 
 <b>Деталі тендеру:</b>
 
 ${details}`;
 
     default:
-      return `📢 <b>Подія по тендеру №${content.id}</b>\nТип: ${notifyType}\n${tenderUrl}`;
+      return `📢 <b>Подія по тендеру <a href="${tenderUrl}">№${content.id}</a></b>\nТип: ${notifyType}`;
   }
 }
 
@@ -267,7 +280,18 @@ export function getWebMessage(
 ) {
   const { from, to, trailer, carCount } = getTenderMetadata(content);
   const currency = content.ids_valut === 'EUR' ? 'Є' : content.ids_valut || 'Є';
-  const durationStr = formatDuration(content.duration);
+
+  const startMs = content.time_start ? new Date(content.time_start).getTime() : 0;
+  const endMs = content.time_end ? new Date(content.time_end).getTime() : 0;
+  
+  let durationStr = formatDuration(content.duration);
+  if (startMs && !endMs) {
+    durationStr = 'Безстроковий';
+  } else if (startMs && endMs) {
+    const diffMins = Math.max(0, Math.floor((endMs - startMs) / 60000));
+    durationStr = formatDuration(diffMins);
+  }
+
   const typeStr = content.tender_type || 'Редукціон';
 
   const timeStart = content.time_start
@@ -278,24 +302,26 @@ export function getWebMessage(
     : 'Безстроковий';
 
   const datesPart: string[] = [];
-  if (content.date_load)
-    datesPart.push(`📅 Зав: ${formatTenderDate(content.date_load, true)}`);
-  if (content.date_load2)
-    datesPart.push(`📅 Зав 2: ${formatTenderDate(content.date_load2, true)}`);
-  if (content.date_unload)
-    datesPart.push(`📅 Вив: ${formatTenderDate(content.date_unload, true)}`);
+  if (content.date_load && !content.date_load2) {
+    datesPart.push(`📅 Зав: ${formatTenderDate(content.date_load, false, true)}`);
+  } else if (content.date_load && content.date_load2) {
+    datesPart.push(`📅 Зав: ${formatTenderDate(content.date_load, false, true)} — ${formatTenderDate(content.date_load2, false, true)}`);
+  }
+  if (content.date_unload) {
+    datesPart.push(`📅 Вив: ${formatTenderDate(content.date_unload, false, true)}`);
+  }
   const datesStr = datesPart.length > 0 ? datesPart.join(', ') : '';
 
   let priceInfo = `💰 ${typeStr}`;
   if (content.price_start && content.price_start > 0) {
-    priceInfo += `, старт ${content.price_start}${currency}`;
+    priceInfo += `, старт ${content.price_start} ${currency}`;
     if (content.price_step && content.price_step > 0)
-      priceInfo += ` (крок ${content.price_step}${currency})`;
+      priceInfo += ` (крок ${content.price_step} ${currency})`;
   }
 
   const buyoutInfo =
     content.price_redemption && content.price_redemption > 0
-      ? `\n💰 Викуп: ${content.price_redemption}${currency}!`
+      ? `\n💰 Викуп: ${content.price_redemption} ${currency}!`
       : '';
 
   const commonInfo = `
@@ -318,23 +344,23 @@ ${commonInfo}${buyoutInfo}`.trim();
       return `
 🆕 Тендер звершено. №${content.id}. Аналіз.
 ${commonInfo}
-💰 Краща ${content.best_bid || '—'}${currency}${buyoutInfo}`.trim();
+💰 Краща ${content.best_bid || '—'} ${currency}${buyoutInfo}`.trim();
 
     case 'TENDER_RESULT':
       const isWinner = person?.is_winner;
       const winnerStatus = isWinner
-        ? `Ви перемогли 💰${person?.bid_price || '—'}${currency}`
-        : `Ви не перемогли ${person?.bid_price || '—'}${currency}`;
+        ? `Ви перемогли 💰${person?.bid_price || '—'} ${currency}`
+        : `Ви не перемогли ${person?.bid_price || '—'} ${currency}`;
       return `
 🆕 Тендер №${content.id}. ${winnerStatus}
 ${commonInfo}
-💰 Краща ${content.best_bid || '—'}${currency}${buyoutInfo}`.trim();
+💰 Краща ${content.best_bid || '—'} ${currency}${buyoutInfo}`.trim();
 
     case 'TENDER_PROLONGATION':
       return `
 🆕 Тендер №${content.id} змінено час. ${timeEnd}
 ${commonInfo}
-💰 Краща ${content.best_bid || '—'}${currency}${buyoutInfo}`.trim();
+💰 Краща ${content.best_bid || '—'} ${currency}${buyoutInfo}`.trim();
 
     case 'TENDER_CHANGED':
       return `
@@ -362,16 +388,26 @@ export function getEmailData(
     ? 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати <b>Вас переможцем</b>.'
     : 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати переможцем по лоту іншого учасника.';
 
+  const startMs = content.time_start ? new Date(content.time_start).getTime() : 0;
+  const endMs = content.time_end ? new Date(content.time_end).getTime() : 0;
+  
+  let durationStr = formatDuration(content.duration);
+  if (startMs && !endMs) {
+    durationStr = 'Безстроковий';
+  } else if (startMs && endMs) {
+    const diffMins = Math.max(0, Math.floor((endMs - startMs) / 60000));
+    durationStr = formatDuration(diffMins);
+  }
+
   const combinedDates =
     [
-      content.date_load
-        ? `Завантаження: ${formatTenderDate(content.date_load, true)}`
-        : null,
-      content.date_load2
-        ? `Завантаження 2: ${formatTenderDate(content.date_load2, true)}`
-        : null,
+      (content.date_load && !content.date_load2)
+        ? `Завантаження: ${formatTenderDate(content.date_load, false, true)}`
+        : (content.date_load && content.date_load2)
+          ? `Завантаження: ${formatTenderDate(content.date_load, false, true)} — ${formatTenderDate(content.date_load2, false, true)}`
+          : null,
       content.date_unload
-        ? `Вивантаження: ${formatTenderDate(content.date_unload, true)}`
+        ? `Вивантаження: ${formatTenderDate(content.date_unload, false, true)}`
         : null,
     ]
       .filter(Boolean)
@@ -389,7 +425,7 @@ export function getEmailData(
       cargo: content.cargo || '—',
       requirements: `${trailer}, ${content.weight || 0}т, ${content.volume || 0}м³, Завантаження: ${loads}`,
       route: routeInfo,
-      duration: content.duration ? `${content.duration} хв.` : '—',
+      duration: durationStr,
       step:
         content.price_step && content.price_step > 0
           ? `${content.price_step} ${content.ids_valut || 'EUR'}`
