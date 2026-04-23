@@ -62,8 +62,6 @@ export class TelegramUpdate {
             ])
           }
         );
-        // Також примусово прибираємо стару клавіатуру, якщо вона була
-        await ctx.reply('Клавіатуру очищено.', Markup.removeKeyboard());
         return;
       }
 
