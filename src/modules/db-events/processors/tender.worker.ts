@@ -134,14 +134,14 @@ export class TenderWorker extends WorkerHost {
               );
             }
 
-            // 2. Email
-            if (to_email && person.email) {
-              const emailPayload = getEmailData(content, notifyType, person);
-              await this.mailService.sendTenderNotification(
-                person.email,
-                emailPayload,
-              );
-            }
+            // // 2. Email
+            // if (to_email && person.email) {
+            //   const emailPayload = getEmailData(content, notifyType, person);
+            //   await this.mailService.sendTenderNotification(
+            //     person.email,
+            //     emailPayload,
+            //   );
+            // }
           } catch (err) {
             this.logger.error(
               `Failed to notify person ${id_person}: ${err.message}`,
