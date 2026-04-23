@@ -1,5 +1,5 @@
 import { Action, Command, Hears, InjectBot, Start, Update } from 'nestjs-telegraf';
-import { Context, Telegraf } from 'telegraf';
+import { Context, Telegraf, Markup } from 'telegraf';
 import { TelegramService } from './telegram.service';
 import { MESSAGES } from './common/telegram.messages';
 import { UserGateway } from 'src/user/user.gateway';
@@ -50,11 +50,59 @@ export class TelegramUpdate {
         return;
       }
 
+      const isAdmin = this.telegramService.isAdmin(telegramId);
+
+      if (isAdmin) {
+        await ctx.reply(
+          '👑 *Вітаємо, Адміністраторе!*\n\nВи маєте доступ до панелі керування сервером.',
+          {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('🚀 Запустити DEPLOY', 'run_deploy')],
+              [Markup.button.callback('📊 Статистика', 'get_stats')]
+            ])
+          }
+        );
+        return;
+      }
+
       await ctx.reply('👋 Ласкаво просимо! Ви підключені до системи сповіщень ICT Tender. Використовуйте меню для навігації.');
     } catch (err) {
       console.error(err);
       await ctx.reply('Сталася помилка, спробуйте пізніше.');
     }
+  }
+
+  @Command('deploy')
+  @Action('run_deploy')
+  async handleDeploy(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.reply('⛔️ У вас немає прав для виконання цієї команди.');
+    }
+
+    await ctx.reply('⏳ *Починаю процес деплою...*', { parse_mode: 'Markdown' });
+
+    const result = await this.telegramService.runDeploy();
+
+    if (result.success) {
+      await ctx.reply('✅ *Деплой завершено успішно!*\n\n' + '```\n' + result.output.slice(0, 1000) + '\n```', { parse_mode: 'Markdown' });
+    } else {
+      await ctx.reply('❌ *Помилка під час деплою:*\n\n' + '```\n' + result.output.slice(0, 1000) + '\n```', { parse_mode: 'Markdown' });
+    }
+  }
+
+  @Action('get_stats')
+  async handleStats(ctx: Context) {
+    const stats = await this.telegramService.getSubscriberStats();
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      `📊 *Статистика бота:*\n\n` +
+      `👥 Всього підписників: *${stats.total}*\n` +
+      `🏢 Менеджери ICT: *${stats.ict_count}*\n` +
+      `🚚 Перевізники: *${stats.carrier_count}*`,
+      { parse_mode: 'Markdown' }
+    );
   }
 
   @Command('info')

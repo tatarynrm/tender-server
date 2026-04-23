@@ -4,6 +4,9 @@ import { TelegramGateway } from './telegram.gateway';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
 import { ConfigService } from '@nestjs/config';
+import { exec } from 'child_process';
+
+const ADMIN_ID = 282039969;
 
 @Injectable()
 export class TelegramService implements OnModuleInit {
@@ -250,5 +253,23 @@ export class TelegramService implements OnModuleInit {
       JOIN usr u ON p.email = u.email
     `);
     return rows[0];
+  }
+
+  public isAdmin(telegramId: number): boolean {
+    return telegramId === ADMIN_ID;
+  }
+
+  public async runDeploy(): Promise<{ success: boolean; output: string }> {
+    return new Promise((resolve) => {
+      // Виконуємо команду 'deploy' на сервері
+      exec('deploy', (error, stdout, stderr) => {
+        if (error) {
+          this.logger.error(`❌ Deploy failed: ${error.message}`);
+          return resolve({ success: false, output: error.message });
+        }
+        this.logger.log(`✅ Deploy finished successfully`);
+        resolve({ success: true, output: stdout || stderr });
+      });
+    });
   }
 }
