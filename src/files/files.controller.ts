@@ -18,7 +18,10 @@ export class FilesController {
       });
 
       // Передаємо заголовки типу контенту
-      res.setHeader('Content-Type', response.headers['content-type']);
+      const contentType = response.headers['content-type'];
+      if (contentType) {
+        res.setHeader('Content-Type', contentType.toString());
+      }
       
       // Стрімимо дані клієнту
       response.data.pipe(res);
