@@ -239,4 +239,13 @@ export class TenderService {
     );
     return result;
   }
+
+  public async sendResultNotification(id: string) {
+    const result = await this.dbservice.callProcedure(
+      'tender_notify_results',
+      { id_tender: id },
+      {},
+    );
+    return result;
+  }
 }
