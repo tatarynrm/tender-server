@@ -43,7 +43,9 @@ export class TelegramService implements OnModuleInit {
     try {
       const domain = this.configService.get<string>('WEBHOOK_DOMAIN');
       if (!domain) {
-        this.logger.warn('⚠️ WEBHOOK_DOMAIN не задано. Бот може не отримувати оновлення.');
+        this.logger.warn(
+          '⚠️ WEBHOOK_DOMAIN не задано. Бот може не отримувати оновлення.',
+        );
         return;
       }
 
@@ -71,8 +73,18 @@ export class TelegramService implements OnModuleInit {
     };
   }
 
-  async updateTelegramId(personId: number, telegramId: number, username: string, firstName: string) {
-    await this.repository.upsertTelegramUser({ personId, telegramId, username, firstName });
+  async updateTelegramId(
+    personId: number,
+    telegramId: number,
+    username: string,
+    firstName: string,
+  ) {
+    await this.repository.upsertTelegramUser({
+      personId,
+      telegramId,
+      username,
+      firstName,
+    });
   }
 
   async getSubscriberStats() {
@@ -92,10 +104,14 @@ export class TelegramService implements OnModuleInit {
       await this.bot.telegram.sendMessage(this.channelId, message, {
         parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [[{
-            text: '🚚 Відкрити заявку на порталі',
-            url: `https://tender.ict.lviv.ua/log/load/active`,
-          }]],
+          inline_keyboard: [
+            [
+              {
+                text: '🚚 Відкрити заявку на порталі',
+                url: `https://tender.ict.lviv.ua/log/load/active`,
+              },
+            ],
+          ],
         },
       });
     } catch (error) {
@@ -103,46 +119,60 @@ export class TelegramService implements OnModuleInit {
     }
   }
 
-  async sendMessageToUser(personId: number, message: string, providedTelegramId?: number) {
+  async sendMessageToUser(
+    personId: number,
+    message: string,
+    providedTelegramId?: number,
+  ) {
     try {
       let telegramId = providedTelegramId;
-      
+
       if (!telegramId) {
         const row = await this.repository.findByPersonId(personId);
         telegramId = row?.telegram_id;
       }
 
       if (telegramId) {
-        await this.bot.telegram.sendMessage(telegramId, message, { parse_mode: 'HTML' });
+        await this.bot.telegram.sendMessage(telegramId, message, {
+          parse_mode: 'HTML',
+        });
         return true;
       }
       return false;
     } catch (err) {
-      this.logger.error(`Failed to send TG message to person ${personId}: ${err.message}`);
+      this.logger.error(
+        `Failed to send TG message to person ${personId}: ${err.message}`,
+      );
       return false;
     }
   }
 
-  async broadcastMessage(payload: { 
-    message: string, 
-    filter?: { companyIds?: number[], roles?: string[], onlyICT?: boolean } 
+  async broadcastMessage(payload: {
+    message: string;
+    filter?: { companyIds?: number[]; roles?: string[]; onlyICT?: boolean };
   }) {
-    const rows = await this.repository.getSubscribersForBroadcast(payload.filter);
-    
+    const rows = await this.repository.getSubscribersForBroadcast(
+      payload.filter,
+    );
+
     let successCount = 0;
     let failCount = 0;
 
     for (const row of rows) {
       try {
-        await this.bot.telegram.sendMessage(row.telegram_id, payload.message, { parse_mode: 'HTML' });
+        await this.bot.telegram.sendMessage(row.telegram_id, payload.message, {
+          parse_mode: 'HTML',
+        });
         successCount++;
       } catch (err) {
-        this.logger.error(`Broadcast failed for TG ${row.telegram_id}: ${err.message}`);
+        this.logger.error(
+          `Broadcast failed for TG ${row.telegram_id}: ${err.message}`,
+        );
         failCount++;
       }
-      
+
       if (successCount % 25 === 0) {
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 1000));
       }
     }
 
@@ -160,8 +190,12 @@ export class TelegramService implements OnModuleInit {
 
     const fromRoute = formatRoute(order.crm_load_route_from);
     const toRoute = formatRoute(order.crm_load_route_to);
-    const trailers = (order.crm_load_trailer || []).map((t: any) => t.trailer_type_name || t.ids_trailer_type).join(', ');
-    const priceDisplay = order.is_price_request ? 'Запит ціни 💰' : `*${order.price} ${order.ids_valut}*`;
+    const trailers = (order.crm_load_trailer || [])
+      .map((t: any) => t.trailer_type_name || t.ids_trailer_type)
+      .join(', ');
+    const priceDisplay = order.is_price_request
+      ? 'Запит ціни 💰'
+      : `*${order.price} ${order.ids_valut}*`;
 
     return [
       `👉 *${order.author || 'Користувач'}* додав нову заявку: ✅ \`${order.id}\``,
@@ -178,7 +212,9 @@ export class TelegramService implements OnModuleInit {
       `---`,
       `🏢 *Замовник:* ${order.company_name || 'Приватна особа'}`,
       `👤 *Автор:* ${order.author || 'ID ' + order.id_usr}`,
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
 
   public isAdmin(telegramId: number): boolean {
@@ -186,6 +222,7 @@ export class TelegramService implements OnModuleInit {
   }
 
   public async runDeploy(): Promise<{ success: boolean; output: string }> {
+    // вів
     return new Promise((resolve) => {
       exec('deploy', (error, stdout, stderr) => {
         if (error) {
