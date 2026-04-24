@@ -36,6 +36,11 @@ export class AdminController {
   }) {
     return this.telegramService.broadcastMessage(body);
   }
+
+  @Get('telegram-users')
+  async getTelegramUsers() {
+    return this.telegramService.getTelegramUsers();
+  }
 }
 
 

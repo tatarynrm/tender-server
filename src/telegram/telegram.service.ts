@@ -255,6 +255,29 @@ export class TelegramService implements OnModuleInit {
     return rows[0];
   }
 
+  async getTelegramUsers() {
+    const { rows } = await this.pool.query(`
+      SELECT 
+        pt.telegram_id, 
+        pt.username, 
+        pt.first_name as tg_first_name,
+        p.id as person_id,
+        p.name,
+        p.surname,
+        p.last_name,
+        p.email,
+        c.company_name,
+        u.id as user_id,
+        u.is_blocked
+      FROM person_telegram pt
+      LEFT JOIN person p ON pt.id_person = p.id
+      LEFT JOIN company c ON p.id_company = c.id
+      LEFT JOIN usr u ON p.email = u.email
+      ORDER BY p.surname ASC, p.name ASC
+    `);
+    return rows;
+  }
+
   public isAdmin(telegramId: number): boolean {
     return telegramId === ADMIN_ID;
   }
