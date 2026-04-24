@@ -41,16 +41,20 @@ export function formatDuration(minutes?: number) {
   const remainingMins = minutes % (60 * 24);
   const hours = Math.floor(remainingMins / 60);
   const mins = remainingMins % 60;
-  
+
   const parts: string[] = [];
   if (days > 0) parts.push(`${days} дн`);
   if (hours > 0) parts.push(`${hours} год`);
   if (mins > 0) parts.push(`${mins} хв`);
-  
+
   return parts.length > 0 ? parts.join(' ') : '—';
 }
 
-export function formatTenderDate(dateStr?: string, forceDateOnly = false, hideZeroTime = false) {
+export function formatTenderDate(
+  dateStr?: string,
+  forceDateOnly = false,
+  hideZeroTime = false,
+) {
   if (!dateStr) return '—';
   try {
     const d = new Date(dateStr);
@@ -68,7 +72,8 @@ export function formatTenderDate(dateStr?: string, forceDateOnly = false, hideZe
     });
 
     const parts = formatter.formatToParts(d);
-    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '00';
+    const getPart = (type: string) =>
+      parts.find((p) => p.type === type)?.value || '00';
 
     const day = getPart('day');
     const month = getPart('month');
@@ -77,8 +82,9 @@ export function formatTenderDate(dateStr?: string, forceDateOnly = false, hideZe
     const minutes = getPart('minute');
 
     if (forceDateOnly) return `${day}.${month}.${year}`;
-    if (hideZeroTime && hours === '00' && minutes === '00') return `${day}.${month}.${year}`;
-    
+    if (hideZeroTime && hours === '00' && minutes === '00')
+      return `${day}.${month}.${year}`;
+
     return `${day}.${month}.${year} об ${hours}:${minutes}`;
   } catch (e) {
     return dateStr;
@@ -149,9 +155,11 @@ export function getTelegramMessage(
 
   const currency = content.ids_valut === 'EUR' ? 'Є' : content.ids_valut || 'Є';
 
-  const startMs = content.time_start ? new Date(content.time_start).getTime() : 0;
+  const startMs = content.time_start
+    ? new Date(content.time_start).getTime()
+    : 0;
   const endMs = content.time_end ? new Date(content.time_end).getTime() : 0;
-  
+
   let durationStr = formatDuration(content.duration);
   if (startMs && !endMs) {
     durationStr = 'Безстроковий';
@@ -295,9 +303,11 @@ export function getWebMessage(
   const { from, to, trailer, carCount } = getTenderMetadata(content);
   const currency = content.ids_valut === 'EUR' ? 'Є' : content.ids_valut || 'Є';
 
-  const startMs = content.time_start ? new Date(content.time_start).getTime() : 0;
+  const startMs = content.time_start
+    ? new Date(content.time_start).getTime()
+    : 0;
   const endMs = content.time_end ? new Date(content.time_end).getTime() : 0;
-  
+
   let durationStr = formatDuration(content.duration);
   if (startMs && !endMs) {
     durationStr = 'Безстроковий';
@@ -317,12 +327,18 @@ export function getWebMessage(
 
   const datesPart: string[] = [];
   if (content.date_load && !content.date_load2) {
-    datesPart.push(`📅 Зав: ${formatTenderDate(content.date_load, false, true)}`);
+    datesPart.push(
+      `📅 Зав: ${formatTenderDate(content.date_load, false, true)}`,
+    );
   } else if (content.date_load && content.date_load2) {
-    datesPart.push(`📅 Зав: ${formatTenderDate(content.date_load, false, true)} — ${formatTenderDate(content.date_load2, false, true)}`);
+    datesPart.push(
+      `📅 Зав: ${formatTenderDate(content.date_load, false, true)} — ${formatTenderDate(content.date_load2, false, true)}`,
+    );
   }
   if (content.date_unload) {
-    datesPart.push(`📅 Вив: ${formatTenderDate(content.date_unload, false, true)}`);
+    datesPart.push(
+      `📅 Вив: ${formatTenderDate(content.date_unload, false, true)}`,
+    );
   }
   const datesStr = datesPart.length > 0 ? datesPart.join(', ') : '';
 
@@ -384,7 +400,8 @@ ${content.managerMessage || 'Див. деталі'}`.trim();
     case 'TENDER_MESSAGE_ANY':
       return `
 🔔 Повідомлення по тендеру №${content.id}
-${content.managerMessage || content.message || content.notes || 'Нова інформація від менеджера'}`.trim();
+${content.managerMessage || content.message || content.notes || 'Нова інформація від менеджера'}
+`.trim();
 
     default:
       return `📢 Тендер №${content.id}`;
@@ -402,9 +419,11 @@ export function getEmailData(
     ? 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати <b>Вас переможцем</b>.'
     : 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати переможцем по лоту іншого учасника.';
 
-  const startMs = content.time_start ? new Date(content.time_start).getTime() : 0;
+  const startMs = content.time_start
+    ? new Date(content.time_start).getTime()
+    : 0;
   const endMs = content.time_end ? new Date(content.time_end).getTime() : 0;
-  
+
   let durationStr = formatDuration(content.duration);
   if (startMs && !endMs) {
     durationStr = 'Безстроковий';
@@ -415,9 +434,9 @@ export function getEmailData(
 
   const combinedDates =
     [
-      (content.date_load && !content.date_load2)
+      content.date_load && !content.date_load2
         ? `Завантаження: ${formatTenderDate(content.date_load, false, true)}`
-        : (content.date_load && content.date_load2)
+        : content.date_load && content.date_load2
           ? `Завантаження: ${formatTenderDate(content.date_load, false, true)} — ${formatTenderDate(content.date_load2, false, true)}`
           : null,
       content.date_unload

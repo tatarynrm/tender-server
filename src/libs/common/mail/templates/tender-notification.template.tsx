@@ -22,7 +22,8 @@ interface TenderNotificationProps {
     | 'TENDER_CHANGED'
     | 'TENDER_PROLONGATION'
     | 'TENDER_CLOSED'
-    | 'TENDER_RESULT';
+    | 'TENDER_RESULT'
+    | 'TENDER_MESSAGE_ANY';
   tenderId: string | number;
   domain: string;
   data: {
@@ -87,6 +88,12 @@ export const TenderNotificationTemplate = ({
           preview: `Результати тендеру №${tenderId}: ${data.route}`,
           mainText: `Вдячні Вам за участь у тендері №${tenderId} (${data.route || ''}, ${data.cargo || ''}).`,
         };
+      case 'TENDER_MESSAGE_ANY':
+        return {
+          title: 'Повідомлення по тендеру',
+          preview: `Нове повідомлення по тендеру №${tenderId}`,
+          mainText: `Повідомляємо Вам важливу інформацію по тендеру №${tenderId}:`,
+        };
     }
   };
 
@@ -112,7 +119,9 @@ export const TenderNotificationTemplate = ({
             <Heading style={h1}>{info.title}</Heading>
             <Text style={text}>{info.mainText}</Text>
 
-            {(type === 'TENDER_CHANGED' || type === 'TENDER_PROLONGATION') &&
+            {(type === 'TENDER_CHANGED' ||
+              type === 'TENDER_PROLONGATION' ||
+              type === 'TENDER_MESSAGE_ANY') &&
               data.message && (
                 <Section style={messageBox}>
                   <Text style={messageText}>{data.message}</Text>
@@ -156,7 +165,9 @@ export const TenderNotificationTemplate = ({
             </Section>
 
             {/* Details Table */}
-            {type !== 'TENDER_CLOSED' && type !== 'TENDER_CHANGED' && (
+            {type !== 'TENDER_CLOSED' &&
+              type !== 'TENDER_CHANGED' &&
+              type !== 'TENDER_MESSAGE_ANY' && (
               <Section style={detailsContainer}>
                 <Text style={detailsTitle}>Деталі тендеру:</Text>
                 <Hr style={hr} />

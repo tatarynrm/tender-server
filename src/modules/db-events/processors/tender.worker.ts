@@ -52,8 +52,6 @@ export class TenderWorker extends WorkerHost {
           );
           break;
         case 'TENDER_MESSAGE_ANY':
-          console.log(job.data, 'JOB DATA ANY');
-
           await this.handlePersonalBulkNotification(
             personList,
             content,
