@@ -40,6 +40,7 @@ import { TelegramGateway } from './telegram.gateway';
 import { DatabaseModule } from 'src/database/database.module';
 import { RedisModule } from 'src/libs/common/redis/redis.module';
 import { UserModule } from 'src/user/user.module';
+import { TelegramRepository } from './telegram.repository';
 
 @Module({
   imports: [
@@ -51,13 +52,18 @@ import { UserModule } from 'src/user/user.module';
       useFactory: (config: ConfigService) => ({
         token: config.get<string>('TELEGRAM_BOT_TOKEN')!,
         middlewares: [session()],
-        // Важливо: ми нічого не передаємо в launchOptions, 
+        // Важливо: ми нічого не передаємо в launchOptions,
         // щоб уникнути конфлікту з ручним Webhook
       }),
     }),
   ],
   controllers: [TelegramController],
-  providers: [TelegramService, TelegramUpdate, TelegramGateway],
+  providers: [
+    TelegramService,
+    TelegramUpdate,
+    TelegramGateway,
+    TelegramRepository,
+  ],
   exports: [TelegramService],
 })
 export class TelegramModule {}
