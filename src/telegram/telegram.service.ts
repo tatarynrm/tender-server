@@ -222,7 +222,7 @@ export class TelegramService implements OnModuleInit {
   }
 
   public async runDeploy(): Promise<{ success: boolean; output: string }> {
-    // вівdsadad
+    // вівdsadadewqe
     return new Promise((resolve) => {
       exec('deploy', (error, stdout, stderr) => {
         if (error) {
