@@ -97,7 +97,7 @@ export class TenderWorker extends WorkerHost {
     }
 
     this.logger.debug(
-      `Processing bulk personal notification for ${personList.length} persons`,
+      `Processing bulk personal notification for ${personList.length} persons. Recipients: ${personList.map((p) => p.id_person || p.id).join(', ')}`,
     );
 
     const BATCH_SIZE = 25;
@@ -108,8 +108,18 @@ export class TenderWorker extends WorkerHost {
 
       await Promise.all(
         batch.map(async (person) => {
-          const { id_person, to_web, to_telegram, to_email, telegram_id } =
-            person;
+          const {
+            id_person,
+            to_web,
+            to_telegram,
+            to_email,
+            telegram_id,
+            email,
+          } = person;
+
+          this.logger.debug(
+            `Notifying person ${id_person || person.id}: web=${!!to_web}, tg=${!!to_telegram}, email=${!!to_email} (${email || 'no email'})`,
+          );
 
           try {
             // 1. Web & Telegram

@@ -56,11 +56,25 @@ export function formatTenderDate(dateStr?: string, forceDateOnly = false, hideZe
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
 
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
+    // Створюємо форматер для київського часу
+    const formatter = new Intl.DateTimeFormat('uk-UA', {
+      timeZone: 'Europe/Kyiv',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(d);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '00';
+
+    const day = getPart('day');
+    const month = getPart('month');
+    const year = getPart('year');
+    const hours = getPart('hour');
+    const minutes = getPart('minute');
 
     if (forceDateOnly) return `${day}.${month}.${year}`;
     if (hideZeroTime && hours === '00' && minutes === '00') return `${day}.${month}.${year}`;
