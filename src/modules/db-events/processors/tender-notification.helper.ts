@@ -152,6 +152,7 @@ export function getTelegramMessage(
   person: any,
 ) {
   const { from, to, trailer, carCount, tenderUrl } = getTenderMetadata(content);
+  console.log(content, 'CONTENT');
 
   const currency = content.ids_valut === 'EUR' ? 'Є' : content.ids_valut || 'Є';
 
@@ -242,14 +243,14 @@ ${details}`;
 ${details}`;
 
     case 'TENDER_RESULT':
-      const isWinner = person?.is_winner;
+      const isWinner = (content?.car_count ?? 0) > 0;
       const resultMessage = isWinner
         ? `Після ретельного розгляду всіх пропозицій було прийнято рішення обрати Вас переможцем.`
         : `Після ретельного розгляду всіх пропозицій було прийнято рішення обрати переможцем по лоту іншого учасника.`;
 
       const bidStatus = isWinner
-        ? `💳 Ваша ставка ${person?.bid_price || '—'} ${currency} перемогла!`
-        : `💳 Ваша ставка ${person?.bid_price || '—'} ${currency} не перемогла, краща ставка ${content.best_bid || '—'} ${currency}`;
+        ? `💳 Ваша ставка  перемогла! К-сть авто ${content?.car_count || '—'}`
+        : `💳 Ваша ставка - не перемогла!`;
 
       return `
 🆕 Результати тендеру <a href="${tenderUrl}">№${content.id}</a> .
@@ -377,7 +378,7 @@ ${commonInfo}
 💰 Краща ${content.best_bid || '—'} ${currency}${buyoutInfo}`.trim();
 
     case 'TENDER_RESULT':
-      const isWinner = person?.is_winner;
+      const isWinner = (content?.car_count ?? 0) > 0;
       const winnerStatus = isWinner
         ? `Ви перемогли 💰${person?.bid_price || '—'} ${currency}`
         : `Ви не перемогли ${person?.bid_price || '—'} ${currency}`;
@@ -414,7 +415,7 @@ export function getEmailData(
   person: any,
 ) {
   const { routeInfo, trailer, loads, tenderUrl } = getTenderMetadata(content);
-  const isWinner = person?.is_winner;
+  const isWinner = (content?.car_count ?? 0) > 0;
   const winnerText = isWinner
     ? 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати <b>Вас переможцем</b>.'
     : 'Після ретельного розгляду всіх пропозицій було прийнято рішення обрати переможцем по лоту іншого учасника.';

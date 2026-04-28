@@ -97,6 +97,7 @@ export class TenderWorker extends WorkerHost {
     this.logger.debug(
       `Processing bulk personal notification for ${personList.length} persons. Recipients: ${personList.map((p) => p.id_person || p.id).join(', ')}`,
     );
+    console.log(content, 'test');
 
     const BATCH_SIZE = 25;
     const DELAY_MS = 1500;
