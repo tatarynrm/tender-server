@@ -1,24 +1,24 @@
 import { Module } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
-import { UserService } from 'src/user/user.service';
-import { MailService } from 'src/libs/common/mail/mail.service';
+import { UserModule } from 'src/user/user.module';
 import { MailModule } from 'src/libs/common/mail/mail.module';
-
-
-
 import { AdminCompanyModule } from './admin-company/admin-company.module';
 import { AdminUserModule } from './admin-user/admin-user.module';
 import { LoadModule } from 'src/crm/load/load.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
 
-
-
-
 @Module({
-  imports: [MailModule, AdminCompanyModule, AdminUserModule, LoadModule, TelegramModule],
+  imports: [
+    UserModule,
+    MailModule,
+    AdminCompanyModule,
+    AdminUserModule,
+    LoadModule,
+    TelegramModule,
+  ],
   controllers: [AdminController],
-  providers: [AdminService, UserService, MailService],
+  providers: [AdminService],
   exports: [AdminService],
 })
-export class AdminModule { }
+export class AdminModule {}

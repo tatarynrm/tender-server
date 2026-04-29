@@ -107,7 +107,7 @@ export const TenderNotificationTemplate = ({
         <Container style={container}>
           <Section style={header}>
             <Img
-              src="https://tender.ict.lviv.ua/logo.png"
+              src={`${domain}/logo.png`}
               width="140"
               height="40"
               alt="ICT Logistics"

@@ -19,7 +19,7 @@ import { memoryStorage } from 'multer';
     }),
   ],
   controllers: [TenderController],
-  providers: [TenderService, UserService, TenderGateway, LoadGateway],
+  providers: [TenderService, TenderGateway, LoadGateway],
   exports: [TenderGateway],
 })
 export class TenderModule {}

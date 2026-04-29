@@ -122,7 +122,6 @@ import { DbEventsModule } from './modules/db-events/db-events.module';
   ],
   controllers: [],
   providers: [
-    UserGateway,
     TelegramUpdate,
     LoadGateway,
     FileCleanupService,

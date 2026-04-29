@@ -12,7 +12,7 @@ import {
 } from '@react-email/components';
 import * as React from 'react';
 
-export function SuccessfulPreRegistrationTemplate() {
+export function SuccessfulPreRegistrationTemplate({ domain }: { domain: string }) {
   return (
     <Html>
       <Preview>Ласкаво просимо до ICT Logistics</Preview>
@@ -20,7 +20,7 @@ export function SuccessfulPreRegistrationTemplate() {
         <Container style={container}>
           <Section style={header}>
             <Img
-              src="https://tender.ict.lviv.ua/logo.png"
+              src={`${domain}/logo.png`}
               width="140"
               height="40"
               alt="ICT Logistics"

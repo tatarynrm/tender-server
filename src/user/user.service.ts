@@ -19,6 +19,7 @@ import { MailService } from 'src/libs/common/mail/mail.service';
 import type { RedisClientType } from 'redis';
 import { IUserProfile } from './types/user.type';
 import { TelegramTokenService } from 'src/telegram/telegram-token/telegram-token.service';
+import { UserGateway } from './user.gateway';
 @Injectable()
 export class UserService {
   public constructor(
@@ -28,6 +29,7 @@ export class UserService {
     private readonly mailService: MailService,
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
     private readonly telegramTokenService: TelegramTokenService,
+    private readonly userGateway: UserGateway,
   ) {}
 
   public async findById(id: string | number) {
@@ -167,7 +169,12 @@ export class UserService {
 
       {},
     );
-    this.mailService.sendPreRegisterSuccessGreeting(dto.email);
+    this.mailService.sendPreRegisterSuccessGreeting(dto.email, dto.name);
+
+    if (usersPreRegister && usersPreRegister[0]) {
+      this.userGateway.emitToAll('pre_register_updated', usersPreRegister[0]);
+    }
+
     return usersPreRegister;
   }
   public async companyFillFromUsrPreRegister(dto: CompanyFillPreRegister) {
@@ -182,6 +189,10 @@ export class UserService {
 
       {},
     );
+
+    if (usersPreRegister && usersPreRegister[0]) {
+      this.userGateway.emitToAll('pre_register_updated', usersPreRegister[0]);
+    }
 
     return usersPreRegister;
   }

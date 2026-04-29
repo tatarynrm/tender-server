@@ -14,10 +14,12 @@ import * as React from 'react';
 
 interface TwoFactorAuthTemplateProps {
   token: string;
+  domain: string;
 }
 
 export function TwoFactorAuthTemplate({
   token,
+  domain,
 }: TwoFactorAuthTemplateProps) {
   return (
     <Html>
@@ -26,7 +28,7 @@ export function TwoFactorAuthTemplate({
         <Container style={container}>
           <Section style={header}>
             <Img
-              src="https://tender.ict.lviv.ua/logo.png"
+              src={`${domain}/logo.png`}
               width="140"
               height="40"
               alt="ICT Logistics"

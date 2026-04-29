@@ -1,25 +1,26 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { UserService } from 'src/user/user.service';
 import { GoogleRecaptchaModule } from '@nestlab/google-recaptcha';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { ProviderModule } from './provider/provider.module';
 import { getProvidersConfig } from 'src/config/providers.config';
 import { EmailConfirmationModule } from './email-confirmation/email-confirmation.module';
-import { MailService } from 'src/libs/common/mail/mail.service';
 import { TwoFactorAuthService } from './two-factor-auth/two-factor-auth.service';
-import { ProviderService } from './provider/provider.service';
-import { CompanyService } from 'src/company/company.service';
 import { EmailConfirmationService } from './email-confirmation/email-confirmation.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { AuthGuard } from './guards/auth.guard';
-import { UserGateway } from 'src/user/user.gateway';
+import { UserModule } from 'src/user/user.module';
+import { MailModule } from 'src/libs/common/mail/mail.module';
+import { CompanyModule } from 'src/company/company.module';
 
 @Module({
   imports: [
     forwardRef(() => EmailConfirmationModule),
+    forwardRef(() => UserModule),
+    MailModule,
+    CompanyModule,
     DatabaseModule,
     ProviderModule.registerAsync({
       imports: [ConfigModule],
@@ -30,14 +31,10 @@ import { UserGateway } from 'src/user/user.gateway';
   controllers: [AuthController],
   providers: [
     AuthService,
-    UserService,
-    MailService,
     TwoFactorAuthService,
-    CompanyService,
     EmailConfirmationService,
     AuthGuard,
-    UserGateway
   ],
-  exports: [AuthService,AuthGuard],
+  exports: [AuthService, AuthGuard],
 })
 export class AuthModule {}

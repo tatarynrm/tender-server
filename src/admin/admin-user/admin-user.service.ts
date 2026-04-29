@@ -4,10 +4,14 @@ import {
   buildFiltersFromQuery,
   FilterItem,
 } from 'src/shared/utils/build-filters';
+import { MailService } from 'src/libs/common/mail/mail.service';
 
 @Injectable()
 export class AdminUserService {
-  public constructor(private readonly dbservice: DatabaseService) {}
+  public constructor(
+    private readonly dbservice: DatabaseService,
+    private readonly mailService: MailService,
+  ) {}
 
   public async getAllPreRegisterUsers(query: any) {
     const result = await this.dbservice.callProcedure(
@@ -83,6 +87,21 @@ export class AdminUserService {
 
   public async registerFromPre(dto: any) {
     console.log(dto, 'dto admin 87 in admin-user-service');
-    return this.dbservice.callProcedure('usr_register_from_pre', dto, {});
+    const result = await this.dbservice.callProcedure(
+      'usr_register_from_pre',
+      dto,
+      {},
+    );
+
+    // Надсилаємо лист після успішної реєстрації
+    if (dto.email) {
+      this.mailService.sendPreRegisterSuccessGreeting(
+        dto.email,
+        dto.name,
+        true, // showPasswordHint
+      );
+    }
+
+    return result;
   }
 }

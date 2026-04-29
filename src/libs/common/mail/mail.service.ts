@@ -25,68 +25,81 @@ export class MailService {
     });
   }
   public async sendConfirmationEmail(email: string, token: string) {
-    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+    const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
 
     const html = await render(ConfirmationTemplate({ domain, token }));
     return this.sendMail(email, 'Підтвердження пошти', html);
   }
   public async sendPasswordResetEmail(email: string, token: string) {
-    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+    const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
 
     const html = await render(ResetPasswordTemplate({ domain, token }));
     return this.sendMail(email, 'Скидання паролю', html);
   }
   public async sendTwoFactorTokenEmail(email: string, token: string) {
-    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+    const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
     console.log('Підтвердження');
 
-    const html = await render(TwoFactorAuthTemplate({ token }));
+    const html = await render(TwoFactorAuthTemplate({ token, domain }));
     return this.sendMail(email, 'Підтвердження особистості', html);
   }
   public async sendPreRegisterGreetings(email: string) {
-    // const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+    const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
 
     console.log('PRE REGISTER EMAIL SEND');
 
-    const html = await render(SuccessfulPreRegistrationTemplate());
+    const html = await render(SuccessfulPreRegistrationTemplate({ domain }));
     return this.sendMail(email, 'Підтвердження особистості', html);
   }
-  public async sendPreRegisterSuccessGreeting(email: string) {
-    // const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+  public async sendPreRegisterSuccessGreeting(
+    email: string,
+    name?: string,
+    showPasswordHint = false,
+  ) {
+    const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
 
-    console.log('PRE REGISTER EMAIL SEND');
+    console.log('PRE REGISTER SUCCESS EMAIL SEND');
 
-    const html = await render(SuccessfulPreRegistrationAccountTemplate());
-    return this.sendMail(
-      email,
-      'Успішно зареєстровані нашими менеджерами',
-      html,
+    const html = await render(
+      SuccessfulPreRegistrationAccountTemplate({
+        name,
+        domain,
+        showPasswordHint,
+      }),
     );
+    return this.sendMail(email, 'Ваш аккаунт ICTender активовано!', html);
   }
   // public async sendRegisterFromCompanyEmail(email: string, token: string) {
-  //   const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+  //   const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
 
   //   const html = await render(TwoFactorAuthTemplate({ token }));
   //   return this.sendMail(email, 'Підтвердження особистості', html);
   // }
 
   public async sendTenderNotification(email: string, payload: any) {
-    const domain = this.configService.getOrThrow<string>('ALLOWED_ORIGIN');
+    const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
     const { type, tenderId, subject, data } = payload;
 
     const html = await render(
-        TenderNotificationTemplate({
-            type,
-            tenderId,
-            domain,
-            data
-        })
+      TenderNotificationTemplate({
+        type,
+        tenderId,
+        domain,
+        data,
+      }),
     );
 
-    return this.sendMail(email, subject || `Сповіщення по тендеру №${tenderId}`, html);
+    return this.sendMail(
+      email,
+      subject || `Сповіщення по тендеру №${tenderId}`,
+      html,
+    );
   }
 
-  public async sendPasswordChangeSuccessEmail(email: string, userName?: string) {
+  public async sendPasswordChangeSuccessEmail(
+    email: string,
+    userName?: string,
+  ) {
     const html = await render(PasswordChangedTemplate({ userName }));
     return this.sendMail(email, 'Пароль успішно змінено', html);
   }
