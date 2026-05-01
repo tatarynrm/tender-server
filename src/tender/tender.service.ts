@@ -248,4 +248,20 @@ export class TenderService {
     );
     return result;
   }
+  public async tenderSetAgree(dto: any) {
+    const result = await this.dbservice.callProcedure(
+      'tender_set_agree',
+      dto,
+      {},
+    );
+    return result;
+  }
+  public async tenderNotifyProlongation(dto: any) {
+    const result = await this.dbservice.callProcedure(
+      'tender_notify_prolongation',
+      dto,
+      {},
+    );
+    return result;
+  }
 }

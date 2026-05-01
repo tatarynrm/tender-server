@@ -72,23 +72,43 @@ export class UserController {
   // -------------------------------------------------------------------------
   // ADMIN КОНТРАГЕТНТА
   // Список усії працівників компанії
-  @Get('all')
-  public async getAllUsersFromCompany(@Body() body: any) {
-    const pagination = body.pagination || {
+  // ADMIN КОНТРАГЕТНТА
+  // Список усії працівників компанії
+  @Post('all')
+  public async getAllUsersFromCompany(@Body() body: any = {}) {
+    const pagination = body?.pagination || {
       page_num: 1,
       page_rows: 10,
     };
 
-    const filter = body.filter || [];
-    const sort = body.sort || null;
+    const filter = body?.filter || [];
+    const sort = body?.sort || null;
 
     return this.userService.getAllUsers({ pagination, sort, filter });
+  }
+
+  @Post('my-company-users')
+  public async getMyCompanyUsers(@Req() req: Request, @Body() body: any = {}) {
+    const idCompany = req.session.id_company;
+    const pagination = body?.pagination || {
+      page_num: 1,
+      page_rows: 100,
+    };
+    return this.userService.getAllUsers({
+      pagination,
+      filter: [{ field: 'id_company', operator: '=', value: idCompany }],
+    });
+  }
+
+  @Get('one/:id')
+  public async getOneUser(@Param('id') id: string) {
+    return this.userService.getOneUser(id);
   }
   // Компанія реєструє свого працівника !!!!!!!!!!!!!!!!!!!
   @Post('register-from-company')
   public async createOrUpdateUserFromCompany(
     @Req() req: Request,
-    @Body() dto: CreateUserFromCompany,
+    @Body() dto: any,
   ) {
     const idCompany = req.session.id_company;
 

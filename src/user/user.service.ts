@@ -115,6 +115,15 @@ export class UserService {
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
   }
+
+  public async getOneUser(id: number | string) {
+    const result = await this.dbservice.callProcedure(
+      'usr_one',
+      { id: id },
+      {},
+    );
+    return result;
+  }
   public async getAllUsersFromCompany() {
     const result = await this.dbservice.callProcedure(
       'usr_list',
@@ -208,16 +217,20 @@ export class UserService {
   }
 
   async getAllUsers(params: {
-    pagination: { page_num: number; page_rows: number };
+    pagination?: { page_num: number; page_rows: number };
     filter?: any[];
     sort?: any;
   }) {
     const { pagination } = params;
 
     // 1. Отримуємо користувачів з БД
-    const result = await this.dbservice.callProcedure('usr_list', {
-      pagination,
-    });
+    const result = await this.dbservice.callProcedure(
+      'usr_list',
+      {
+        pagination,
+      },
+      {},
+    );
 
     const users = Array.isArray(result) ? result : result.content;
     if (!users || users.length === 0) return result;

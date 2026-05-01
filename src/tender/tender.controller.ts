@@ -26,6 +26,8 @@ export class TenderController {
   }
   @Post('set-status')
   tenderSetStatus(@Body() dto: any) {
+    console.log(dto, 'DTO set status');
+
     return this.tenderService.tenderSetStatus(dto);
   }
 
@@ -81,6 +83,16 @@ export class TenderController {
   @Post(':id/notify')
   sendCustomNotification(@Param('id') id: string, @Body() body: any) {
     return this.tenderService.sendCustomNotification(body);
+  }
+
+  @Post('set-agree')
+  tenderSetAgree(@Body() dto: any) {
+    return this.tenderService.tenderSetAgree(dto);
+  }
+
+  @Post('notify-prolongation')
+  tenderNotifyProlongation(@Body() dto: any) {
+    return this.tenderService.tenderNotifyProlongation(dto);
   }
 
   @Post(':id/notify-results')
