@@ -19,43 +19,48 @@ export class TenderService {
     private readonly filesService: FilesService, // Added this line
   ) {}
 
+  private getSortString(query: any): string {
+    const sortBy = query.sortBy || 'time_start';
+    const sortOrder = query.sortOrder || 'DESC';
+
+    const columns: Record<string, string> = {
+      time_start: 'a.time_start',
+      time_end: 'a.time_end',
+    };
+
+    const column = columns[sortBy] || 'a.time_start';
+    const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    return `${column} ${order}`;
+  }
+
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
+    const sortString = this.getSortString(query);
 
-    const result = await this.dbservice.callProcedure(
-      'tender_list_ict',
-
-      {
-        pagination: {
-          per_page: query.limit ?? 10,
-          page: query.page ?? 1,
-        },
-        filter: filters,
+    const result = await this.dbservice.callProcedure('tender_list_ict', {
+      pagination: {
+        per_page: query.limit ?? 10,
+        page: query.page ?? 1,
       },
-
-      {},
-    );
+      filter: filters,
+      sort: sortString,
+    });
 
     return result;
   }
   public async getClientList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
+    const sortString = this.getSortString(query);
 
-    console.log(filters, 'FILTERS');
-
-    const result = await this.dbservice.callProcedure(
-      'tender_list',
-
-      {
-        pagination: {
-          per_page: query.limit ?? 10,
-          page: query.page ?? 1,
-        },
-        filter: filters,
+    const result = await this.dbservice.callProcedure('tender_list', {
+      pagination: {
+        per_page: query.limit ?? 10,
+        page: query.page ?? 1,
       },
-
-      {},
-    );
+      filter: filters,
+      sort: sortString,
+    });
 
     return result;
   }
