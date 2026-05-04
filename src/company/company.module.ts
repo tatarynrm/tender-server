@@ -4,10 +4,11 @@ import { CompanyService } from './company.service';
 import { UserModule } from 'src/user/user.module';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
 
+import { DatabaseOracleModule } from 'src/database-oracle/database-oracle.module';
 import { FormDataModule } from './form-data/form-data.module';
 
 @Module({
-  imports: [UserModule, FormDataModule], // тільки модулі
+  imports: [UserModule, FormDataModule, DatabaseOracleModule], // тільки модулі
   controllers: [CompanyController],
   providers: [CompanyService, AuthGuard], // сервіси і guard-и
   exports: [CompanyService], // якщо інші модулі будуть його використовувати

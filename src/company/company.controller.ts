@@ -7,9 +7,11 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
+import type { Request } from 'express';
 
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 import { AdminCreateCompanyDto } from './dto/admin-create-company.dto copy';
@@ -21,19 +23,18 @@ export class CompanyController {
 
   @Post('create')
   create(@Body() createCompanyDto: CreateCompanyDto) {
-
-
     return this.companyService.create(createCompanyDto);
   }
 
   @Get('all')
   async findAll(@Query() query: any) {
-  
-    
-  
-    
     // query тепер містить всі ваші фільтри та пагінацію
     return this.companyService.findAll(query);
+  }
+
+  @Post('my')
+  async findMyCompany(@Body() body: { migrate_id?: string }) {
+    return this.companyService.findMyCompany(body.migrate_id);
   }
 
   @Get(':id')

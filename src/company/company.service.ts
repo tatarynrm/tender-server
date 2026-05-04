@@ -10,15 +10,16 @@ import {
   FilterItem,
 } from 'src/shared/utils/build-filters';
 
+import { DatabaseOracleService } from 'src/database-oracle/database-oracle.service';
+
 @Injectable()
 export class CompanyService {
   public constructor(
     @Inject('PG_POOL') private readonly pool: Pool,
     private readonly dbservice: DatabaseService,
+    private readonly oracleService: DatabaseOracleService,
   ) {}
   public async create(createCompanyDto: CreateCompanyDto) {
-   
-
     const newCompany = await this.dbservice.callProcedure(
       'company_save',
 
@@ -33,7 +34,6 @@ export class CompanyService {
   async findAll(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
 
-
     const result = await this.dbservice.callProcedure('company_list', {
       pagination: {
         per_page: query.limit ?? 50,
@@ -44,20 +44,17 @@ export class CompanyService {
 
     return result;
   }
-  public async findMyCompany(req: Request) {
-    const userCompany = await this.pool.query(
-      `select id_company from usr where id = $1`,
-      [req.session.userId],
-    );
-    
-    const id_company = userCompany.rows[0].id_company;
-
-    const company = await this.pool.query(
-      `select * from company where id = $1`,
-      [id_company],
-    );
-
-    return company.rows[0];
+  public async findMyCompany(migrateId?: string) {
+    try {
+      const data = await this.oracleService.executeProcedure<any>(
+        'p_tender.GetCompany',
+        { id: migrateId },
+      );
+      return data;
+    } catch (err) {
+      console.error('Error fetching company from Oracle:', err);
+      throw err;
+    }
   }
 
   findOne(id: number) {

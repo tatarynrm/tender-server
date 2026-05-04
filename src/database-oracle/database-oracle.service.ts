@@ -22,6 +22,7 @@ export class DatabaseOracleService implements OnModuleInit, OnModuleDestroy {
         poolIncrement: 1,
       });
 
+
       this.logger.log('Oracle Connection Pool created');
     } catch (err) {
       this.logger.error('Oracle Pool Error: ', err);
