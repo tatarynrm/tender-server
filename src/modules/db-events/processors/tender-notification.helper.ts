@@ -224,8 +224,8 @@ ${details}`;
 
     case 'TENDER_ACTUAL':
       return `
-🆕 Тендер запущено (${typeStr})
-Повідомляємо, що по замовленню <a href="${tenderUrl}">№${content.id}</a> - запущено тендер (Тривалість - ${durationStr}, ${timeEndStr})
+🆕 Тендер розпочався (${typeStr})
+Повідомляємо, що по замовленню <a href="${tenderUrl}">№${content.id}</a> - розпочато тендер (Тривалість - ${durationStr}, ${timeEndStr})
 
 Деталі тендеру:
 
@@ -368,7 +368,7 @@ ${commonInfo}${buyoutInfo}`.trim();
 
     case 'TENDER_ACTUAL':
       return `
-🆕 Тендер запущено. №${content.id}, початок ${timeStart}, тривалість ${durationStr}. ( ${timeEnd} )
+🆕 Тендер розпочався. №${content.id}, початок ${timeStart}, тривалість ${durationStr}. ( ${timeEnd} )
 ${commonInfo}${buyoutInfo}`.trim();
 
     case 'TENDER_CLOSED':
