@@ -1,7 +1,9 @@
-import { Controller, Post, Param, Body, Get } from '@nestjs/common';
+import { Controller, Post, Param, Body, Get, Query, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { LoadGateway } from 'src/crm/load/load.gateway';
 import { UserService } from 'src/user/user.service';
 import { TelegramService } from 'src/telegram/telegram.service';
+import { MailingService } from './mailing.service';
 
 @Controller()
 export class AdminController {
@@ -9,6 +11,7 @@ export class AdminController {
     private readonly usersService: UserService,
     private readonly loadGateway: LoadGateway,
     private readonly telegramService: TelegramService,
+    private readonly mailingService: MailingService,
   ) { }
 
   @Post('block/:id')
@@ -41,6 +44,55 @@ export class AdminController {
   async getTelegramUsers() {
     return this.telegramService.getTelegramUsers();
   }
+
+  // --- EMAIL BROADCAST (MAILING) ENDPOINTS ---
+
+  @Post('mailing/create')
+  @UseInterceptors(FileInterceptor('file'))
+  async createMailing(
+    @Body('item_name') itemName: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.mailingService.createMailing(itemName, file.buffer);
+  }
+
+  @Get('mailing/list')
+  async getMailingsList() {
+    return this.mailingService.getMailingsList();
+  }
+
+  @Get('mailing/:id')
+  async getMailingDetails(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const pageNum = page ? Number(page) : 1;
+    const limitNum = limit ? Number(limit) : 50;
+    return this.mailingService.getMailingDetails(Number(id), pageNum, limitNum, search || '');
+  }
+
+  @Post('mailing/:id/start')
+  @UseInterceptors(FilesInterceptor('files'))
+  async startMailing(
+    @Param('id') id: string,
+    @Body('emailTitle') emailTitle: string,
+    @Body('emailContent') emailContent: string,
+    @Body('templateId') templateId: string,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.mailingService.startMailing(
+      Number(id),
+      emailTitle,
+      emailContent,
+      templateId,
+      files,
+    );
+  }
+
+  @Post('mailing/:id/pause')
+  async pauseMailing(@Param('id') id: string) {
+    return this.mailingService.pauseMailing(Number(id));
+  }
 }
-
-

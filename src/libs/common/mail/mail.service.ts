@@ -17,11 +17,12 @@ export class MailService {
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
   ) {}
-  public async sendMail(email: string, subject: string, html: string) {
+  public async sendMail(email: string, subject: string, html: string, attachments?: any[]) {
     return this.mailerService.sendMail({
       to: email,
       subject: subject,
       html,
+      attachments,
     });
   }
   public async sendConfirmationEmail(email: string, token: string) {
