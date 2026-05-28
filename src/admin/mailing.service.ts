@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 import { MailService } from 'src/libs/common/mail/mail.service';
 import { UserGateway } from 'src/user/user.gateway';
@@ -18,7 +18,7 @@ export interface MailingJobState {
 }
 
 @Injectable()
-export class MailingService {
+export class MailingService implements OnModuleInit {
   // In-memory registry of running jobs
   private runningJobs = new Map<number, MailingJobState>();
 
@@ -27,8 +27,10 @@ export class MailingService {
     private readonly mailService: MailService,
     private readonly userGateway: UserGateway,
     @InjectQueue('email-mailing') private readonly emailQueue: Queue,
-  ) {
-    this.initDatabase();
+  ) {}
+
+  async onModuleInit() {
+    await this.initDatabase();
   }
 
   private async initDatabase() {
@@ -37,7 +39,8 @@ export class MailingService {
         ALTER TABLE mailing_content 
         ADD COLUMN IF NOT EXISTS email_title VARCHAR(255),
         ADD COLUMN IF NOT EXISTS email_content TEXT,
-        ADD COLUMN IF NOT EXISTS template_id VARCHAR(50) DEFAULT 'plain'
+        ADD COLUMN IF NOT EXISTS template_id VARCHAR(50) DEFAULT 'plain',
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()
       `);
       console.log('Postgres table mailing_content altered/initialized successfully.');
     } catch (e) {
@@ -134,9 +137,34 @@ export class MailingService {
   }
 
   /**
-   * Returns a list of all mailings with aggregated stats
+   * Returns a list of all mailings with aggregated stats (paginated)
    */
-  async getMailingsList() {
+  async getMailingsList(page = 1, limit = 10, search = '') {
+    // 1. Build search condition
+    let searchCond = '';
+    const queryParams: any[] = [];
+    if (search && search.trim() !== '') {
+      searchCond = 'WHERE item_name ILIKE $1';
+      queryParams.push(`%${search.trim()}%`);
+    }
+
+    // 2. Count total records
+    const countQuery = `
+      SELECT COUNT(id) as count 
+      FROM mailing_content 
+      ${searchCond}
+    `;
+    const countResult = await this.dbservice.query(countQuery, queryParams);
+    const totalCount = Number(countResult.rows[0].count);
+
+    // 3. Paginated query
+    const offset = (page - 1) * limit;
+    
+    // Copy queryParams
+    const fetchParams = [...queryParams];
+    const limitIndex = fetchParams.push(limit);
+    const offsetIndex = fetchParams.push(offset);
+
     const query = `
       SELECT 
         mc.id, 
@@ -144,19 +172,27 @@ export class MailingService {
         mc.email_title,
         mc.email_content,
         mc.template_id,
+        mc.created_at,
         COUNT(ma.id) as total,
         COUNT(ma.id) FILTER (WHERE ma.ids_status = 'PENDING') as pending,
         COUNT(ma.id) FILTER (WHERE ma.ids_status = 'PROCESSING') as processing,
         COUNT(ma.id) FILTER (WHERE ma.ids_status = 'DONE') as done,
         COUNT(ma.id) FILTER (WHERE ma.ids_status = 'FAILED') as failed
-      FROM mailing_content mc
+      FROM (
+        SELECT id, item_name, email_title, email_content, template_id, created_at
+        FROM mailing_content
+        ${searchCond}
+        ORDER BY id DESC
+        LIMIT $${limitIndex} OFFSET $${offsetIndex}
+      ) mc
       LEFT JOIN mailing_address ma ON mc.id = ma.id_content
-      GROUP BY mc.id, mc.item_name, mc.email_title, mc.email_content, mc.template_id
+      GROUP BY mc.id, mc.item_name, mc.email_title, mc.email_content, mc.template_id, mc.created_at
       ORDER BY mc.id DESC
     `;
-    const result = await this.dbservice.query(query);
+    
+    const result = await this.dbservice.query(query, fetchParams);
 
-    return result.rows.map(row => {
+    const data = result.rows.map(row => {
       const id = Number(row.id);
       const pending = Number(row.pending);
       const processing = Number(row.processing);
@@ -181,10 +217,21 @@ export class MailingService {
         email_title: row.email_title,
         email_content: row.email_content,
         template_id: row.template_id || 'plain',
+        created_at: row.created_at || new Date().toISOString(),
         stats: { total, pending, processing, done, failed },
         status,
       };
     });
+
+    return {
+      data,
+      meta: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    };
   }
 
   /**

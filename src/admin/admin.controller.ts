@@ -57,8 +57,14 @@ export class AdminController {
   }
 
   @Get('mailing/list')
-  async getMailingsList() {
-    return this.mailingService.getMailingsList();
+  async getMailingsList(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const pageNum = page ? Number(page) : 1;
+    const limitNum = limit ? Number(limit) : 10;
+    return this.mailingService.getMailingsList(pageNum, limitNum, search || '');
   }
 
   @Get('mailing/:id')
