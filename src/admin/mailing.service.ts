@@ -357,6 +357,40 @@ export class MailingService implements OnModuleInit {
   }
 
   /**
+   * Deletes a mailing campaign completely (from db tables and file system)
+   */
+  async deleteMailing(id: number) {
+    const runningJob = this.runningJobs.get(id);
+    if (runningJob && runningJob.status === 'RUNNING') {
+      throw new BadRequestException('Неможливо видалити активну розсилку. Спочатку призупиніть її.');
+    }
+
+    await this.dbservice.query('BEGIN');
+    try {
+      await this.dbservice.query('DELETE FROM mailing_address WHERE id_content = $1', [id]);
+      await this.dbservice.query('DELETE FROM mailing_content WHERE id = $1', [id]);
+      await this.dbservice.query('COMMIT');
+    } catch (error) {
+      await this.dbservice.query('ROLLBACK');
+      throw error;
+    }
+
+    // Clean up uploaded files on disk
+    try {
+      const dirPath = path.join(process.cwd(), 'uploads', 'mailings', String(id));
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+      }
+    } catch (fsErr) {
+      console.error('Failed to clean up attachments on delete:', fsErr.message);
+    }
+
+    this.runningJobs.delete(id);
+
+    return { status: 'ok' };
+  }
+
+  /**
    * Starts or resumes a mailing campaign
    */
   async startMailing(

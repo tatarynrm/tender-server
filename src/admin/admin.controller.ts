@@ -1,4 +1,4 @@
-import { Controller, Post, Param, Body, Get, Query, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
+import { Controller, Post, Param, Body, Get, Query, UseInterceptors, UploadedFile, UploadedFiles, Delete } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { LoadGateway } from 'src/crm/load/load.gateway';
 import { UserService } from 'src/user/user.service';
@@ -100,5 +100,10 @@ export class AdminController {
   @Post('mailing/:id/pause')
   async pauseMailing(@Param('id') id: string) {
     return this.mailingService.pauseMailing(Number(id));
+  }
+
+  @Delete('mailing/:id')
+  async deleteMailing(@Param('id') id: string) {
+    return this.mailingService.deleteMailing(Number(id));
   }
 }
