@@ -79,6 +79,19 @@ export class TelegramRepository {
     return rows;
   }
 
+  async getSubscribersByUserIds(userIds: number[]) {
+    if (!userIds || userIds.length === 0) return [];
+    
+    const { rows } = await this.pool.query(`
+      SELECT pt.telegram_id 
+      FROM person_telegram pt
+      JOIN person p ON pt.id_person = p.id
+      JOIN usr u ON p.email = u.email
+      WHERE u.id = ANY($1)
+    `, [userIds]);
+    return rows;
+  }
+
   async getSubscriberStats() {
     const { rows } = await this.pool.query(`
       SELECT 

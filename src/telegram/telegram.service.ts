@@ -179,6 +179,55 @@ export class TelegramService implements OnModuleInit {
     return { total: rows.length, success: successCount, failed: failCount };
   }
 
+  async sendMeetingNotification(payload: {
+    url: string;
+    audienceType: 'all' | 'heads' | 'selective';
+    targetIds?: number[];
+  }) {
+    let telegramIds: number[] = [];
+
+    if (payload.targetIds && payload.targetIds.length > 0) {
+      const rows = await this.repository.getSubscribersByUserIds(payload.targetIds);
+      telegramIds = rows.map((r) => r.telegram_id);
+    } else if (payload.audienceType === 'all') {
+      const rows = await this.repository.getSubscribersForBroadcast({ onlyICT: true });
+      telegramIds = rows.map((r) => r.telegram_id);
+    }
+
+    if (telegramIds.length === 0) return { total: 0, success: 0, failed: 0 };
+
+    const message = `🎥 <b>Увага! Почалася нова відео-нарада!</b>\n\n` +
+                    `Заходьте на портал або переходьте за прямим посиланням:\n` +
+                    `<a href="${payload.url}">${payload.url}</a>\n\n` +
+                    `<i>(Ви можете також натиснути червону кнопку "Відео-нарада" у шапці CRM, як показано на фото)</i>`;
+
+    const path = require('path');
+    const photoPath = path.resolve(process.cwd(), 'assets', 'meeting_button.png');
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const tgId of telegramIds) {
+      try {
+        await this.bot.telegram.sendPhoto(
+          tgId,
+          { source: photoPath },
+          { caption: message, parse_mode: 'HTML' }
+        );
+        successCount++;
+      } catch (err) {
+        this.logger.error(`Failed to send meeting notification to TG ${tgId}: ${err.message}`);
+        failCount++;
+      }
+
+      if (successCount % 20 === 0) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+
+    return { total: telegramIds.length, success: successCount, failed: failCount };
+  }
+
   // --- Helpers ---
 
   private formatOrderMessage(order: any): string {

@@ -3,8 +3,10 @@ import { SystemsService } from './systems.service';
 import { SystemsController } from './systems.controller';
 import { SystemGateway } from './systems.gateway';
 import { AdminSystemController } from './admin-system.controller';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
+  imports: [TelegramModule],
   controllers: [SystemsController, AdminSystemController],
   providers: [SystemsService, SystemGateway],
   exports: [SystemGateway],
