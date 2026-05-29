@@ -23,8 +23,8 @@ export class AdminSystemController {
   }
 
   @Post('meeting/start')
-  startMeeting() {
-    return this.systemsService.startMeeting();
+  startMeeting(@Body() dto: { url?: string, audienceType?: 'all' | 'heads' | 'selective', targetIds?: number[] }) {
+    return this.systemsService.startMeeting(dto?.url, dto?.audienceType, dto?.targetIds);
   }
 
   @Post('meeting/stop')

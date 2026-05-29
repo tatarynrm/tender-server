@@ -4,11 +4,11 @@ import { SystemGateway } from './systems.gateway';
 
 @Injectable()
 export class SystemsService {
-  private activeMeeting: { id: string; startedAt: Date } | null = null;
+  private activeMeeting: { id: string; startedAt: Date; url?: string; audienceType?: string; targetIds?: number[] } | null = null;
 
   constructor(private readonly systemGateway: SystemGateway) {}
 
-  startMeeting() {
+  startMeeting(url?: string, audienceType: 'all' | 'heads' | 'selective' = 'all', targetIds: number[] = []) {
     if (this.activeMeeting) {
       return this.activeMeeting; // Вже йде нарада
     }
@@ -16,6 +16,9 @@ export class SystemsService {
     this.activeMeeting = {
       id: uuidv4(),
       startedAt: new Date(),
+      url: url || '',
+      audienceType,
+      targetIds,
     };
 
     // Розсилаємо всім онлайн користувачам

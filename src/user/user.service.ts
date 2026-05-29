@@ -147,6 +147,19 @@ export class UserService {
     return updateUserTest;
   }
 
+  public async updateRole(userId: string, dto: { is_head_department?: boolean }) {
+    const user = await this.findById(userId);
+    
+    if (dto.is_head_department !== undefined) {
+      await this.pool.query(
+        `UPDATE person_role SET is_head_department = $1 WHERE id_person = $2`,
+        [dto.is_head_department, user.person.id],
+      );
+    }
+    
+    return { success: true };
+  }
+
   // ФВЬШЩТ СЩЛЬЬФТВІ
   public async getAllPreRegisterUsers(req: Request) {
     // const user = await this.findById(userId);

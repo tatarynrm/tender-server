@@ -63,6 +63,16 @@ export class UserController {
     return this.userService.changePassword(userId, dto);
   }
 
+  @Authorization()
+  @HttpCode(HttpStatus.OK)
+  @Patch(':id/role')
+  public async updateRole(
+    @Param('id') userId: string,
+    @Body() dto: { is_head_department?: boolean },
+  ) {
+    return this.userService.updateRole(userId, dto);
+  }
+
   // @Authorization()
   @HttpCode(HttpStatus.OK)
   @Get('profiles')
