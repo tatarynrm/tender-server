@@ -1,12 +1,14 @@
-// src/systems/admin-system.controller.ts
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { SystemGateway } from './systems.gateway';
-
+import { SystemsService } from './systems.service';
 
 @Controller('admin/system')
 // @UseGuards(RolesGuard) // Не забудьте захистити цей роут!
 export class AdminSystemController {
-  constructor(private readonly systemGateway: SystemGateway) {}
+  constructor(
+    private readonly systemGateway: SystemGateway,
+    private readonly systemsService: SystemsService
+  ) {}
 
   @Post('send-command')
   async sendCommand(
@@ -16,10 +18,17 @@ export class AdminSystemController {
       userId?: string; // якщо пустий — команда йде всім
     }
   ) {
-
-    console.log('som,ething');
-    
     this.systemGateway.emitCommand(dto.type, dto.payload, dto.userId);
     return { success: true, sentTo: dto.userId || 'ALL' };
+  }
+
+  @Post('meeting/start')
+  startMeeting() {
+    return this.systemsService.startMeeting();
+  }
+
+  @Post('meeting/stop')
+  stopMeeting() {
+    return this.systemsService.stopMeeting();
   }
 }
