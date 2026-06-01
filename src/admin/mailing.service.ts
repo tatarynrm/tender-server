@@ -12,7 +12,7 @@ export interface MailingJobState {
   status: 'RUNNING' | 'PAUSED' | 'COMPLETED';
   emailTitle: string;
   emailContent: string;
-  templateId: string;
+  templateIds: string;
   total: number;
   processed: number;
 }
@@ -27,25 +27,14 @@ export class MailingService implements OnModuleInit {
     private readonly mailService: MailService,
     private readonly userGateway: UserGateway,
     @InjectQueue('email-mailing') private readonly emailQueue: Queue,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     await this.initDatabase();
   }
 
   private async initDatabase() {
-    try {
-      await this.dbservice.query(`
-        ALTER TABLE mailing_content 
-        ADD COLUMN IF NOT EXISTS email_title VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS email_content TEXT,
-        ADD COLUMN IF NOT EXISTS template_id VARCHAR(50) DEFAULT 'plain',
-        ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()
-      `);
-      console.log('Postgres table mailing_content altered/initialized successfully.');
-    } catch (e) {
-      console.error('Failed to initialize mailing_content table columns:', e.message);
-    }
+    // Database modifications removed as per request to not change DB structure
   }
 
   getRunningJob(id: number): MailingJobState | undefined {
@@ -159,7 +148,7 @@ export class MailingService implements OnModuleInit {
 
     // 3. Paginated query
     const offset = (page - 1) * limit;
-    
+
     // Copy queryParams
     const fetchParams = [...queryParams];
     const limitIndex = fetchParams.push(limit);
@@ -171,7 +160,7 @@ export class MailingService implements OnModuleInit {
         mc.item_name,
         mc.email_title,
         mc.email_content,
-        mc.template_id,
+        mc.template_ids,
         mc.created_at,
         COUNT(ma.id) as total,
         COUNT(ma.id) FILTER (WHERE ma.ids_status = 'PENDING') as pending,
@@ -179,17 +168,17 @@ export class MailingService implements OnModuleInit {
         COUNT(ma.id) FILTER (WHERE ma.ids_status = 'DONE') as done,
         COUNT(ma.id) FILTER (WHERE ma.ids_status = 'FAILED') as failed
       FROM (
-        SELECT id, item_name, email_title, email_content, template_id, created_at
+        SELECT id, item_name, email_title, email_content, template_ids, created_at
         FROM mailing_content
         ${searchCond}
         ORDER BY id DESC
         LIMIT $${limitIndex} OFFSET $${offsetIndex}
       ) mc
       LEFT JOIN mailing_address ma ON mc.id = ma.id_content
-      GROUP BY mc.id, mc.item_name, mc.email_title, mc.email_content, mc.template_id, mc.created_at
+      GROUP BY mc.id, mc.item_name, mc.email_title, mc.email_content, mc.template_ids, mc.created_at
       ORDER BY mc.id DESC
     `;
-    
+
     const result = await this.dbservice.query(query, fetchParams);
 
     const data = result.rows.map(row => {
@@ -216,7 +205,7 @@ export class MailingService implements OnModuleInit {
         item_name: row.item_name,
         email_title: row.email_title,
         email_content: row.email_content,
-        template_id: row.template_id || 'plain',
+        template_ids: row.template_ids || 'plain',
         created_at: row.created_at || new Date().toISOString(),
         stats: { total, pending, processing, done, failed },
         status,
@@ -239,7 +228,7 @@ export class MailingService implements OnModuleInit {
    */
   async getMailingDetails(id: number, page = 1, limit = 50, search = '') {
     const contentResult = await this.dbservice.query(
-      'SELECT id, item_name, email_title, email_content, template_id FROM mailing_content WHERE id = $1',
+      'SELECT id, item_name, email_title, email_content, template_ids FROM mailing_content WHERE id = $1',
       [id]
     );
     if (contentResult.rows.length === 0) {
@@ -268,7 +257,7 @@ export class MailingService implements OnModuleInit {
     // Compute paginated address list
     let searchCond = '';
     const queryParams: any[] = [id];
-    
+
     if (search && search.trim() !== '') {
       searchCond = 'AND email ILIKE $2';
       queryParams.push(`%${search.trim()}%`);
@@ -284,12 +273,12 @@ export class MailingService implements OnModuleInit {
 
     // Fetch the specific page
     const offset = (page - 1) * limit;
-    
+
     // Add limit and offset parameters
     const fetchParams = [...queryParams];
     const limitIndex = fetchParams.push(limit);
     const offsetIndex = fetchParams.push(offset);
-    
+
     const addressesQuery = `
       SELECT id, email, ids_status, created_at 
       FROM mailing_address 
@@ -298,7 +287,7 @@ export class MailingService implements OnModuleInit {
       LIMIT $${limitIndex} OFFSET $${offsetIndex}
     `;
     const addressesResult = await this.dbservice.query(addressesQuery, fetchParams);
-    
+
     const addressesData = addressesResult.rows.map(row => ({
       id: Number(row.id),
       email: row.email,
@@ -340,7 +329,7 @@ export class MailingService implements OnModuleInit {
       item_name: mailing.item_name,
       email_title: mailing.email_title,
       email_content: mailing.email_content,
-      template_id: mailing.template_id || 'plain',
+      template_ids: mailing.template_ids || 'plain',
       status,
       stats: { total, pending, processing, done, failed },
       attachments,
@@ -397,7 +386,7 @@ export class MailingService implements OnModuleInit {
     id: number,
     emailTitle: string,
     emailContent: string,
-    templateId = 'plain',
+    templateIds = 'plain',
     files?: Express.Multer.File[],
   ) {
     if (!emailTitle) {
@@ -415,16 +404,16 @@ export class MailingService implements OnModuleInit {
       throw new BadRequestException('Усі листи для цієї розсилки вже надіслано');
     }
 
-    // Save title, content, and templateId to database
+    // Save title, content, and templateIds to database
     await this.dbservice.query(
-      'UPDATE mailing_content SET email_title = $1, email_content = $2, template_id = $3 WHERE id = $4',
-      [emailTitle, emailContent, templateId, id]
+      'UPDATE mailing_content SET email_title = $1, email_content = $2, template_ids = $3 WHERE id = $4',
+      [emailTitle, emailContent, templateIds, id]
     );
 
     // Save files to disk under uploads/mailings/${id}/
     if (files && files.length > 0) {
       const dirPath = path.join(process.cwd(), 'uploads', 'mailings', String(id));
-      
+
       // Ensure directory exists
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
@@ -467,7 +456,7 @@ export class MailingService implements OnModuleInit {
       status: 'RUNNING',
       emailTitle,
       emailContent,
-      templateId,
+      templateIds: templateIds,
       total: details.stats.total,
       processed: details.stats.done + details.stats.failed,
     };
@@ -482,7 +471,7 @@ export class MailingService implements OnModuleInit {
         email: item.email,
         title: emailTitle,
         content: emailContent,
-        templateId,
+        templateId: templateIds,
       },
       opts: {
         jobId: `mail-${id}-addr-${item.id}`, // De-duplication
@@ -550,9 +539,9 @@ export class MailingService implements OnModuleInit {
   /**
    * Compiles HTML template with given content and title
    */
-  compileTemplate(templateId: string, content: string, title: string): string {
+  compileTemplate(templateIds: string, content: string, title: string): string {
     const year = new Date().getFullYear();
-    switch (templateId) {
+    switch (templateIds) {
       case 'corporate':
         return `<!DOCTYPE html>
 <html>

@@ -27,7 +27,7 @@ export class MailingProcessor extends WorkerHost {
   }
 
   async process(job: Job<any, any, string>): Promise<any> {
-    const { mailingId, addressId, email, title, content, templateId } = job.data;
+    const { mailingId, addressId, email, title, content, templateIds } = job.data;
 
     // Check if the mailing campaign is active and running
     const campaign = this.mailingService.getRunningJob(mailingId);
@@ -46,7 +46,7 @@ export class MailingProcessor extends WorkerHost {
     await this.mailingService.broadcastUpdate(mailingId);
 
     // 2. Wrap content with selected responsive HTML template
-    const compiledHtml = this.mailingService.compileTemplate(templateId || 'plain', content, title);
+    const compiledHtml = this.mailingService.compileTemplate(templateIds || 'plain', content, title);
 
     // 3. Scan disk for campaign attachments to send
     let attachments: any[] = [];

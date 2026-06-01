@@ -18,18 +18,22 @@ export class UserActivityRepository {
 
   async logActivity(data: CreateUserActivityDto): Promise<void> {
     const query = `
-      INSERT INTO usr_activities (id_usr, company_id, action, path, duration, ip_address, usr_agent, metadata)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO usr_activities (id_usr, id_company, action, ip_address, usr_agent, metadata)
+      VALUES ($1, $2, $3, $4, $5, $6)
     `;
+    const metadataObj = {
+      ...(data.metadata || {}),
+      path: data.path,
+      duration: data.duration,
+    };
+    
     const params = [
       data.userId,
       data.companyId || null,
       data.action,
-      data.path || null,
-      data.duration || 0,
       data.ipAddress || null,
       data.userAgent || null,
-      data.metadata ? JSON.stringify(data.metadata) : null,
+      JSON.stringify(metadataObj),
     ];
 
     await this.dbService.query(query, params);
@@ -38,7 +42,7 @@ export class UserActivityRepository {
   async getUserActivities(userId: number, cursor?: string, limit: number = 20) {
     let query = `
       SELECT 
-        a.id, a.id_usr, a.company_id, a.action, a.path, a.duration, a.ip_address, a.usr_agent, a.metadata, a.created_at,
+        a.id, a.id_usr, a.id_company, a.action, a.ip_address, a.usr_agent, a.metadata, a.created_at,
         p.surname, p.name, p.last_name
       FROM usr_activities a
       LEFT JOIN usr u ON u.id = a.id_usr
@@ -56,7 +60,12 @@ export class UserActivityRepository {
     params.push(limit + 1); // Fetch one extra to determine if there's a next page
 
     const result = await this.dbService.query(query, params);
-    const rows = result.rows;
+    const rows = result.rows.map(row => ({
+      ...row,
+      company_id: row.id_company,
+      path: row.metadata?.path || null,
+      duration: row.metadata?.duration || 0,
+    }));
 
     const hasNextPage = rows.length > limit;
     const activities = hasNextPage ? rows.slice(0, limit) : rows;
@@ -71,12 +80,12 @@ export class UserActivityRepository {
   async getCompanyActivities(companyId: number, cursor?: string, limit: number = 20, startDate?: string, endDate?: string) {
     let query = `
       SELECT 
-        a.id, a.id_usr, a.company_id, a.action, a.path, a.duration, a.ip_address, a.usr_agent, a.metadata, a.created_at,
+        a.id, a.id_usr, a.id_company, a.action, a.ip_address, a.usr_agent, a.metadata, a.created_at,
         p.surname, p.name, p.last_name
       FROM usr_activities a
       LEFT JOIN usr u ON u.id = a.id_usr
       LEFT JOIN person p ON p.id = u.id_person
-      WHERE a.company_id = $1
+      WHERE a.id_company = $1
     `;
     const params: any[] = [companyId];
 
@@ -98,7 +107,12 @@ export class UserActivityRepository {
     params.push(limit + 1);
 
     const result = await this.dbService.query(query, params);
-    const rows = result.rows;
+    const rows = result.rows.map(row => ({
+      ...row,
+      company_id: row.id_company,
+      path: row.metadata?.path || null,
+      duration: row.metadata?.duration || 0,
+    }));
 
     const hasNextPage = rows.length > limit;
     const activities = hasNextPage ? rows.slice(0, limit) : rows;
@@ -121,7 +135,7 @@ export class UserActivityRepository {
       FROM usr_activities a
       JOIN usr u ON u.id = a.id_usr
       JOIN person p ON p.id = u.id_person
-      WHERE a.company_id = $1
+      WHERE a.id_company = $1
     `;
     const params: any[] = [companyId];
 

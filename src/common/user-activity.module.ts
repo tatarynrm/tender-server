@@ -24,21 +24,14 @@ export class UserActivityModule implements OnModuleInit {
       `CREATE TABLE IF NOT EXISTS usr_activities (
         id BIGSERIAL PRIMARY KEY,
         id_usr BIGINT NOT NULL,
-        company_id BIGINT,
         action VARCHAR(255) NOT NULL,
-        path TEXT,
-        duration INT DEFAULT 0,
         ip_address VARCHAR(45),
         usr_agent TEXT,
         metadata JSONB,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );`,
-      `ALTER TABLE usr_activities ADD COLUMN IF NOT EXISTS company_id BIGINT;`,
-      `ALTER TABLE usr_activities ADD COLUMN IF NOT EXISTS path TEXT;`,
-      `ALTER TABLE usr_activities ADD COLUMN IF NOT EXISTS duration INT DEFAULT 0;`,
       `CREATE INDEX IF NOT EXISTS idx_usr_activities_id_usr_created_at ON usr_activities(id_usr, created_at DESC);`,
-      `CREATE INDEX IF NOT EXISTS idx_usr_activities_action ON usr_activities(action);`,
-      `CREATE INDEX IF NOT EXISTS idx_usr_activities_company_id ON usr_activities(company_id);`
+      `CREATE INDEX IF NOT EXISTS idx_usr_activities_action ON usr_activities(action);`
     ];
 
     try {
