@@ -68,7 +68,7 @@ export class UserActivityRepository {
     };
   }
 
-  async getCompanyActivities(companyId: number, cursor?: string, limit: number = 20) {
+  async getCompanyActivities(companyId: number, cursor?: string, limit: number = 20, startDate?: string, endDate?: string) {
     let query = `
       SELECT 
         a.id, a.id_usr, a.company_id, a.action, a.path, a.duration, a.ip_address, a.usr_agent, a.metadata, a.created_at,
@@ -80,9 +80,18 @@ export class UserActivityRepository {
     `;
     const params: any[] = [companyId];
 
+    if (startDate) {
+      params.push(startDate);
+      query += ` AND a.created_at >= $${params.length}`;
+    }
+    if (endDate) {
+      params.push(endDate);
+      query += ` AND a.created_at <= $${params.length}`;
+    }
+
     if (cursor) {
-      query += ` AND a.created_at < $2`;
       params.push(cursor);
+      query += ` AND a.created_at < $${params.length}`;
     }
 
     query += ` ORDER BY a.created_at DESC LIMIT $${params.length + 1}`;
@@ -101,8 +110,8 @@ export class UserActivityRepository {
     };
   }
 
-  async getCompanyManagersActivitySummary(companyId: number) {
-    const query = `
+  async getCompanyManagersActivitySummary(companyId: number, startDate?: string, endDate?: string) {
+    let query = `
       SELECT 
         u.id as id_usr, 
         p.surname, 
@@ -113,10 +122,23 @@ export class UserActivityRepository {
       JOIN usr u ON u.id = a.id_usr
       JOIN person p ON p.id = u.id_person
       WHERE a.company_id = $1
+    `;
+    const params: any[] = [companyId];
+
+    if (startDate) {
+      params.push(startDate);
+      query += ` AND a.created_at >= $${params.length}`;
+    }
+    if (endDate) {
+      params.push(endDate);
+      query += ` AND a.created_at <= $${params.length}`;
+    }
+
+    query += `
       GROUP BY u.id, p.surname, p.name, p.last_name
       ORDER BY activity_count DESC
     `;
-    const params = [companyId];
+    
     const result = await this.dbService.query(query, params);
     return result.rows;
   }

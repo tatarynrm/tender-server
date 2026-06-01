@@ -16,17 +16,25 @@ export class AdminCompanyController {
     @Param('id') id: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     return this.userActivityService.getCompanyActivities(
       Number(id),
       cursor,
       limit ? Number(limit) : 20,
+      startDate,
+      endDate
     );
   }
 
   @Get(':id/activities/summary')
-  async getCompanyActivitiesSummary(@Param('id') id: string) {
-    return this.userActivityService.getCompanyManagersActivitySummary(Number(id));
+  async getCompanyActivitiesSummary(
+    @Param('id') id: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.userActivityService.getCompanyManagersActivitySummary(Number(id), startDate, endDate);
   }
 
   @Get('all')

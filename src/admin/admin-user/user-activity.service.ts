@@ -18,11 +18,11 @@ export class UserActivityService {
     return this.repository.getUserActivities(userId, cursor, limit);
   }
 
-  async getCompanyActivities(companyId: number, cursor?: string, limit?: number) {
-    return this.repository.getCompanyActivities(companyId, cursor, limit);
+  async getCompanyActivities(companyId: number, cursor?: string, limit?: number, startDate?: string, endDate?: string) {
+    return this.repository.getCompanyActivities(companyId, cursor, limit, startDate, endDate);
   }
 
-  async getCompanyManagersActivitySummary(companyId: number) {
-    return this.repository.getCompanyManagersActivitySummary(companyId);
+  async getCompanyManagersActivitySummary(companyId: number, startDate?: string, endDate?: string) {
+    return this.repository.getCompanyManagersActivitySummary(companyId, startDate, endDate);
   }
 }
