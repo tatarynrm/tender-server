@@ -21,4 +21,8 @@ export class UserActivityService {
   async getCompanyActivities(companyId: number, cursor?: string, limit?: number) {
     return this.repository.getCompanyActivities(companyId, cursor, limit);
   }
+
+  async getCompanyManagersActivitySummary(companyId: number) {
+    return this.repository.getCompanyManagersActivitySummary(companyId);
+  }
 }

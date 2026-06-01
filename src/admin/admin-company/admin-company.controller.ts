@@ -24,6 +24,11 @@ export class AdminCompanyController {
     );
   }
 
+  @Get(':id/activities/summary')
+  async getCompanyActivitiesSummary(@Param('id') id: string) {
+    return this.userActivityService.getCompanyManagersActivitySummary(Number(id));
+  }
+
   @Get('all')
   async findAll(@Query() query: any) {
     // query тепер містить всі ваші фільтри та пагінацію

@@ -37,18 +37,22 @@ export class UserActivityRepository {
 
   async getUserActivities(userId: number, cursor?: string, limit: number = 20) {
     let query = `
-      SELECT id, id_usr, company_id, action, path, duration, ip_address, usr_agent, metadata, created_at
-      FROM usr_activities
-      WHERE id_usr = $1
+      SELECT 
+        a.id, a.id_usr, a.company_id, a.action, a.path, a.duration, a.ip_address, a.usr_agent, a.metadata, a.created_at,
+        p.surname, p.name, p.last_name
+      FROM usr_activities a
+      LEFT JOIN usr u ON u.id = a.id_usr
+      LEFT JOIN person p ON p.id = u.id_person
+      WHERE a.id_usr = $1
     `;
     const params: any[] = [userId];
 
     if (cursor) {
-      query += ` AND created_at < $2`;
+      query += ` AND a.created_at < $2`;
       params.push(cursor);
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`;
+    query += ` ORDER BY a.created_at DESC LIMIT $${params.length + 1}`;
     params.push(limit + 1); // Fetch one extra to determine if there's a next page
 
     const result = await this.dbService.query(query, params);
@@ -66,18 +70,22 @@ export class UserActivityRepository {
 
   async getCompanyActivities(companyId: number, cursor?: string, limit: number = 20) {
     let query = `
-      SELECT id, id_usr, company_id, action, path, duration, ip_address, usr_agent, metadata, created_at
-      FROM usr_activities
-      WHERE company_id = $1
+      SELECT 
+        a.id, a.id_usr, a.company_id, a.action, a.path, a.duration, a.ip_address, a.usr_agent, a.metadata, a.created_at,
+        p.surname, p.name, p.last_name
+      FROM usr_activities a
+      LEFT JOIN usr u ON u.id = a.id_usr
+      LEFT JOIN person p ON p.id = u.id_person
+      WHERE a.company_id = $1
     `;
     const params: any[] = [companyId];
 
     if (cursor) {
-      query += ` AND created_at < $2`;
+      query += ` AND a.created_at < $2`;
       params.push(cursor);
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`;
+    query += ` ORDER BY a.created_at DESC LIMIT $${params.length + 1}`;
     params.push(limit + 1);
 
     const result = await this.dbService.query(query, params);
@@ -91,5 +99,25 @@ export class UserActivityRepository {
       activities,
       nextCursor,
     };
+  }
+
+  async getCompanyManagersActivitySummary(companyId: number) {
+    const query = `
+      SELECT 
+        u.id as id_usr, 
+        p.surname, 
+        p.name, 
+        p.last_name, 
+        COUNT(a.id)::int as activity_count
+      FROM usr_activities a
+      JOIN usr u ON u.id = a.id_usr
+      JOIN person p ON p.id = u.id_person
+      WHERE a.company_id = $1
+      GROUP BY u.id, p.surname, p.name, p.last_name
+      ORDER BY activity_count DESC
+    `;
+    const params = [companyId];
+    const result = await this.dbService.query(query, params);
+    return result.rows;
   }
 }
