@@ -1,11 +1,15 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { AdminUserService } from './admin-user.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
+import { UserActivityService } from './user-activity.service';
 
 @Authorization()
 @Controller('')
 export class AdminUserController {
-  constructor(private readonly adminUserService: AdminUserService) {}
+  constructor(
+    private readonly adminUserService: AdminUserService,
+    private readonly userActivityService: UserActivityService,
+  ) {}
 
   @Get('pre-register/list')
   public async getAllPreRegisterUsers(@Query() query: any) {
@@ -41,5 +45,18 @@ export class AdminUserController {
   @Post('pre-register/register')
   registerFromPre(@Body() dto: any) {
     return this.adminUserService.registerFromPre(dto);
+  }
+
+  @Get(':id/activities')
+  async getUserActivities(
+    @Param('id') id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.userActivityService.getUserActivities(
+      Number(id),
+      cursor,
+      limit ? Number(limit) : 20,
+    );
   }
 }

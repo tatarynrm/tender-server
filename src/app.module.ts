@@ -50,6 +50,7 @@ import { HealthModule } from './health/health.module';
 import { FilesModule } from './files/files.module';
 import { NotificationModule } from './notification/notification.module';
 import { DbEventsModule } from './modules/db-events/db-events.module';
+import { UserActivityModule } from './common/user-activity.module';
 
 
 @Module({
@@ -119,6 +120,7 @@ import { DbEventsModule } from './modules/db-events/db-events.module';
     FilesModule,
     NotificationModule,
     DbEventsModule,
+    UserActivityModule,
   ],
   controllers: [],
   providers: [
