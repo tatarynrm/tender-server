@@ -271,12 +271,12 @@ export class TelegramService implements OnModuleInit {
   }
 
   public async runDeploy(): Promise<{ success: boolean; output: string }> {
-    // вівdsadadewqeewe
     return new Promise((resolve) => {
-      exec('deploy', (error, stdout, stderr) => {
+      // Використовуємо збільшений буфер (10MB), оскільки npm run build може видавати багато логів
+      exec('bash /root/deploy.sh', { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
         if (error) {
           this.logger.error(`❌ Deploy failed: ${error.message}`);
-          return resolve({ success: false, output: error.message });
+          return resolve({ success: false, output: error.message + '\n' + stderr });
         }
         this.logger.log(`✅ Deploy finished successfully`);
         resolve({ success: true, output: stdout || stderr });
