@@ -9,7 +9,7 @@ export class FilesController {
     if (!url) {
       return res.status(HttpStatus.BAD_REQUEST).send('URL is required');
     }
-
+    // dsda
     try {
       const response = await axios({
         method: 'get',
@@ -22,7 +22,7 @@ export class FilesController {
       if (contentType) {
         res.setHeader('Content-Type', contentType.toString());
       }
-      
+
       // Стрімимо дані клієнту
       response.data.pipe(res);
     } catch (error) {
