@@ -47,6 +47,11 @@ export class AdminUserController {
     return this.adminUserService.registerFromPre(dto);
   }
 
+  @Get('ict-activity-summary')
+  async getIctActivitySummary() {
+    return this.userActivityService.getIctManagersActivitySummary();
+  }
+
   @Get(':id/activities')
   async getUserActivities(
     @Param('id') id: string,

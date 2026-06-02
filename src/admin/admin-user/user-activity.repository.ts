@@ -156,4 +156,24 @@ export class UserActivityRepository {
     const result = await this.dbService.query(query, params);
     return result.rows;
   }
+
+  async getIctManagersActivitySummary() {
+    const query = `
+      SELECT 
+        u.id as id_usr, 
+        p.surname, 
+        p.name, 
+        p.last_name, 
+        MAX(a.created_at) as last_activity
+      FROM usr u
+      JOIN person p ON p.id = u.id_person
+      JOIN person_role pr ON pr.id_person = p.id
+      LEFT JOIN usr_activities a ON a.id_usr = u.id
+      WHERE pr.is_ict = true
+      GROUP BY u.id, p.surname, p.name, p.last_name
+      ORDER BY last_activity ASC NULLS FIRST
+    `;
+    const result = await this.dbService.query(query, []);
+    return result.rows;
+  }
 }

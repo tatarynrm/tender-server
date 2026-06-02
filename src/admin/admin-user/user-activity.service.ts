@@ -25,4 +25,8 @@ export class UserActivityService {
   async getCompanyManagersActivitySummary(companyId: number, startDate?: string, endDate?: string) {
     return this.repository.getCompanyManagersActivitySummary(companyId, startDate, endDate);
   }
+
+  async getIctManagersActivitySummary() {
+    return this.repository.getIctManagersActivitySummary();
+  }
 }
