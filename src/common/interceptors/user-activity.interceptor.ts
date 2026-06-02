@@ -34,6 +34,7 @@ export class UserActivityInterceptor implements NestInterceptor {
         // Log asynchronously after successful response
         const user = request.user || (request.cls && request.cls.get('user'));
         const userId = user?.id || request.session?.userId;
+        const companyId = user?.company?.id || user?.id_company || null;
         
         if (userId) {
           const ipAddress = request.ip || request.headers['x-forwarded-for'];
@@ -47,6 +48,7 @@ export class UserActivityInterceptor implements NestInterceptor {
 
           this.userActivityService.logActivity({
             userId,
+            companyId,
             action,
             ipAddress,
             userAgent,

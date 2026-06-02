@@ -85,7 +85,7 @@ export class UserActivityRepository {
       FROM usr_activities a
       LEFT JOIN usr u ON u.id = a.id_usr
       LEFT JOIN person p ON p.id = u.id_person
-      WHERE a.id_company = $1
+      WHERE (a.id_company = $1 OR u.id_company = $1)
     `;
     const params: any[] = [companyId];
 
@@ -135,7 +135,7 @@ export class UserActivityRepository {
       FROM usr_activities a
       JOIN usr u ON u.id = a.id_usr
       JOIN person p ON p.id = u.id_person
-      WHERE a.id_company = $1
+      WHERE (a.id_company = $1 OR u.id_company = $1)
     `;
     const params: any[] = [companyId];
 
