@@ -51,9 +51,9 @@ export class AdminController {
   @UseInterceptors(FileInterceptor('file'))
   async createMailing(
     @Body('item_name') itemName: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.mailingService.createMailing(itemName, file.buffer);
+    return this.mailingService.createMailing(itemName, file?.buffer);
   }
 
   @Get('mailing/list')
@@ -105,5 +105,36 @@ export class AdminController {
   @Delete('mailing/:id')
   async deleteMailing(@Param('id') id: string) {
     return this.mailingService.deleteMailing(Number(id));
+  }
+
+  @Post('mailing/bulk-delete')
+  async deleteMailingsBulk(@Body('ids') ids: number[]) {
+    return this.mailingService.deleteMailingsBulk(ids);
+  }
+
+  @Post('mailing/:id/upload-addresses')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAddresses(
+    @Param('id') id: string,
+    @Body('mode') mode: 'append' | 'replace',
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.mailingService.uploadAddressesFromExcel(Number(id), file?.buffer, mode);
+  }
+
+  @Post('mailing/:id/address')
+  async addMailingAddress(
+    @Param('id') id: string,
+    @Body('email') email: string,
+  ) {
+    return this.mailingService.addAddress(Number(id), email);
+  }
+
+  @Delete('mailing/:id/address/:addressId')
+  async removeMailingAddress(
+    @Param('id') id: string,
+    @Param('addressId') addressId: string,
+  ) {
+    return this.mailingService.removeAddress(Number(id), Number(addressId));
   }
 }

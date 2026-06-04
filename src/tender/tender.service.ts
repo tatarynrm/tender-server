@@ -17,7 +17,7 @@ export class TenderService {
     private readonly tenderGateway: TenderGateway,
     private readonly loadGateway: LoadGateway,
     private readonly filesService: FilesService, // Added this line
-  ) {}
+  ) { }
 
   private getSortString(query: any): string {
     const sortBy = query.sortBy || 'time_start';
@@ -207,6 +207,8 @@ export class TenderService {
     return result;
   }
   public async tenderSetWinner(dto: any) {
+    console.log(dto, 'DTO');
+
     const result = await this.dbservice.callProcedure(
       'tender_set_winner',
 

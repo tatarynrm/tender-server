@@ -17,7 +17,7 @@ import { Authorization } from 'src/auth/decorators/auth.decorator';
 @Authorization()
 @Controller('tender')
 export class TenderController {
-  constructor(private readonly tenderService: TenderService) {}
+  constructor(private readonly tenderService: TenderService) { }
 
   // Тендер CRM
   @Get('list')
@@ -47,7 +47,7 @@ export class TenderController {
   @Post('save')
   @UseInterceptors(FilesInterceptor('files'))
   async save(
-    @Body() body: { dto?: string; [key: string]: any },
+    @Body() body: { dto?: string;[key: string]: any },
     @UploadedFiles() files: Express.Multer.File[],
     @Session() session: any,
   ) {
@@ -69,6 +69,8 @@ export class TenderController {
   }
   @Post('set-winner')
   tenderSetWinner(@Body() dto: any) {
+    console.log(dto, 'DTO');
+
     return this.tenderService.tenderSetWinner(dto);
   }
   @Post('del-winner')
