@@ -17,40 +17,53 @@ export class MailService {
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
   ) {}
-  public async sendMail(email: string, subject: string, html: string, attachments?: any[]) {
+  public async sendMail(
+    email: string,
+    subject: string,
+    html: string,
+    attachments?: any[],
+    transporterName?: string,
+    from?: string,
+  ) {
     return this.mailerService.sendMail({
       to: email,
       subject: subject,
       html,
       attachments,
+      transporterName,
+      from,
     });
   }
   public async sendConfirmationEmail(email: string, token: string) {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
+    const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
 
     const html = await render(ConfirmationTemplate({ domain, token }));
-    return this.sendMail(email, 'Підтвердження пошти', html);
+    return this.sendMail(email, 'Підтвердження пошти', html, undefined, 'profiles', from);
   }
   public async sendPasswordResetEmail(email: string, token: string) {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
+    const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
 
     const html = await render(ResetPasswordTemplate({ domain, token }));
-    return this.sendMail(email, 'Скидання паролю', html);
+    return this.sendMail(email, 'Скидання паролю', html, undefined, 'profiles', from);
   }
   public async sendTwoFactorTokenEmail(email: string, token: string) {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
+    const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
     console.log('Підтвердження');
 
     const html = await render(TwoFactorAuthTemplate({ token, domain }));
-    return this.sendMail(email, 'Підтвердження особистості', html);
+    return this.sendMail(email, 'Підтвердження особистості', html, undefined, 'profiles', from);
   }
   public async sendPreRegisterGreetings(email: string) {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
+    const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
 
     console.log('PRE REGISTER EMAIL SEND');
 
     const html = await render(SuccessfulPreRegistrationTemplate({ domain }));
-    return this.sendMail(email, 'Підтвердження особистості', html);
+    return this.sendMail(email, 'Підтвердження особистості', html, undefined, 'profiles', from);
   }
   public async sendPreRegisterSuccessGreeting(
     email: string,
@@ -58,6 +71,7 @@ export class MailService {
     showPasswordHint = false,
   ) {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
+    const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
 
     console.log('PRE REGISTER SUCCESS EMAIL SEND');
 
@@ -68,7 +82,7 @@ export class MailService {
         showPasswordHint,
       }),
     );
-    return this.sendMail(email, 'Ваш аккаунт ICTender активовано!', html);
+    return this.sendMail(email, 'Ваш аккаунт ICTender активовано!', html, undefined, 'profiles', from);
   }
   // public async sendRegisterFromCompanyEmail(email: string, token: string) {
   //   const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
@@ -101,7 +115,8 @@ export class MailService {
     email: string,
     userName?: string,
   ) {
+    const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
     const html = await render(PasswordChangedTemplate({ userName }));
-    return this.sendMail(email, 'Пароль успішно змінено', html);
+    return this.sendMail(email, 'Пароль успішно змінено', html, undefined, 'profiles', from);
   }
 }

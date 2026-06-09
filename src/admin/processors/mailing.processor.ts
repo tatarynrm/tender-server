@@ -65,7 +65,8 @@ export class MailingProcessor extends WorkerHost {
 
     // 4. Send email via Nodemailer service with attachments
     try {
-      await this.mailService.sendMail(email, title, compiledHtml, attachments);
+      const from = `"ICT TENDER" <${process.env.ICT_MAIL_SUPPORT_LOGIN}>`;
+      await this.mailService.sendMail(email, title, compiledHtml, attachments, 'support', from);
 
       // Mark as DONE
       await this.dbservice.query(
