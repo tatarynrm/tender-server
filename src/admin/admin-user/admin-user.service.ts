@@ -14,15 +14,20 @@ export class AdminUserService {
   ) {}
 
   public async getAllPreRegisterUsers(query: any) {
+    const filters: FilterItem[] = buildFiltersFromQuery(query);
+
     const result = await this.dbservice.callProcedure(
       'usr_pre_register_list',
 
       {
         pagination: {
-          per_page: query.limit ?? 10,
-          page: query.page ?? 1,
+          per_page: Number(query.per_page || query.limit || 50),
+          limit: Number(query.per_page || query.limit || 50),
+          page_rows: Number(query.per_page || query.limit || 50),
+          page: Number(query.page || 1),
+          page_num: Number(query.page || 1),
         },
-        // filter: filters,
+        filter: filters,
       },
 
       {},
