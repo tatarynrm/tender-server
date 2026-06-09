@@ -23,7 +23,7 @@ export function TwoFactorAuthTemplate({
 }: TwoFactorAuthTemplateProps) {
   return (
     <Html>
-      <Preview>Код безпеки ICT Logistics</Preview>
+      <Preview>Код безпеки ICTender</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
@@ -31,7 +31,7 @@ export function TwoFactorAuthTemplate({
               src={`${domain}/logo.png`}
               width="140"
               height="40"
-              alt="ICT Logistics"
+              alt="ICTender"
               style={logo}
             />
           </Section>
@@ -53,8 +53,8 @@ export function TwoFactorAuthTemplate({
             <Hr style={hr} />
             
             <Text style={footer}>
-              Ви отримали це повідомлення з міркувань безпеки вашого облікового запису ICT Logistics.<br />
-              З повагою, команда ICT Logistics.<br />
+              Ви отримали це повідомлення з міркувань безпеки вашого облікового запису ICTender.<br />
+              З повагою, команда ICTender.<br />
               <Link href="https://ict.lviv.ua" style={footerLink}>ict.lviv.ua</Link>
             </Text>
           </Section>

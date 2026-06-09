@@ -110,7 +110,7 @@ export const TenderNotificationTemplate = ({
               src={`${domain}/logo.png`}
               width="140"
               height="40"
-              alt="ICT Logistics"
+              alt="ICTender"
               style={logo}
             />
           </Section>
@@ -214,10 +214,10 @@ export const TenderNotificationTemplate = ({
 
             <Hr style={hr} />
             <Text style={footer}>
-              Ви отримали це повідомлення, оскільки підписані на сповіщення ICT Logistics.<br />
+              Ви отримали це повідомлення, оскільки підписані на сповіщення ICTender.<br />
               Керувати налаштуваннями або <Link href={`${domain}/dashboard/settings`} style={unsubscribeLink}>відписатися</Link> можна в особистому кабінеті.<br />
               <br />
-              З повагою, команда ICT Logistics.<br />
+              З повагою, команда ICTender.<br />
               <Link href="https://ict.lviv.ua" style={footerLink}>ict.lviv.ua</Link>
             </Text>
           </Section>

@@ -101,7 +101,7 @@ export function SuccessfulPreRegistrationAccountTemplate({
           </Section>
           
           <Text style={legalText}>
-            © 2024 ICT Logistics. Всі права захищені.
+            © 2024 ICTender. Всі права захищені.
           </Text>
         </Container>
       </Body>

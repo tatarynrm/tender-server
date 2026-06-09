@@ -25,7 +25,7 @@ export function ResetPasswordTemplate({
 
   return (
     <Html>
-      <Preview>Скидання паролю ICT Logistics</Preview>
+      <Preview>Скидання паролю ICTender</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
@@ -33,7 +33,7 @@ export function ResetPasswordTemplate({
               src={`${domain}/logo.png`}
               width="140"
               height="40"
-              alt="ICT Logistics"
+              alt="ICTender"
               style={logo}
             />
           </Section>
@@ -60,7 +60,7 @@ export function ResetPasswordTemplate({
 
             <Text style={footer}>
               Ви отримали це повідомлення у відповідь на запит безпеки вашого
-              облікового запису ICT Logistics.
+              облікового запису ICTender.
               <br />
               Керувати налаштуваннями або{' '}
               <Link
@@ -72,7 +72,7 @@ export function ResetPasswordTemplate({
               можна в особистому кабінеті.
               <br />
               <br />
-              З повагою, команда ICT Logistics.
+              З повагою, команда ICTender.
               <br />
               <Link href="https://ict.lviv.ua" style={footerLink}>
                 ict.lviv.ua

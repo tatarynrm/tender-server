@@ -25,7 +25,7 @@ export function ConfirmationTemplate({
 
   return (
     <Html>
-      <Preview>Підтвердження пошти ICT Logistics</Preview>
+      <Preview>Підтвердження пошти ICTender</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
@@ -33,7 +33,7 @@ export function ConfirmationTemplate({
               src={`${domain}/logo.png`}
               width="140"
               height="40"
-              alt="ICT Logistics"
+              alt="ICTender"
               style={logo}
             />
           </Section>
@@ -41,7 +41,7 @@ export function ConfirmationTemplate({
           <Section style={content}>
             <Heading style={h1}>Підтвердження пошти</Heading>
             <Text style={text}>
-               Привіт! Ви отримали цей лист, оскільки зареєстрували аккаунт у системі ICT Logistics. 
+               Привіт! Ви отримали цей лист, оскільки зареєстрували аккаунт у системі ICTender. 
                Щоб почати роботу, будь ласка, підтвердіть свою адресу електронної пошти.
             </Text>
 
@@ -58,10 +58,10 @@ export function ConfirmationTemplate({
             <Hr style={hr} />
             
             <Text style={footer}>
-              Ви отримали це повідомлення, оскільки зареєструвалися на сайті ICT Logistics.<br />
+              Ви отримали це повідомлення, оскільки зареєструвалися на сайті ICTender.<br />
               Керувати налаштуваннями або <Link href={`${domain}/dashboard/settings`} style={unsubscribeLink}>відписатися</Link> можна в особистому кабінеті.<br />
               <br />
-              З повагою, команда ICT Logistics.<br />
+              З повагою, команда ICTender.<br />
               <Link href="https://ict.lviv.ua" style={footerLink}>ict.lviv.ua</Link>
             </Text>
           </Section>

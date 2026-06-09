@@ -15,7 +15,7 @@ import * as React from 'react';
 export function SuccessfulPreRegistrationTemplate({ domain }: { domain: string }) {
   return (
     <Html>
-      <Preview>Ласкаво просимо до ICT Logistics</Preview>
+      <Preview>Ласкаво просимо до ICTender</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
@@ -23,7 +23,7 @@ export function SuccessfulPreRegistrationTemplate({ domain }: { domain: string }
               src={`${domain}/logo.png`}
               width="140"
               height="40"
-              alt="ICT Logistics"
+              alt="ICTender"
               style={logo}
             />
           </Section>
@@ -31,7 +31,7 @@ export function SuccessfulPreRegistrationTemplate({ domain }: { domain: string }
           <Section style={content}>
             <Heading style={h1}>Дякуємо за реєстрацію!</Heading>
             <Text style={text}>
-               Ваша заявка на реєстрацію в системі ICT Logistics успішно отримана. Наші менеджери розглянуть вашу анкету та зв'яжуться з вами найближчим часом.
+               Ваша заявка на реєстрацію в системі ICTender успішно отримана. Наші менеджери розглянуть вашу анкету та зв'яжуться з вами найближчим часом.
             </Text>
 
             <Section style={infoBox}>
@@ -47,8 +47,8 @@ export function SuccessfulPreRegistrationTemplate({ domain }: { domain: string }
             <Hr style={hr} />
             
             <Text style={footer}>
-              Ви отримали це повідомлення, оскільки заповнили форму реєстрації на сайті ICT Logistics.<br />
-              З повагою, команда ICT Logistics.<br />
+              Ви отримали це повідомлення, оскільки заповнили форму реєстрації на сайті ICTender.<br />
+              З повагою, команда ICTender.<br />
               <Link href="https://ict.lviv.ua" style={footerLink}>ict.lviv.ua</Link>
             </Text>
           </Section>
