@@ -94,7 +94,7 @@ export class AdminUserService {
       content: list,
       props: {
         pagination: {
-          total_items: onlineUserIds.length,
+          rows_all: onlineUserIds.length,
           page,
           per_page: limit,
           page_count: Math.ceil(onlineUserIds.length / limit),
