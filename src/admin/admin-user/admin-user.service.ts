@@ -91,8 +91,8 @@ export class AdminUserService {
 
     return {
       status: 'ok',
-      content: {
-        list,
+      content: list,
+      props: {
         pagination: {
           total_items: onlineUserIds.length,
           page,
