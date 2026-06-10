@@ -21,6 +21,11 @@ export class AdminUserController {
     return this.adminUserService.getAdminUserList(query);
   }
 
+  @Get('online-list')
+  getOnlineAdminUsersList(@Query() query: any) {
+    return this.adminUserService.getOnlineAdminUsers(query);
+  }
+
   @Post('save')
   adminCreateUser(@Body() dto: any) {
     return this.adminUserService.adminUserSave(dto);
