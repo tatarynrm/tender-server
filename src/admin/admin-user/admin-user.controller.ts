@@ -36,6 +36,14 @@ export class AdminUserController {
     return this.adminUserService.getAdminOneUser(id);
   }
 
+  @Get('test-list')
+  async getTestList() {
+    const res = await this.adminUserService.getAdminUserList({ filter: { id: '6' } });
+    const fs = require('fs');
+    fs.writeFileSync('debug-usr-list.json', JSON.stringify(res, null, 2));
+    return res;
+  }
+
     @Get('pre/:id')
   async getUserPre(@Param('id') id: string) {
     // query тепер містить всі ваші фільтри та пагінацію

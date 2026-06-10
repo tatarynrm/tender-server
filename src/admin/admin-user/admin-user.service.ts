@@ -72,47 +72,40 @@ export class AdminUserService {
     const skip = (page - 1) * limit;
 
     // We reverse the array to show the most recently active first (or just slice as is)
-    const paginatedIds = onlineUserIds.reverse().slice(skip, skip + limit);
+    // Отримуємо всіх користувачів один раз (через оптимізовану процедуру)
+    // Це гарантує правильний формат даних (з person та company)
+    const allUsersResult = await this.getAdminUserList({ limit: 10000 });
+    const allUsers = allUsersResult?.content || [];
 
-    // 3. Fetch detailed user info for the paginated slice
-    const usersPromises = paginatedIds.map(async (id) => {
-      try {
-        const result = await this.getAdminOneUser(id);
-        if (result && result.status === 'ok') {
-          return result.content;
-        }
-      } catch (e) {
-        return null;
-      }
-      return null;
-    });
+    // Фільтруємо лише тих, хто онлайн
+    const onlineUsersList = allUsers.filter((u: any) =>
+      onlineUserIds.includes(String(u.id))
+    );
 
-    const list = (await Promise.all(usersPromises)).filter(Boolean);
+    // Застосовуємо пагінацію до відфільтрованого списку
+    const paginatedList = onlineUsersList.slice(skip, skip + limit);
 
     return {
       status: 'ok',
-      content: list,
+      content: paginatedList,
       props: {
         pagination: {
-          rows_all: onlineUserIds.length,
+          rows_all: onlineUsersList.length,
           page,
           per_page: limit,
-          page_count: Math.ceil(onlineUserIds.length / limit),
+          page_count: Math.ceil(onlineUsersList.length / limit),
         },
       },
     };
   }
-  public async getAdminOneUser(id: any) {
+  public async getAdminOneUser(id: string | number) {
     const result = await this.dbservice.callProcedure(
       'usr_one_ict',
-
-      {
-        id: id,
-      },
-
+      { id },
       {},
     );
-
+    const fs = require('fs');
+    fs.writeFileSync('debug-usr-one.json', JSON.stringify(result.content, null, 2));
     return result;
   }
 
