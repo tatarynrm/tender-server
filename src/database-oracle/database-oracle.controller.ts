@@ -22,6 +22,14 @@ export class DatabaseOracleController {
     );
   }
 
+  @Get('carrier-statistic/:mid')
+  async getCarrierStatistic(@Param('mid', ParseIntPipe) mid: number) {
+    return await this.oracleService.executeProcedure(
+      'p_carrier.page_main',
+      { pKodPer: mid },
+    );
+  }
+
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {
