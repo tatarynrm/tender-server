@@ -4,7 +4,7 @@ import { DatabaseOracleService } from './database-oracle.service';
 
 @Controller('oracle')
 export class DatabaseOracleController {
-  constructor(private readonly oracleService: DatabaseOracleService) {}
+  constructor(private readonly oracleService: DatabaseOracleService) { }
 
   @Get('test')
   async getTest() {
