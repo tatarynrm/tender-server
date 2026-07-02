@@ -38,6 +38,14 @@ export class DatabaseOracleController {
     );
   }
 
+  @Get('carrier-contacts/:mid')
+  async getCarrierContacts(@Param('mid', ParseIntPipe) mid: number) {
+    return await this.oracleService.executeProcedure(
+      'p_carrier.page_contact',
+      // { pKodPer: mid },
+    );
+  }
+
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {
