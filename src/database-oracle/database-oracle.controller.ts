@@ -30,6 +30,14 @@ export class DatabaseOracleController {
     );
   }
 
+  @Get('carrier-cooperation/:mid')
+  async getCarrierCooperation(@Param('mid', ParseIntPipe) mid: number) {
+    return await this.oracleService.executeProcedure(
+      'p_carrier.page_cooperation',
+      { pKodPer: mid }, // Assuming it also takes pKodPer, or migrateid
+    );
+  }
+
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {
