@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 import {
   buildFiltersFromQuery,
@@ -6,6 +6,8 @@ import {
 } from 'src/shared/utils/build-filters';
 import { MailService } from 'src/libs/common/mail/mail.service';
 import type { RedisClientType } from 'redis';
+import { Pool } from 'pg';
+import type { Request } from 'express';
 
 @Injectable()
 export class AdminUserService {
@@ -13,6 +15,7 @@ export class AdminUserService {
     private readonly dbservice: DatabaseService,
     private readonly mailService: MailService,
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
+    @Inject('PG_POOL') private readonly pool: Pool,
   ) {}
 
   public async getAllPreRegisterUsers(query: any) {
@@ -149,5 +152,43 @@ export class AdminUserService {
     }
 
     return result;
+  }
+
+  public async impersonateCompany(userId: number, newCompanyId: number, req: Request) {
+    // 1. Fetch user to check permissions and get person_id
+    const userProfileResult = await this.dbservice.callProcedure('usr_find', { id: userId }, {});
+    const user = userProfileResult.content;
+
+    if (!user) {
+      throw new UnauthorizedException('Користувача не знайдено');
+    }
+
+    if (!user.role.is_ict || !user.role.is_admin) {
+      throw new UnauthorizedException('Лише адміністратори ICT можуть змінювати компанію');
+    }
+
+    const personId = user.person?.id;
+    if (!personId) {
+      throw new UnauthorizedException('Персону користувача не знайдено');
+    }
+
+    // 2. Update `usr` table
+    await this.pool.query(`UPDATE usr SET id_company = $1 WHERE id = $2`, [newCompanyId, userId]);
+
+    // 3. Update `person` table
+    await this.pool.query(`UPDATE person SET id_company = $1 WHERE id = $2`, [newCompanyId, personId]);
+
+    // 4. Update session
+    if (req && req.session) {
+      req.session.id_company = newCompanyId;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+    }
+
+    return { success: true, message: 'Компанію успішно змінено', newCompanyId };
   }
 }

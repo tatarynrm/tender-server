@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { AdminUserService } from './admin-user.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
+import { Authorized } from 'src/auth/decorators/authorized.decorator';
 import { UserActivityService } from './user-activity.service';
+import type { Request } from 'express';
 
 @Authorization()
 @Controller('')
@@ -76,5 +78,14 @@ export class AdminUserController {
       cursor,
       limit ? Number(limit) : 20,
     );
+  }
+
+  @Post('impersonate')
+  async impersonateCompany(
+    @Authorized('id') userId: string,
+    @Body('id_company') newCompanyId: number,
+    @Req() req: Request,
+  ) {
+    return this.adminUserService.impersonateCompany(Number(userId), newCompanyId, req);
   }
 }
