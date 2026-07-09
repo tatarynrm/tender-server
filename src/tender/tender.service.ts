@@ -52,7 +52,8 @@ export class TenderService {
   public async getClientList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
     const sortString = this.getSortString(query);
-
+    console.log(filters, "FILTERS")
+    console.log(sortString, "SORT STRING")
     const result = await this.dbservice.callProcedure('tender_list', {
       pagination: {
         per_page: query.limit ?? 10,
