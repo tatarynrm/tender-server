@@ -1,5 +1,5 @@
 // database-oracle.controller.ts
-import { Controller, Get, Query, ParseIntPipe, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, ParseIntPipe, Param } from '@nestjs/common';
 import { DatabaseOracleService } from './database-oracle.service';
 
 @Controller('oracle')
@@ -23,29 +23,76 @@ export class DatabaseOracleController {
   }
 
   @Get('carrier-statistic/:mid')
-  async getCarrierStatistic(@Param('mid', ParseIntPipe) mid: number) {
-    return await this.oracleService.executeProcedure(
-      'p_carrier.page_main',
-      { pKodPer: mid },
+  async getCarrierStatistic(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Query() query: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'main', kod_per: mid, body: JSON.stringify(query || {}) },
     );
+    return result?.content || result;
   }
 
   @Get('carrier-cooperation/:mid')
-  async getCarrierCooperation(@Param('mid', ParseIntPipe) mid: number) {
-    return await this.oracleService.executeProcedure(
-      'p_carrier.page_cooperation',
-      { pKodPer: mid }, // Assuming it also takes pKodPer, or migrateid
+  async getCarrierCooperation(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Query() query: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'cooperation', kod_per: mid, body: JSON.stringify(query || {}) },
     );
+    return result?.content || result;
   }
 
   @Get('carrier-contacts/:mid')
-  async getCarrierContacts(@Param('mid', ParseIntPipe) mid: number) {
-    return await this.oracleService.executeProcedure(
-      'p_carrier.page_contact',
-      // { pKodPer: mid },
+  async getCarrierContacts(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Query() query: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'contact_list_ict', kod_per: mid, body: JSON.stringify(query || {}) },
     );
+    return result?.content || result;
   }
 
+  @Get('carrier-transportations/:mid')
+  async getCarrierTransportations(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Query() query: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'perev_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
+    );
+    return result?.content || result;
+  }
+
+  @Post('carrier-transportation-list/:mid')
+  async getCarrierTransportationList(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Body() body: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'perev_list', kod_per: mid, body: JSON.stringify(body || {}) },
+    );
+    return result?.content || result;
+  }
+
+  @Post('carrier-transportation/:mid')
+  async getCarrierTransportation(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Body() body: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'perev_one', kod_per: mid, body: JSON.stringify(body || {}) },
+    );
+    return result?.content || result;
+  }
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {
