@@ -93,6 +93,30 @@ export class DatabaseOracleController {
     );
     return result?.content || result;
   }
+
+  @Get('client-orders-statistic/:mid')
+  async getClientOrdersStatistic(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Query() query: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'zay_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
+    );
+    return result?.content || result;
+  }
+
+  @Post('client-orders-list/:mid')
+  async getClientOrdersList(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Body() body: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'zay_list', kod_per: mid, body: JSON.stringify(body || {}) },
+    );
+    return result?.content || result;
+  }
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {
