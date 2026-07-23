@@ -117,6 +117,31 @@ export class DatabaseOracleController {
     );
     return result?.content || result;
   }
+
+  @Get('carrier-finance-statistic/:mid')
+  async getCarrierFinanceStatistic(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Query() query: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'rah_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
+    );
+    return result;
+  }
+
+  @Post('carrier-finance-list/:mid')
+  async getCarrierFinanceList(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Body() body: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'rah_list', kod_per: mid, body: JSON.stringify(body || {}) },
+    );
+    return result;
+  }
+
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {
