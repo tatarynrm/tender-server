@@ -38,8 +38,6 @@ export class TelegramService implements OnModuleInit {
     try {
       await this.bot.telegram.setMyCommands([
         { command: 'start', description: 'Запустити / Перезапустити бота' },
-        { command: 'ai', description: 'Режим ШІ-Агента (Тільки для Адміністрації та ICT)' },
-        { command: 'exit', description: 'Вийти з режиму ШІ-Агента' },
         { command: 'info', description: 'Інформація про бота' },
       ]);
       this.logger.log('✅ Команди бота успішно встановлено');

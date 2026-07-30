@@ -58,9 +58,9 @@ export class TelegramUpdate {
         inlineButtons.push([Markup.button.callback('🚀 Запустити DEPLOY', 'run_deploy')]);
         inlineButtons.push([Markup.button.callback('📊 Статистика', 'get_stats')]);
       }
-      if (hasAiAccess) {
-        inlineButtons.push([Markup.button.callback('🤖 ШІ-Агент', 'enter_ai')]);
-      }
+      // if (hasAiAccess) {
+      //   inlineButtons.push([Markup.button.callback('🤖 ШІ-Агент', 'enter_ai')]);
+      // }
 
       if (inlineButtons.length > 0) {
         await ctx.reply(
@@ -139,36 +139,7 @@ export class TelegramUpdate {
   @Command('ai')
   @Action('enter_ai')
   async enterAiScene(ctx: Context) {
-    const telegramId = ctx.from?.id;
-    if (!telegramId) return;
-
-    const hasAccess = await this.telegramService.checkUserHasAiAccess(telegramId);
-    if (!hasAccess) {
-      return ctx.reply('⛔️ У вас немає прав для входу в режим ШІ-Агента.');
-    }
-
-    if (!(ctx as any).session) {
-      (ctx as any).session = {};
-    }
-    (ctx as any).session.scene = 'ai';
-
-    await ctx.reply(
-      markdownToHtml(
-        '🤖 **Режим ШІ-Агента активовано!**\n\n' +
-        'Для економії токенів та підвищення точності, будь ласка, **оберіть базу даних** нижче:\n\n' +
-        '• **🟢 Тендерна платформа** — запити щодо тендерів, ставок, вантажів або перевізників (PostgreSQL).\n' +
-        '• **🔴 БАЗА** — запити щодо договорів, фірм, заявок на перевезення, претензій чи співробітників (Oracle ERP).\n\n' +
-        'Використовуйте зручні кнопки під клавіатурою для навігації 👇'
-      ),
-      {
-        parse_mode: 'HTML',
-        ...Markup.keyboard([
-          ['🟢 Тендерна платформа', '🔴 БАЗА'],
-          ['💡 Приклади запитів', '📋 Доступні таблиці'],
-          ['🚪 Вийти з ШІ-Агента']
-        ]).resize()
-      }
-    );
+    await ctx.reply('🤖 Функції ШІ-Агента тимчасово недоступні.');
   }
 
   @Command('exit')
