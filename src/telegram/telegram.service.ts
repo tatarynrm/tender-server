@@ -6,6 +6,7 @@ import { exec } from 'child_process';
 import { TelegramRepository } from './telegram.repository';
 import { TelegramGateway } from './telegram.gateway';
 import { AiService } from '../ai/ai.service';
+import { DatabaseOracleService } from '../database-oracle/database-oracle.service';
 import axios from 'axios';
 
 const ADMIN_ID = 282039969;
@@ -20,10 +21,12 @@ export class TelegramService implements OnModuleInit {
     private readonly telegramGateway: TelegramGateway,
     private readonly configService: ConfigService,
     private readonly aiService: AiService,
+    private readonly oracleService: DatabaseOracleService,
     @InjectBot() private readonly bot: Telegraf<any>,
   ) {
     this.channelId = this.configService.get<string>('TELEGRAM_CHANNEL_ID')!;
   }
+
 
 
   async onModuleInit() {
@@ -303,10 +306,12 @@ export class TelegramService implements OnModuleInit {
     voiceFileId?: string,
   ): Promise<string> {
     // 1. Check access permissions (must be both is_admin and is_ict)
-    const hasAccess = await this.checkUserHasAiAccess(telegramId);
-    if (!hasAccess) {
+    const roles = await this.repository.getUserRoles(telegramId);
+    if (!roles || !roles.is_admin || !roles.is_ict) {
       return '⛔️ Доступ заборонено. Тільки користувачі з ролями Адміністратора та ICT мають доступ до ШІ-Агента.';
     }
+    const userFullName = [roles.surname, roles.name, roles.last_name].filter(Boolean).join(' ');
+
 
     let voiceFile: { buffer: Buffer; mimetype: string } | undefined;
 
@@ -367,21 +372,30 @@ export class TelegramService implements OnModuleInit {
       }
 
       try {
-        // Run SQL query
-        this.logger.log(`Executing AI generated SQL: ${sqlQuery}`);
-        const rows = await this.repository.runReadOnlyQuery(sqlQuery);
+        // Run SQL query on the selected database
+        let rows: any[] = [];
+        if (result.database === 'oracle') {
+          this.logger.log(`Executing AI generated Oracle SQL: ${sqlQuery}`);
+          rows = await this.oracleService.executeQuery(sqlQuery);
+        } else {
+          this.logger.log(`Executing AI generated Postgres SQL: ${sqlQuery}`);
+          rows = await this.repository.runReadOnlyQuery(sqlQuery);
+        }
         
         // Format query results
         const finalAnswer = await this.aiService.formatAnswer(
           text || '(голосове повідомлення)',
           rows,
+          userFullName,
         );
         return finalAnswer;
+
       } catch (dbErr) {
-        this.logger.error(`Database query failed: ${sqlQuery}`, dbErr);
-        return `❌ Помилка при виконанні запиту до бази даних.\nЛог: ${dbErr.message}`;
+        this.logger.error(`Database query failed on ${result.database || 'postgres'}: ${sqlQuery}`, dbErr);
+        return `❌ Помилка при виконанні запиту до бази даних ${result.database === 'oracle' ? 'Oracle' : 'PostgreSQL'}.\nЛог: ${dbErr.message}`;
       }
     }
+
 
     return '🤔 Не вдалося розпізнати запит або згенерувати SQL. Будь ласка, переформулюйте ваше питання.';
   }

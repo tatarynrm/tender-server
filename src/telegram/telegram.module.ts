@@ -42,6 +42,7 @@ import { RedisModule } from 'src/libs/common/redis/redis.module';
 import { UserModule } from 'src/user/user.module';
 import { TelegramRepository } from './telegram.repository';
 import { AiModule } from 'src/ai/ai.module';
+import { DatabaseOracleModule } from 'src/database-oracle/database-oracle.module';
 
 @Module({
   imports: [
@@ -49,7 +50,9 @@ import { AiModule } from 'src/ai/ai.module';
     RedisModule,
     UserModule,
     AiModule,
+    DatabaseOracleModule,
     TelegrafModule.forRootAsync({
+
 
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

@@ -128,15 +128,17 @@ export class TelegramRepository {
     return rows;
   }
 
-  async getUserRoles(telegramId: number): Promise<{ is_admin: boolean; is_ict: boolean } | null> {
+  async getUserRoles(telegramId: number): Promise<{ is_admin: boolean; is_ict: boolean; name?: string; surname?: string; last_name?: string } | null> {
     const { rows } = await this.pool.query(`
-      SELECT pr.is_admin, pr.is_ict
+      SELECT pr.is_admin, pr.is_ict, p.name, p.surname, p.last_name
       FROM person_telegram pt
-      JOIN person_role pr ON pt.id_person = pr.id_person
+      JOIN person p ON pt.id_person = p.id
+      JOIN person_role pr ON p.id = pr.id_person
       WHERE pt.telegram_id = $1
     `, [telegramId]);
     return rows[0] || null;
   }
+
 
   async runReadOnlyQuery(sql: string, params: any[] = []): Promise<any[]> {
     const { rows } = await this.pool.query(sql, params);
