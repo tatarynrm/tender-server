@@ -41,13 +41,16 @@ import { DatabaseModule } from 'src/database/database.module';
 import { RedisModule } from 'src/libs/common/redis/redis.module';
 import { UserModule } from 'src/user/user.module';
 import { TelegramRepository } from './telegram.repository';
+import { AiModule } from 'src/ai/ai.module';
 
 @Module({
   imports: [
     DatabaseModule,
     RedisModule,
     UserModule,
+    AiModule,
     TelegrafModule.forRootAsync({
+
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         token: config.get<string>('TELEGRAM_BOT_TOKEN')!,

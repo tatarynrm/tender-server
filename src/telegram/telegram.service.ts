@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { exec } from 'child_process';
 import { TelegramRepository } from './telegram.repository';
 import { TelegramGateway } from './telegram.gateway';
+import { AiService } from '../ai/ai.service';
+import axios from 'axios';
 
 const ADMIN_ID = 282039969;
 
@@ -17,10 +19,12 @@ export class TelegramService implements OnModuleInit {
     private readonly repository: TelegramRepository,
     private readonly telegramGateway: TelegramGateway,
     private readonly configService: ConfigService,
+    private readonly aiService: AiService,
     @InjectBot() private readonly bot: Telegraf<any>,
   ) {
     this.channelId = this.configService.get<string>('TELEGRAM_CHANNEL_ID')!;
   }
+
 
   async onModuleInit() {
     await this.setupWebhookMode();
@@ -31,6 +35,8 @@ export class TelegramService implements OnModuleInit {
     try {
       await this.bot.telegram.setMyCommands([
         { command: 'start', description: 'Запустити / Перезапустити бота' },
+        { command: 'ai', description: 'Режим ШІ-Агента (Тільки для Адміністрації та ICT)' },
+        { command: 'exit', description: 'Вийти з режиму ШІ-Агента' },
         { command: 'info', description: 'Інформація про бота' },
       ]);
       this.logger.log('✅ Команди бота успішно встановлено');
@@ -38,6 +44,7 @@ export class TelegramService implements OnModuleInit {
       this.logger.error('❌ Помилка при встановленні команд бота:', error);
     }
   }
+
 
   private async setupWebhookMode() {
     try {
@@ -283,4 +290,100 @@ export class TelegramService implements OnModuleInit {
       });
     });
   }
+
+  public async checkUserHasAiAccess(telegramId: number): Promise<boolean> {
+    const roles = await this.repository.getUserRoles(telegramId);
+    if (!roles) return false;
+    return roles.is_admin && roles.is_ict;
+  }
+
+  public async handleAiQuery(
+    telegramId: number,
+    text?: string,
+    voiceFileId?: string,
+  ): Promise<string> {
+    // 1. Check access permissions (must be both is_admin and is_ict)
+    const hasAccess = await this.checkUserHasAiAccess(telegramId);
+    if (!hasAccess) {
+      return '⛔️ Доступ заборонено. Тільки користувачі з ролями Адміністратора та ICT мають доступ до ШІ-Агента.';
+    }
+
+    let voiceFile: { buffer: Buffer; mimetype: string } | undefined;
+
+    // 2. Download voice if voiceFileId is provided
+    if (voiceFileId) {
+      try {
+        const fileLink = await this.bot.telegram.getFileLink(voiceFileId);
+        const response = await axios.get(fileLink.href, {
+          responseType: 'arraybuffer',
+        });
+        voiceFile = {
+          buffer: Buffer.from(response.data),
+          mimetype: 'audio/ogg',
+        };
+      } catch (err) {
+        this.logger.error('Failed to download Telegram voice file:', err);
+        return '❌ Не вдалося завантажити голосове повідомлення. Спробуйте ще раз.';
+      }
+    }
+
+    if (!text && !voiceFile) {
+      return '❓ Будь ласка, введіть текстовий або запишіть голосовий запит.';
+    }
+
+    // 3. Request Gemini to construct query
+    const result = await this.aiService.generateDbQuery(text || '', voiceFile);
+
+    if (result.type === 'conversational') {
+      return result.reply || 'Привіт! Чим я можу допомогти вам сьогодні?';
+    }
+
+    if (result.type === 'sql' && result.sql) {
+      const sqlQuery = result.sql.trim();
+
+      // SQL Safety check: Case-insensitive match for select query
+      // Must start with SELECT and NOT contain mutating keywords
+      const upperQuery = sqlQuery.toUpperCase();
+      const forbiddenKeywords = [
+        'INSERT',
+        'UPDATE',
+        'DELETE',
+        'DROP',
+        'ALTER',
+        'CREATE',
+        'TRUNCATE',
+        'GRANT',
+        'REVOKE',
+        'REPLACE',
+      ];
+      const hasForbidden = forbiddenKeywords.some((keyword) => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+        return regex.test(upperQuery);
+      });
+
+      if (!upperQuery.startsWith('SELECT') || hasForbidden) {
+        this.logger.warn(`Rejected unsafe generated SQL from TG User ${telegramId}: ${sqlQuery}`);
+        return '❌ Запит відхилено з міркувань безпеки. Згенерований SQL-запит містив недозволені інструкції.';
+      }
+
+      try {
+        // Run SQL query
+        this.logger.log(`Executing AI generated SQL: ${sqlQuery}`);
+        const rows = await this.repository.runReadOnlyQuery(sqlQuery);
+        
+        // Format query results
+        const finalAnswer = await this.aiService.formatAnswer(
+          text || '(голосове повідомлення)',
+          rows,
+        );
+        return finalAnswer;
+      } catch (dbErr) {
+        this.logger.error(`Database query failed: ${sqlQuery}`, dbErr);
+        return `❌ Помилка при виконанні запиту до бази даних.\nЛог: ${dbErr.message}`;
+      }
+    }
+
+    return '🤔 Не вдалося розпізнати запит або згенерувати SQL. Будь ласка, переформулюйте ваше питання.';
+  }
 }
+

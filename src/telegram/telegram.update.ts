@@ -1,4 +1,4 @@
-import { Action, Command, Hears, InjectBot, Start, Update } from 'nestjs-telegraf';
+import { Action, Command, Hears, InjectBot, Start, Update, On } from 'nestjs-telegraf';
 import { Context, Telegraf, Markup } from 'telegraf';
 import { TelegramService } from './telegram.service';
 import { MESSAGES } from './common/telegram.messages';
@@ -49,17 +49,25 @@ export class TelegramUpdate {
         return;
       }
 
+      const hasAiAccess = await this.telegramService.checkUserHasAiAccess(telegramId);
       const isAdmin = this.telegramService.isAdmin(telegramId);
 
+      const inlineButtons: any[] = [];
       if (isAdmin) {
+
+        inlineButtons.push([Markup.button.callback('🚀 Запустити DEPLOY', 'run_deploy')]);
+        inlineButtons.push([Markup.button.callback('📊 Статистика', 'get_stats')]);
+      }
+      if (hasAiAccess) {
+        inlineButtons.push([Markup.button.callback('🤖 ШІ-Агент', 'enter_ai')]);
+      }
+
+      if (inlineButtons.length > 0) {
         await ctx.reply(
-          '👑 *Вітаємо, Адміністраторе!*\n\nВи маєте доступ до панелі керування сервером.',
+          markdownToHtml('👑 **Вітаємо!**\n\nВи маєте доступ до спеціальних функцій бота.'),
           {
-            parse_mode: 'Markdown',
-            ...Markup.inlineKeyboard([
-              [Markup.button.callback('🚀 Запустити DEPLOY', 'run_deploy')],
-              [Markup.button.callback('📊 Статистика', 'get_stats')]
-            ])
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard(inlineButtons)
           }
         );
         return;
@@ -119,10 +127,197 @@ export class TelegramUpdate {
   @Command('info')
   async infoCommand(ctx: Context) {
     await ctx.reply(
-      'ℹ️ *Про бота*\n\n' +
-      'На даному етапі цей бот буде використовуватись для надсилання сповіщень про тендери та важливі події.\n\n' +
-      '🚀 У подальшому тут з’явиться багато корисних функцій для керування вашими заявками та документами прямо з Telegram!',
-      { parse_mode: 'Markdown' }
+      markdownToHtml(
+        'ℹ️ **Про бота**\n\n' +
+        'На даному етапі цей бот буде використовуватись для надсилання сповіщень про тендери та важливі події.\n\n' +
+        '🚀 У подальшому тут з’явиться багато корисних функцій для керування вашими заявками та документами прямо з Telegram!'
+      ),
+      { parse_mode: 'HTML' }
     );
   }
+
+  @Command('ai')
+  @Action('enter_ai')
+  async enterAiScene(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId) return;
+
+    const hasAccess = await this.telegramService.checkUserHasAiAccess(telegramId);
+    if (!hasAccess) {
+      return ctx.reply('⛔️ У вас немає прав для входу в режим ШІ-Агента.');
+    }
+
+    if (!(ctx as any).session) {
+      (ctx as any).session = {};
+    }
+    (ctx as any).session.scene = 'ai';
+
+    await ctx.reply(
+      markdownToHtml(
+        '🤖 **Режим ШІ-Агента активовано!**\n\n' +
+        'Ви можете ставити мені будь-які запитання щодо бази даних PostgreSQL (наприклад, про компанії, тендери чи транспорт) як текстом, так і голосом.\n\n' +
+        '👉 **Спробуйте запитати:**\n' +
+        '• *"Покажи останні 5 тендерів"* \n' +
+        '• *"Скільки перевізників зареєстровано в системі?"*\n\n' +
+        'Використовуйте зручні кнопки під клавіатурою для навігації 👇'
+      ),
+      {
+        parse_mode: 'HTML',
+        ...Markup.keyboard([
+          ['💡 Приклади запитів', '📋 Доступні таблиці'],
+          ['🚪 Вийти з ШІ-Агента']
+        ]).resize()
+      }
+    );
+  }
+
+  @Command('exit')
+  @Action('exit_ai')
+  async exitAiScene(ctx: Context) {
+    if ((ctx as any).session) {
+      (ctx as any).session.scene = undefined;
+    }
+    await ctx.reply('🚪 Ви вийшли з режиму ШІ-Агента. Повертаємось до звичайного режиму.', Markup.removeKeyboard());
+  }
+
+  @On('message')
+  async handleAllMessages(ctx: Context) {
+    const session = (ctx as any).session;
+    if (!session || session.scene !== 'ai') {
+      // If not in AI scene, do nothing (pass it through)
+      return;
+    }
+
+    const telegramId = ctx.from?.id;
+    if (!telegramId) return;
+
+    const message: any = ctx.message;
+    const text = message?.text;
+    const voiceFileId = message?.voice?.file_id;
+
+    if (text === '🚪 Вийти з ШІ-Агента') {
+      await this.exitAiScene(ctx);
+      return;
+    }
+
+    if (text === '💡 Приклади запитів') {
+      const examples = 
+        '💡 **Приклади запитів для ШІ-Агента:**\n\n' +
+        '• *"Покажи останні 5 тендерів"* \n' +
+        '• *"Скільки всього компаній зареєстровано в системі?"*\n' +
+        '• *"Який статус у тендера з ID 123?"*\n' +
+        '• *"Знайди контакти менеджера компанії Евротек"*\n' +
+        '• *"Покажи транспортні засоби з об\'ємом кузова більше 90"*\n' +
+        '• *"Скільки перевізників зареєстровано в системі?"*\n\n' +
+        'Ви можете просто написати запит текстом або надіслати голосове повідомлення!';
+      await ctx.reply(markdownToHtml(examples), { parse_mode: 'HTML' });
+      return;
+    }
+
+    if (text === '📋 Доступні таблиці') {
+      const tablesInfo = 
+        '📋 **У системі доступна інформація про:**\n\n' +
+        '• **Компанії (company):** Назва, EDRPOU, тип (клієнт/перевізник), блокування, чорний список.\n' +
+        '• **Співробітників (person):** Прізвище, ім\'я, email, посада, компанія.\n' +
+        '• **Транспорт (vehicle):** Номери автомобілів, типи кузовів/причепів.\n' +
+        '• **Тендери (tender, tender_lst):** Вантаж, дати, ціни, вага, об\'єм, міста відправлення та прибуття, статуси тендерів.\n' +
+        '• **Ставки та переможців (tender_rate, tender_winner):** Пропозиції цін від перевізників та визначені переможці.\n\n' +
+        'ШІ автоматично визначить, до якої таблиці звернутися для відповіді на ваше запитання.';
+      await ctx.reply(markdownToHtml(tablesInfo), { parse_mode: 'HTML' });
+      return;
+    }
+
+    if (!text && !voiceFileId) {
+      await ctx.reply('❓ Надішліть, будь ласка, текстове або голосове повідомлення.');
+      return;
+    }
+
+    const statusMsg = await ctx.reply(markdownToHtml('⏳ **Обробляю ваш запит, зачекайте, будь ласка...**'), { parse_mode: 'HTML' });
+
+    try {
+      await ctx.sendChatAction('typing');
+      const response = await this.telegramService.handleAiQuery(telegramId, text, voiceFileId);
+
+      // Split response into chunks under 4000 characters
+      const maxLength = 4000;
+      const chunks: string[] = [];
+      if (response.length > maxLength) {
+        const lines = response.split('\n');
+        let currentChunk = '';
+        for (const line of lines) {
+          if (currentChunk.length + line.length + 1 > maxLength) {
+            if (currentChunk.trim()) chunks.push(currentChunk);
+            currentChunk = line;
+          } else {
+            currentChunk = currentChunk ? `${currentChunk}\n${line}` : line;
+          }
+        }
+        if (currentChunk.trim()) chunks.push(currentChunk);
+      } else {
+        chunks.push(response);
+      }
+
+      // Edit the first status message with the first chunk
+      await ctx.telegram.editMessageText(
+        ctx.chat!.id,
+        statusMsg.message_id,
+        undefined,
+        markdownToHtml(chunks[0]),
+        {
+          parse_mode: 'HTML',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
+          ])
+        }
+      );
+
+      // Send the remaining chunks
+      for (let i = 1; i < chunks.length; i++) {
+        await ctx.reply(markdownToHtml(chunks[i]), {
+          parse_mode: 'HTML',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
+          ])
+        });
+      }
+    } catch (error) {
+      console.error('Error handling message in AI scene:', error);
+      try {
+        await ctx.telegram.editMessageText(
+          ctx.chat!.id,
+          statusMsg.message_id,
+          undefined,
+          '❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.'
+        );
+      } catch (editErr) {
+        await ctx.reply('❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.');
+      }
+    }
+  }
 }
+
+function markdownToHtml(text: string): string {
+  // 1. Escape HTML special characters first
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // 2. Convert preformatted code blocks: ```code``` -> <pre>code</pre>
+  html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+
+  // 3. Convert inline code: `code` -> <code>code</code>
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // 4. Convert bold: **bold** or *bold* -> <b>bold</b>
+  html = html.replace(/\*\*([^\*]+)\*\*/g, '<b>$1</b>');
+  html = html.replace(/(?<!^\s*)\*([^\*\n]+)\*/gm, '<b>$1</b>');
+
+  // 5. Replace list bullets: * item or - item at start of lines with •
+  html = html.replace(/^\s*[\*\-]\s+/gm, '• ');
+
+  return html;
+}
+
+
+
