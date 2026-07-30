@@ -304,6 +304,7 @@ export class TelegramService implements OnModuleInit {
     telegramId: number,
     text?: string,
     voiceFileId?: string,
+    targetDb?: 'postgres' | 'oracle',
   ): Promise<string> {
     // 1. Check access permissions (must be both is_admin and is_ict)
     const roles = await this.repository.getUserRoles(telegramId);
@@ -326,8 +327,13 @@ export class TelegramService implements OnModuleInit {
           buffer: Buffer.from(response.data),
           mimetype: 'audio/ogg',
         };
+        const transcribed = await this.aiService.transcribeVoice(voiceFile);
+        if (transcribed) {
+          this.logger.log(`Transcribed voice message: "${transcribed}"`);
+          text = transcribed;
+        }
       } catch (err) {
-        this.logger.error('Failed to download Telegram voice file:', err);
+        this.logger.error('Failed to download or transcribe Telegram voice file:', err);
         return '❌ Не вдалося завантажити голосове повідомлення. Спробуйте ще раз.';
       }
     }
@@ -337,7 +343,39 @@ export class TelegramService implements OnModuleInit {
     }
 
     // 3. Request Gemini to construct query
-    const result = await this.aiService.generateDbQuery(text || '', voiceFile);
+    let customSchema: string | undefined;
+    if (targetDb === 'oracle') {
+      try {
+        const tablesList = this.oracleService.getTablesList();
+        if (tablesList && tablesList.length > 0) {
+          const chosenTables = await this.aiService.findOracleTables(text || 'запит', tablesList);
+          if (chosenTables && chosenTables.length > 0) {
+            this.logger.log(`AI identified Oracle tables: ${chosenTables.join(', ')}`);
+            customSchema = await this.oracleService.getTableColumns(chosenTables);
+          }
+        }
+      } catch (err) {
+        this.logger.error('Error resolving dynamic Oracle schema:', err);
+      }
+    } else if (targetDb === 'postgres') {
+      try {
+        const tablesList = this.repository.getTablesList();
+        if (tablesList && tablesList.length > 0) {
+          const chosenTables = await this.aiService.findPostgresTables(text || 'запит', tablesList);
+          if (chosenTables && chosenTables.length > 0) {
+            this.logger.log(`AI identified Postgres tables: ${chosenTables.join(', ')}`);
+            customSchema = await this.repository.getTableColumns(chosenTables);
+          }
+        }
+      } catch (err) {
+        this.logger.error('Error resolving dynamic Postgres schema:', err);
+      }
+    }
+
+    const result = await this.aiService.generateDbQuery(text || '', voiceFile, targetDb, customSchema);
+
+
+
 
     if (result.type === 'conversational') {
       return result.reply || 'Привіт! Чим я можу допомогти вам сьогодні?';

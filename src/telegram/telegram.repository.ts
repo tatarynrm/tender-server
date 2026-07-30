@@ -1,9 +1,92 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { Pool } from 'pg';
 
 @Injectable()
-export class TelegramRepository {
+export class TelegramRepository implements OnModuleInit {
+  private readonly logger = new Logger(TelegramRepository.name);
+  private pgTables: { name: string; comments?: string }[] = [];
+
   constructor(@Inject('PG_POOL') private readonly pool: Pool) {}
+
+  async onModuleInit() {
+    await this.loadTableList();
+  }
+
+  private async loadTableList() {
+    try {
+      const { rows } = await this.pool.query(`
+        SELECT 
+            t.table_name,
+            obj_description(c.oid, 'pg_class') AS comments
+        FROM 
+            information_schema.tables t
+        JOIN 
+            pg_class c ON c.relname = t.table_name
+        WHERE 
+            t.table_schema = 'public' AND t.table_type = 'BASE TABLE'
+        ORDER BY t.table_name;
+      `);
+      this.pgTables = rows.map((r: any) => ({
+        name: r.table_name,
+        comments: r.comments || undefined,
+      }));
+      this.logger.log(`Loaded ${this.pgTables.length} tables from PostgreSQL schema`);
+    } catch (err) {
+      this.logger.error('Failed to load PostgreSQL tables list:', err);
+    }
+  }
+
+  public getTablesList() {
+    return this.pgTables;
+  }
+
+  public async getTableColumns(tableNames: string[]): Promise<string> {
+    if (tableNames.length === 0) return '';
+
+    // Filter table names against pgTables to prevent SQL injection
+    const validNames = tableNames
+      .map((t) => t.toLowerCase().trim())
+      .filter((t) => this.pgTables.some((pt) => pt.name === t));
+
+    if (validNames.length === 0) return '';
+
+    try {
+      const { rows } = await this.pool.query(`
+        SELECT 
+            cols.table_name,
+            cols.column_name,
+            cols.data_type,
+            cols.is_nullable,
+            pg_catalog.col_description(c.oid, cols.ordinal_position) AS comments
+        FROM 
+            information_schema.columns cols
+        JOIN 
+            pg_class c ON c.relname = cols.table_name
+        WHERE 
+            cols.table_schema = 'public' 
+            AND cols.table_name = ANY($1)
+        ORDER BY 
+            cols.table_name, cols.ordinal_position;
+      `, [validNames]);
+
+      const tablesMap: Record<string, string[]> = {};
+      for (const r of rows) {
+        if (!tablesMap[r.table_name]) {
+          tablesMap[r.table_name] = [];
+        }
+        const colDesc = `${r.column_name} (${r.data_type}${r.is_nullable === 'YES' ? '?' : ''})${r.comments ? ` - ${r.comments}` : ''}`;
+        tablesMap[r.table_name].push(colDesc);
+      }
+
+      return Object.entries(tablesMap)
+        .map(([tbl, cols]) => `Table: ${tbl}\n  Columns:\n    ${cols.join('\n    ')}`)
+        .join('\n\n');
+    } catch (err) {
+      this.logger.error('Failed to get PostgreSQL table columns:', err);
+      return '';
+    }
+  }
+
 
   async findByTelegramId(telegramId: number) {
     const result = await this.pool.query(

@@ -1,6 +1,7 @@
 // src/ai/ai.service.ts
 import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, Part, Schema, SchemaType } from '@google/generative-ai';
+import { POSTGRES_SCHEMA, ORACLE_SCHEMA } from './ai.constants';
 import * as fs from 'fs';
 import * as pdf from 'pdf-parse';
 
@@ -133,125 +134,236 @@ export class AiService {
 
 
   /**
+   * Identifies which Oracle database tables are relevant to the user query out of all 400+ tables.
+   */
+  async findOracleTables(prompt: string, tablesList: { name: string; comments?: string }[]): Promise<string[]> {
+    const aiModel = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: `You are an Oracle database administrator. Analyze the user request in Ukrainian and select the list of tables from the Oracle schema that are required to answer the query.
+
+CRITICAL INSTRUCTION:
+- Database table names are short cryptographic abbreviations (e.g. OS = "Особовий склад/працівники", BANKR = "Розхід банку", DOG = "Договори", ZAY = "Заявки на перевезення", PRET = "Претензії").
+- ALWAYS read and prioritize the table comments/descriptions provided next to each table name in the list below to find the correct tables matching the user request. For example, "особовий склад/особи" matches "OS".
+- Keep the selection minimal and highly focused (usually 1-3 tables).
+
+CRITICAL MAPPING GUIDE (Map Ukrainian business terms to table names):
+1. "Бухгалтерія", "фінанси", "оплати", "рахунки", "акти", "каса", "валюта" (Accounting, finance, payments, invoices, acts, currency):
+   - BANKP (bank payments received / оплати від клієнтів)
+   - BANKV (currency bank payments / валютні оплати)
+   - ACTVR (client acceptance acts / акти виконаних робіт)
+   - AVRMONCLIENT (monthly customer billing summaries)
+   - RAHZAM (customer invoices / рахунки замовникам)
+   - RAHPER (carrier invoices / рахунки перевізникам)
+   - OPLKRED (credit payments / оплата кредитів)
+   - VITR (expenses, payments, office costs / витрати)
+   - VALUT (currencies / валюти)
+   - VALUTCURS (exchange rates / курси валют)
+2. "Договори", "угоди", "контракти" (Contracts, agreements):
+   - DOG (contracts / договори)
+   - DODUGODA (additional agreements / додаткові угоди)
+3. "Заявки", "перевезення", "замовлення", "рейси", "водії", "авто", "маршрути" (Orders, requests, transport, drivers, trucks, routes):
+   - ZAY (transport orders / заявки на перевезення)
+   - ZAP (requests / запити)
+   - PEREV (carriers directory / перевізники)
+4. "Претензії", "штрафи" (Claims, disputes, fines):
+   - PRET (claims / претензії)
+5. "Співробітники", "штат", "кадри", "особовий склад", "менеджери" (Employees, staff, managers):
+   - OS (our employees / особи / особистий склад / працівники)
+   - STAFF (staff directory / штат)
+6. "Борги", "заборгованість", "сальдо" (Debts, balance):
+   - CABPER_STAT_BORG (carrier debts / борги перевізників)
+   - BANKRRSAL (bank accounts balance / залишок розрахункових рахунків)
+   - KASARRSAL (cash desks balance / залишок кас)
+7. "Департаменти", "відділи" (Departments):
+   - DEP (departments / відділи)
+
+Return ONLY a JSON array of table names, e.g., ["BANKP", "RAHZAM"]. Do not include any formatting, markdown, or other text outside the JSON array.`,
+    });
+
+
+    const tablesText = tablesList
+      .map((t) => `${t.name}${t.comments ? ` - ${t.comments}` : ''}`)
+      .join('\n');
+    const promptText = `
+User request: "${prompt}"
+
+Available Oracle tables list:
+${tablesText}
+
+Select the exact table names from the list above that are necessary to construct the read-only SELECT query to answer the user request.
+`;
+
+    try {
+      const result = await aiModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.STRING,
+            },
+          },
+        },
+      });
+      const rawText = result.response.text();
+      console.log('findOracleTables raw response:', rawText);
+      const cleanJson = rawText.trim()
+        .replace(/^```json\n?/, '')
+        .replace(/```$/, '')
+        .trim();
+      const parsed = JSON.parse(cleanJson) as string[];
+      console.log('findOracleTables parsed tables:', parsed);
+      return parsed;
+    } catch (err) {
+      console.error('Failed to classify Oracle tables:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Identifies which PostgreSQL database tables are relevant to the user query.
+   */
+  async findPostgresTables(prompt: string, tablesList: { name: string; comments?: string }[]): Promise<string[]> {
+    const aiModel = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: 'You are a PostgreSQL database administrator. Analyze the user request in Ukrainian and select the list of tables from the database schema that are required to answer the query. Return ONLY a JSON array of table names, e.g., ["tender", "company"]. Do not include any formatting, markdown, or other text outside the JSON array. Keep the selection minimal and highly focused (usually 1-3 tables).',
+    });
+
+    const tablesText = tablesList
+      .map((t) => `${t.name}${t.comments ? ` - ${t.comments}` : ''}`)
+      .join('\n');
+    const promptText = `
+User request: "${prompt}"
+
+Available PostgreSQL tables list:
+${tablesText}
+
+Select the exact table names from the list above that are necessary to construct the read-only SELECT query to answer the user request.
+`;
+
+    try {
+      const result = await aiModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.STRING,
+            },
+          },
+        },
+      });
+      const rawText = result.response.text();
+      console.log('findPostgresTables raw response:', rawText);
+      const cleanJson = rawText.trim()
+        .replace(/^```json\n?/, '')
+        .replace(/```$/, '')
+        .trim();
+      const parsed = JSON.parse(cleanJson) as string[];
+      console.log('findPostgresTables parsed tables:', parsed);
+      return parsed;
+    } catch (err) {
+      console.error('Failed to classify PostgreSQL tables:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Transcribes a voice message buffer into Ukrainian text using Gemini.
+   */
+  async transcribeVoice(voiceFile: { buffer: Buffer; mimetype: string }): Promise<string> {
+    const aiModel = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: 'You are a professional transcription assistant. Transcribe the audio file precisely. Return ONLY the transcribed text in Ukrainian. Do not add any introduction, notes, or extra text.',
+    });
+
+    try {
+      const filePart = {
+        inlineData: {
+          data: voiceFile.buffer.toString('base64'),
+          mimeType: voiceFile.mimetype,
+        },
+      };
+
+      const result = await aiModel.generateContent({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: 'Розпізнай аудіо.' },
+              filePart
+            ]
+          }
+        ],
+      });
+
+      return result.response.text().trim();
+    } catch (err) {
+      console.error('Failed to transcribe voice:', err);
+      return '';
+    }
+  }
+
+  /**
    * Generates a PostgreSQL or Oracle SELECT query based on the user's question (text and/or audio voice).
    */
   async generateDbQuery(
     prompt: string,
     voiceFile?: { buffer: Buffer; mimetype: string },
+    targetDb?: 'postgres' | 'oracle',
+    customSchema?: string,
   ): Promise<{ type: 'sql' | 'conversational'; database?: 'postgres' | 'oracle'; sql?: string; reply?: string }> {
-    const schemaDefinition = `
+    let schemaDefinition = '';
+    
+    if (targetDb === 'oracle') {
+      schemaDefinition = `
+You must write a read-only Oracle SELECT query to answer the user request.
+CRITICAL INSTRUCTION:
+- Database table names and column names are short cryptographic abbreviations.
+- Read and pay attention to the comments provided next to the table name and columns (e.g. column_name - comment) to understand which fields contain the required data.
+- E.g. Table OS has columns representing employee full name, Table BANKR is bank expenses, DOG is contracts.
+- Always write SQL dialect compatible with Oracle Database. Limit output rows to 50 using ROWNUM <= 50 (do not use PostgreSQL's LIMIT clause).
+
+${customSchema || ORACLE_SCHEMA}
+
+Task: Write a clean, read-only SELECT query for Oracle database to get the requested information. If the user request is just a greeting or general message, set type to "conversational" and return a friendly reply.
+Do NOT write mutating queries (INSERT, UPDATE, DELETE, etc.). Only SELECT.
+Return JSON matching this schema:
+{
+  "type": "sql" | "conversational",
+  "database": "oracle",
+  "sql": "SELECT ...",
+  "reply": "Friendly response if conversational"
+}
+`;
+    } else if (targetDb === 'postgres') {
+      schemaDefinition = `
+You must write a read-only PostgreSQL SELECT query to answer the user request.
+CRITICAL: Always write SQL dialect compatible with PostgreSQL. Limit output rows to 50 using LIMIT 50.
+
+${POSTGRES_SCHEMA}
+
+Task: Write a clean, read-only SELECT query for PostgreSQL database to get the requested information. If the user request is just a greeting or general message, set type to "conversational" and return a friendly reply.
+Do NOT write mutating queries (INSERT, UPDATE, DELETE, etc.). Only SELECT.
+Return JSON matching this schema:
+{
+  "type": "sql" | "conversational",
+  "database": "postgres",
+  "sql": "SELECT ...",
+  "reply": "Friendly response if conversational"
+}
+`;
+    } else {
+      schemaDefinition = `
 You have access to two databases:
-1. PostgreSQL (use database: "postgres") - stores tender portal active data.
-2. Oracle (use database: "oracle") - stores ERP, contracts, carrier accounts, billing, expenses, employee directories.
+1. PostgreSQL (database: "postgres") - stores tender portal active data.
+2. Oracle (database: "oracle") - stores ERP, contracts, carrier accounts, billing, expenses, employee directories.
 
-Here is the PostgreSQL database schema:
-1. Table: company
-   - id (bigint) - primary key
-   - company_name (character varying)
-   - edrpou (character varying)
-   - black_list (boolean)
-   - is_blocked (boolean)
-   - is_carrier (boolean)
-   - is_client (boolean)
-2. Table: person
-   - id (bigint) - primary key
-   - surname (character varying)
-   - name (character varying)
-   - email (character varying)
-   - id_company (bigint) - references company(id)
-   - position (character varying)
-3. Table: person_role
-   - id (bigint) - primary key
-   - id_person (bigint) - references person(id)
-   - is_admin (boolean)
-   - is_ict (boolean)
-   - is_manager (boolean)
-4. Table: vehicle
-   - id (bigint) - primary key
-   - carnum (character varying) - vehicle plate number
-   - id_company (bigint) - references company(id)
-   - ids_trailer_type (character varying)
-5. Table: tender
-   - id (bigint) - primary key
-   - cargo (character varying) - name of the goods/cargo
-   - date_load (timestamp) - loading date
-   - price_start (numeric) - starting price
-   - weight (numeric)
-   - volume (numeric)
-   - id_owner_company (bigint) - references company(id)
-6. Table: tender_lst (list of tenders with routes)
-   - id (bigint) - primary key
-   - id_tender (bigint) - references tender(id)
-   - city_from (character varying) - source city
-   - city_to (character varying) - destination city
-   - ids_country_from (character varying)
-   - ids_country_to (character varying)
-   - ids_status (character varying) - tender status
-   - car_count_all (integer)
-7. Table: tender_rate (bids from carriers)
-   - id (bigint) - primary key
-   - id_tender (bigint) - references tender(id)
-   - id_company (bigint) - references company(id)
-   - price_proposed (numeric)
-   - time_add (timestamp)
-8. Table: tender_winner (tender winner)
-   - id (bigint) - primary key
-   - id_tender (bigint) - references tender(id)
-   - id_company (bigint) - references company(id)
-   - id_person (bigint) - references person(id)
-9. Table: person_telegram (Telegram links)
-   - id (bigint) - primary key
-   - telegram_id (bigint)
-   - username (character varying)
-   - id_person (bigint) - references person(id)
+${POSTGRES_SCHEMA}
 
-Here is the Oracle database schema (under CURRENT_SCHEMA = ICTDAT):
-1. Table: FIRMA (our internal firms / companies)
-   - KOD (NUMBER) - primary key
-   - NFIRMA (VARCHAR2) - firm/company name
-2. Table: PEREV (carriers)
-   - KOD (NUMBER) - primary key
-   - NUMDOC (VARCHAR2)
-   - DATDOC (DATE)
-   - KOD_FIRMA (NUMBER)
-3. Table: DOG (contracts)
-   - KOD (NUMBER) - primary key
-   - NUMDOC (VARCHAR2) - contract number
-   - DATDOC (DATE) - contract date
-   - ZMIST (VARCHAR2) - contract content
-   - TERMIN (DATE) - contract end date
-   - KOD_FIRMA (NUMBER) - references FIRMA(KOD)
-4. Table: ZAY (orders / requests)
-   - KOD (NUMBER) - primary key
-   - NUMDOC (VARCHAR2) - order document number
-   - DATDOC (DATE) - order document date
-   - VANTAZH (VARCHAR2) - cargo description
-   - VANTTON (NUMBER) - cargo weight in tons
-   - VANTOBJEM (NUMBER) - cargo volume in m3
-   - ZAMSUMA (NUMBER) - customer rate
-   - PERSUMA (NUMBER) - carrier rate
-   - KOD_ZAM (NUMBER) - customer ID (references customer/firm)
-   - KOD_PER (NUMBER) - carrier ID (references PEREV)
-   - DATZAV (DATE) - loading datetime
-   - DATROZV (DATE) - unloading datetime
-   - MARSH (VARCHAR2) - route summary
-   - PUNKTZ (VARCHAR2) - loading town/point
-   - PUNKTR (VARCHAR2) - unloading town/point
-   - AM (VARCHAR2) - truck plate number
-5. Table: PRET (claims)
-   - KOD (NUMBER) - primary key
-   - NUMDOC (VARCHAR2) - claim number
-   - DATDOC (DATE) - claim date
-   - SUMA (NUMBER) - claim sum
-   - PRIM (VARCHAR2) - remarks/notes
-6. Table: KONTAKT (contacts directory)
-   - KOD (NUMBER) - primary key
-   - NKONTAKT (VARCHAR2) - contact person name
-   - TEL (VARCHAR2) - phone number
-   - EMAIL (VARCHAR2) - email address
-7. Table: OS (our internal employee directory)
-   - KOD (NUMBER) - primary key
-   - NOS (VARCHAR2) - employee full name
+${ORACLE_SCHEMA}
 
 Task: Determine which database is required (postgres or oracle). Write a clean, read-only SELECT query for that database to get the requested information.
 If the query is for Oracle:
@@ -269,6 +381,7 @@ Return JSON matching this schema:
   "reply": "Friendly response if conversational"
 }
 `;
+    }
 
     const responseSchema: Schema = {
       type: SchemaType.OBJECT,
