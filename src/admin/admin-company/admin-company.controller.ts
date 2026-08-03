@@ -52,6 +52,8 @@ export class AdminCompanyController {
   @Get('one/:id')
   async findOne(@Param('id') id: string) {
     // query тепер містить всі ваші фільтри та пагінацію
+    console.log('TEST');
+    
     return this.adminCompanyService.findOne(Number(id));
   }
   @Get('pre/:id')
