@@ -7,9 +7,7 @@ name: Deploy NEST.js
 # Лишено ручний запуск як запасний хід на випадок, коли бот недоступний:
 # Actions -> Deploy NEST.js -> Run workflow.
 #
-# УВАГА: шлях нижче (/dragantataryn/ict/tender-server) відрізняється від того,
-# на який налаштований scripts/deploy.sh (/rtdata/tender/tender-server).
-# Перед ручним запуском звірити, який із них справжній.
+# Оновлює ТІЛЬКИ бекенд. Фронт цим шляхом не чіпається — для нього є /deploy.
 on:
   workflow_dispatch:
 
@@ -30,7 +28,7 @@ jobs:
           script: |
             export NVM_DIR="/root/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd /dragantataryn/ict/tender-server
+            cd /rtdata/tender/tender-server
             git reset --hard HEAD
             git pull origin main
             npm install 
