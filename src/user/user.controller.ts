@@ -33,7 +33,8 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @Get('profile')
   public async findProfile(@Authorized('id') id: string) {
-    return this.userService.findById(id);
+    const data = await this.userService.findById(id);
+    return sanitizeProfile(data);
   }
   // @Authorization(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
@@ -172,3 +173,20 @@ export class UserController {
   //   return this.userService.adminCreateUser(dto);
   // }
 }
+
+// Видаляє чутливі поля з профілю перед відправкою клієнту.
+// Серверна логіка (guards, сесія) використовує окремі механізми і не залежить від цього.
+const SENSITIVE_FIELDS = ['password_hash', 'is_admin', 'is_ict'];
+
+function sanitizeProfile(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeProfile);
+
+  const result: any = {};
+  for (const key of Object.keys(obj)) {
+    if (SENSITIVE_FIELDS.includes(key)) continue;
+    result[key] = sanitizeProfile(obj[key]);
+  }
+  return result;
+}
+
