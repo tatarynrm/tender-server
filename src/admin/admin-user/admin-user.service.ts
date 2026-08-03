@@ -107,15 +107,11 @@ export class AdminUserService {
       { id },
       {},
     );
-    const fs = require('fs');
-    fs.writeFileSync('debug-usr-one.json', JSON.stringify(result.content, null, 2));
     return result;
   }
 
   public async adminUserSave(dto: any) {
     // створення нового користувача
-    console.log(dto, 'dto admin 36 in admin-user-service');
-
     const result = await this.dbservice.callProcedure('usr_save_ict', dto, {});
     return result;
   }
@@ -135,7 +131,6 @@ export class AdminUserService {
   }
 
   public async registerFromPre(dto: any) {
-    console.log(dto, 'dto admin 87 in admin-user-service');
     const result = await this.dbservice.callProcedure(
       'usr_register_from_pre',
       dto,

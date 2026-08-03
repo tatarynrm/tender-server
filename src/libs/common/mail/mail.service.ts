@@ -51,7 +51,6 @@ export class MailService {
   public async sendTwoFactorTokenEmail(email: string, token: string) {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
     const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
-    console.log('Підтвердження');
 
     const html = await render(TwoFactorAuthTemplate({ token, domain }));
     return this.sendMail(email, 'Підтвердження особистості', html, undefined, 'profiles', from);
@@ -60,7 +59,6 @@ export class MailService {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
     const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
 
-    console.log('PRE REGISTER EMAIL SEND');
 
     const html = await render(SuccessfulPreRegistrationTemplate({ domain }));
     return this.sendMail(email, 'Підтвердження особистості', html, undefined, 'profiles', from);
@@ -73,7 +71,6 @@ export class MailService {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
     const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_PROFILES_LOGIN')}>`;
 
-    console.log('PRE REGISTER SUCCESS EMAIL SEND');
 
     const html = await render(
       SuccessfulPreRegistrationAccountTemplate({

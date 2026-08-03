@@ -169,7 +169,6 @@ export class LoadService {
 
   async getList(query: CrmLoadListDto) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
-    console.log(filters, 'FILTERS');
 
     const result = await this.dbservice.callProcedure('crm_load_list', {
       pagination: { per_page: query.limit, page: query.page },

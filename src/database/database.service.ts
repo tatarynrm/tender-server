@@ -42,7 +42,6 @@ export class DatabaseService {
       ? { id_usr: user.id, id_company: user.company?.id }
       : {};
 
-    console.log(authObject, 'AUTH OBJECT AUTH DATABASEW SERVICE 😎😎😎😎');
 
     const query = `CALL run($1, $2, $3, $4)`;
 

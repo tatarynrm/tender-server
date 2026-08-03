@@ -182,7 +182,6 @@ export class UserService {
 
   // Створити користувача який є в передреєстрації!
   public async createPreRegisterUser(dto: UserRegisterFromPreDto) {
-    console.log(dto, 'DTO 162');
 
     const usersPreRegister = await this.dbservice.callProcedure(
       'usr_register_from_pre',
@@ -223,8 +222,6 @@ export class UserService {
     dto: CreateUserFromCompany & { id_company: number; id?: number },
   ) {
     // створення нового користувача
-    console.log(dto, 'dto admin 168');
-
     const result = await this.dbservice.callProcedure('usr_register', dto, {});
     return result;
   }
@@ -309,7 +306,6 @@ export class UserService {
   // }
 
   public async getUserListIct() {
-    console.log('usr_list_ict');
 
     const result = await this.dbservice.callProcedure(
       'usr_list_ict',

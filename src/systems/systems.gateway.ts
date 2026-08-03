@@ -14,7 +14,7 @@ import { Server, Socket } from 'socket.io';
 })
 export class SystemGateway implements OnGatewayConnection {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   handleConnection(client: Socket) {
     const userId = client.handshake.auth?.userId?.toString();
@@ -22,7 +22,6 @@ export class SystemGateway implements OnGatewayConnection {
     
     if (userId) {
       client.join(`user_${userId}`); // Кімната для персональних команд
-      console.log(`User ${userId} joined system room`);
     }
   }
 

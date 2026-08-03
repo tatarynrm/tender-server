@@ -152,7 +152,6 @@ export function getTelegramMessage(
   person: any,
 ) {
   const { from, to, trailer, carCount, tenderUrl } = getTenderMetadata(content);
-  console.log(content, 'CONTENT');
 
   const currency = content.ids_valut === 'EUR' ? 'Є' : content.ids_valut || 'Є';
 

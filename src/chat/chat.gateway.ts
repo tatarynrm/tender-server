@@ -148,7 +148,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { roomName } = data;
     socket.leave(roomName);
-    console.log(`Socket ${socket.id} left room ${roomName}`);
     this.server.to(roomName).emit('room_notification', {
       message: `User ${socket.id} left the room ${roomName}`,
     });

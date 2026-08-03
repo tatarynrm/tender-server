@@ -26,7 +26,6 @@ export class TenderController {
   }
   @Post('set-status')
   tenderSetStatus(@Body() dto: any) {
-    console.log(dto, 'DTO set status');
 
     return this.tenderService.tenderSetStatus(dto);
   }
@@ -69,7 +68,6 @@ export class TenderController {
   }
   @Post('set-winner')
   tenderSetWinner(@Body() dto: any) {
-    console.log(dto, 'DTO');
 
     return this.tenderService.tenderSetWinner(dto);
   }

@@ -58,7 +58,6 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (remainingSockets === 0) {
         await this.redisClient.zRem(this.ONLINE_TRACKER_KEY, userId);
         this.server.emit('user_status_change', { userId, isOnline: false });
-        console.log(`[LoadGateway] Manager ${userId} is OFFLINE`);
       }
     }
   }
@@ -76,7 +75,6 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Обробка події "send_update"
   @SubscribeMessage('send_update')
   async handleSendUpdate(@ConnectedSocket() socket: Socket, payload: any) {
-    console.log('Received update from client:', payload);
 
     // Відправка події всім клієнтам
     this.server.emit('update_from_server', payload);

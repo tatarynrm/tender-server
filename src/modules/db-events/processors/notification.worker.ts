@@ -145,12 +145,6 @@ export class NotificationWorker extends WorkerHost {
 
             // 2. Telegram
             if (to_telegram && telegram_id) {
-              console.log(
-                'Sending Telegram notification to person 149 line',
-                id_person,
-                message,
-                telegram_id,
-              );
               await this.telegramService.sendMessageToUser(
                 id_person,
                 message,

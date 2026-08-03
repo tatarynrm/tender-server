@@ -32,7 +32,6 @@ export class NominatimService {
       if (!searchResults?.length) {
         return [];
       }
-      console.log(searchResults, 'SEARCH RESULTS -----------');
 
       // 2. Форматуємо результат (беремо лише потрібні поля)
       const formatted = searchResults.map((place) => {

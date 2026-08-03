@@ -29,9 +29,6 @@ export class TelegramGateway
       EX: 3600,
     });
 
-    console.log(
-      `📲 Telegram socket connected for user ${userId}: ${client.id}`,
-    );
   }
 
   async handleDisconnect(client: Socket) {
@@ -42,7 +39,6 @@ export class TelegramGateway
       const [userId] = entry;
       this.activeSockets.delete(userId);
       await this.redisClient.del(`telegram_socket:${userId}`);
-      console.log(`🔌 Telegram socket disconnected for user ${userId}`);
     }
   }
 

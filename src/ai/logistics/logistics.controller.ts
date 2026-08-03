@@ -15,16 +15,10 @@ export class LogisticsController {
     @Body('text') text: string,
     @UploadedFiles() files: { images?: Express.Multer.File[], audio?: Express.Multer.File[] }
   ) {
-    console.log(text, 'text 18 ai controller');
-    console.log(files, 'files 19 ai controller');
-    console.log('TEXT -f ilessss 20 ai controller');
 
     if (!files) {
       throw new BadRequestException('Файл не передано або неправильний Content-Type --------------------------------------');
     }
-    console.log(text, 'text');
-    console.log(files, 'files');
-    console.log('TEXT -f ilessss');
 
 
     return this.parserService.parseCargo(text, files.images, files.audio);

@@ -20,6 +20,5 @@ export class TelegramActions {
       // ctx
     } = params;
 
-    console.log('userId', userId);
   }
 }

@@ -8,7 +8,6 @@ export class NominatimController {
   // Маршрут для пошуку
   @Get('search') // Це повинно бути /nominatim/search
   async search(@Query('q') query: string) {
-    console.log(query, 'QUERY');
 
     if (!query) {
       throw new Error('Query parameter "q" is required'); // Перевірка на наявність параметра
@@ -16,7 +15,6 @@ export class NominatimController {
 
     try {
       const result = await this.nominatimService.search(query);
-      console.log(result, 'RESULT 19 nominatim .controoler ');
       return result; // Повертаємо результат пошуку
     } catch (error) {
       throw new Error('Failed to fetch search results');

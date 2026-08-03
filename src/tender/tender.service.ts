@@ -52,8 +52,6 @@ export class TenderService {
   public async getClientList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
     const sortString = this.getSortString(query);
-    console.log(filters, "FILTERS")
-    console.log(sortString, "SORT STRING")
     const result = await this.dbservice.callProcedure('tender_list', {
       pagination: {
         per_page: query.limit ?? 10,
@@ -173,11 +171,6 @@ export class TenderService {
 
     const tenderForIct = await this.getOneList(result.content[0].tender_id);
 
-    console.log(tenderForIct.content[0], 'TENDER FOR ICT');
-    setTimeout(() => {
-      console.log(result.content[0], 'TENDER FOR MANAGERS');
-    }, 4000);
-
     const preparedResult = { ...result.content[0] };
     delete preparedResult.person_price_proposed;
     delete preparedResult.person_offer_car_count;
@@ -208,7 +201,6 @@ export class TenderService {
     return result;
   }
   public async tenderSetWinner(dto: any) {
-    console.log(dto, 'DTO');
 
     const result = await this.dbservice.callProcedure(
       'tender_set_winner',
@@ -238,7 +230,6 @@ export class TenderService {
   }
 
   public async sendCustomNotification(dto: any) {
-    console.log(dto, 'DTO 233 send custom notification');
 
     const result = await this.dbservice.callProcedure(
       'tender_notify_message',

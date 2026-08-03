@@ -102,7 +102,6 @@ export class DatabaseMonitorService implements OnModuleInit, OnModuleDestroy {
       const result = await this.client.query(
         `select notify_content() as notify_content`,
       );
-      console.log(result.rows[0].notify_content, '99 дані з функції зміни');
 
       return result.rows;
 

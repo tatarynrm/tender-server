@@ -190,7 +190,6 @@ export class DatabaseOracleService implements OnModuleInit, OnModuleDestroy {
       const result = await connection.execute<T>(sql, params, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
       });
-      console.log(result, 'result');
 
       return result.rows || [];
     } catch (err) {

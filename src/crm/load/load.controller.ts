@@ -43,7 +43,6 @@ export class LoadController {
   @ApiOperation({ summary: 'Створити новий вантаж' })
   create(@Body() dto: any) {
 
-    console.log(dto, 'DTO 151 save load');
 
     return this.loadService.save(dto);
   }
@@ -51,7 +50,6 @@ export class LoadController {
   @Post('load-update')
   @ApiOperation({ summary: 'Оновити існуючий вантаж' })
   loadUpdate(@Body() dto: UpdateLoadDto) {
-    console.log(dto, 'DTO 151 update load');
     return this.loadService.loadUpdate(dto);
   }
 

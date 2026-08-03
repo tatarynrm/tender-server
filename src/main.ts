@@ -42,11 +42,6 @@ async function bootstrap() {
 
   const redisClient = app.get<RedisClientType>('REDIS_CLIENT');
 
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Content-Type: ${req.headers['content-type']}`);
-    next();
-  });
-
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 

@@ -30,7 +30,6 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     const req = context.switchToHttp().getRequest();
     try {
       const tracker = await this.getTracker(req);
-      console.log('[Throttler] tracker=', tracker, 'path=', req.path);
     } catch (e) {
       console.warn('[Throttler] getTracker failed', e);
     }

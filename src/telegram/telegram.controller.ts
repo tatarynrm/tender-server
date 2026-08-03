@@ -8,7 +8,6 @@ export class TelegramController {
 
   @Post('telegram-webhook') // Це відповідає частині /telegram-webhook
   async handleWebhook(@Req() req: any, @Res() res: any) {
-    console.log('WEBHOOK TELEGRAM');
     
     try {
       // Цей метод передає дані в @Update() (ваші @Start, @Hears)

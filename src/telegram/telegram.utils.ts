@@ -51,7 +51,7 @@ export class TelegramUtils {
         reply_markup: { keyboard },
       });
     } catch (error) {
-      console.log('sendMessage :::', error.message);
+      console.error('sendMessage :::', error.message);
     }
 
     try {
@@ -59,7 +59,7 @@ export class TelegramUtils {
         parse_mode: 'html',
       });
     } catch (error) {
-      console.log('sendMessage :::', error.message);
+      console.error('sendMessage :::', error.message);
     }
   }
 
@@ -114,6 +114,5 @@ export class TelegramUtils {
     } = params;
     const { _id: userId } = user;
 
-    console.log('userId', userId);
   }
 }

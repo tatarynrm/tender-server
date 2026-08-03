@@ -7,7 +7,6 @@ export class StatisticService {
 
   public async getCrmLoadStatistic(filters: any = {}) {
     // Якщо клієнт не надіслав нічого, filters буде порожнім об'єктом {}
-    console.log('Received filters for POST request:', filters);
 
     try {
       // Передаємо об'єкт filters безпосередньо в процедуру БД
@@ -16,7 +15,6 @@ export class StatisticService {
         filters,
         {},
       );
-      console.log(result, 'RESULT');
 
       // Повертаємо контент або порожній об'єкт (важливо для фронтенда)
       return (

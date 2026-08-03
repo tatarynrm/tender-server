@@ -20,7 +20,6 @@ export async function initDatabaseListeners() {
     await subscriber.listenTo(channel);
   }
 
-  console.log("Listening to PG notifications...");
 }
 
 export { subscriber };
