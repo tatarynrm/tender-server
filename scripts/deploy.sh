@@ -19,6 +19,7 @@ BRANCH="${DEPLOY_BRANCH:-main}"
 STATE_DIR="${DEPLOY_STATE_DIR:-/var/lib/ict-deploy}"
 LOG_FILE="${DEPLOY_LOG:-/var/log/ict-deploy.log}"
 LOCK_FILE="/tmp/ict-deploy.lock"
+BUILD_LOG="/tmp/ict-deploy-build.log"
 
 CHAT_ID=""
 FORCE=0
@@ -133,13 +134,27 @@ build_repo() {
   cd "$dir" || fail "немає каталогу $dir"
 
   echo "--- $name: npm install"
-  npm install --no-audit --no-fund || fail "$name: npm install впав"
+  # --include=dev обов'язково: нас запускає процес під pm2, а він тягне за собою
+  # NODE_ENV=production, через що npm мовчки пропускає devDependencies. Збірці ж
+  # потрібні саме вони — typescript, @types/express, @types/multer тощо.
+  # Без цього прапорця збірка падає на TS2503 "Cannot find namespace 'Express'".
+  NODE_ENV=development npm install --include=dev --no-audit --no-fund \
+    || fail "$name: npm install впав"
 
   echo "--- $name: npm run build"
-  npm run build || fail "$name: збірка впала
+  if ! npm run build > "$BUILD_LOG" 2>&1; then
+    cat "$BUILD_LOG"
+    # хвіст помилок одразу в Telegram, щоб не лізти на сервер за причиною
+    local tail_txt
+    tail_txt="$(grep -E "error|Error|ERR!" "$BUILD_LOG" | tail -n 12)"
+    [ -z "$tail_txt" ] && tail_txt="$(tail -n 12 "$BUILD_LOG")"
+    fail "$name: збірка впала
 
-Дивись хвіст лога:
-  tail -n 60 $LOG_FILE"
+$tail_txt
+
+Повний лог: $LOG_FILE"
+  fi
+  cat "$BUILD_LOG"
 }
 
 mark_deployed() {
