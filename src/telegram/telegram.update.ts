@@ -95,26 +95,34 @@ export class TelegramUpdate {
       return ctx.reply('⛔️ У вас немає прав для виконання цієї команди.');
     }
 
-    const deployInfo = `
-⏳ *Починаю процес деплою...*
-
-*Що зараз відбудеться:*
-1️⃣ *Перевірка оновлень (SERVER & CLIENT):* Бот завантажить останні зміни з GitHub (\`git stash\` та \`git pull\`).
-2️⃣ *Збірка (Build):* Якщо є нові зміни, запуститься збірка (\`npm run build\`) для сервера та клієнта. Якщо змін немає, цей крок буде пропущено.
-3️⃣ *Перезапуск (PM2):* Якщо код оновився, всі процеси будуть автоматично перезапущені (\`pm2 restart all\`).
-
-Зачекайте, будь ласка. Це може зайняти кілька хвилин... 🚀
-    `.trim();
-
-    await ctx.reply(deployInfo, { parse_mode: 'Markdown' });
-
-    const result = await this.telegramService.runDeploy();
-
-    if (result.success) {
-      await ctx.reply('✅ *Деплой завершено успішно!*\n\n📝 *Логи виконання:*\n' + '```\n' + result.output.slice(-2000) + '\n```', { parse_mode: 'Markdown' });
-    } else {
-      await ctx.reply('❌ *Помилка під час деплою:*\n\n' + '```\n' + result.output.slice(-2000) + '\n```', { parse_mode: 'Markdown' });
+    if ('callback_query' in ctx.update) {
+      await ctx.answerCbQuery('Запускаю деплой...');
     }
+
+    // "/deploy force" — перезібрати, навіть якщо в git нічого не змінилося
+    const text = (ctx.message as any)?.text ?? '';
+    const force = /\bforce\b/i.test(text);
+
+    const started = this.telegramService.startDeploy(telegramId, force);
+
+    if (!started) {
+      return ctx.reply('❌ Не вдалося запустити скрипт деплою. Дивись логи бекенда.');
+    }
+
+    // Далі звітує сам скрипт: pm2 restart all вбиває цей процес разом із ботом,
+    // тому дочекатися результату тут неможливо в принципі.
+    await ctx.reply(
+      [
+        '🚀 Деплой запущено' + (force ? ' (примусово)' : ''),
+        '',
+        '1. git fetch + reset --hard origin/main в обох репозиторіях',
+        '2. npm install + build — спершу бекенд, потім фронт',
+        '3. pm2 restart all — тільки якщо обидві збірки пройшли',
+        '',
+        'Про кожен крок і про результат напише окреме повідомлення.',
+        'Якщо збірка впаде — pm2 не чіпається, прод лишається на старій версії.',
+      ].join('\n'),
+    );
   }
 
 

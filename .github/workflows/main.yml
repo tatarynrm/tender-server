@@ -1,8 +1,17 @@
 name: Deploy NEST.js
 
+# Автодеплой на push вимкнено: тепер прод розкочується командою /deploy в
+# Telegram-боті (scripts/deploy.sh), яка оновлює бекенд і фронт разом і не
+# рестартує pm2, якщо збірка впала. Два механізми на один каталог конфліктували б.
+#
+# Лишено ручний запуск як запасний хід на випадок, коли бот недоступний:
+# Actions -> Deploy NEST.js -> Run workflow.
+#
+# УВАГА: шлях нижче (/dragantataryn/ict/tender-server) відрізняється від того,
+# на який налаштований scripts/deploy.sh (/rtdata/tender/tender-server).
+# Перед ручним запуском звірити, який із них справжній.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:

@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
 import { ConfigService } from '@nestjs/config';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import { TelegramRepository } from './telegram.repository';
 import { TelegramGateway } from './telegram.gateway';
 import { AiService } from '../ai/ai.service';
@@ -277,7 +277,14 @@ export class TelegramService implements OnModuleInit {
   }
 
   public isAdmin(telegramId: number): boolean {
-    return telegramId === ADMIN_ID;
+    return telegramId === this.adminId();
+  }
+
+  /** ID адміна: TELEGRAM_ADMIN_ID з .env, інакше — константа. */
+  private adminId(): number {
+    return (
+      Number(this.configService.get<string>('TELEGRAM_ADMIN_ID')) || ADMIN_ID
+    );
   }
 
   /**
@@ -288,8 +295,7 @@ export class TelegramService implements OnModuleInit {
     message: string,
     extra?: Parameters<Telegraf<any>['telegram']['sendMessage']>[2],
   ): Promise<boolean> {
-    const adminId =
-      Number(this.configService.get<string>('TELEGRAM_ADMIN_ID')) || ADMIN_ID;
+    const adminId = this.adminId();
     try {
       await this.bot.telegram.sendMessage(adminId, message, {
         parse_mode: 'HTML',
@@ -303,18 +309,33 @@ export class TelegramService implements OnModuleInit {
     }
   }
 
-  public async runDeploy(): Promise<{ success: boolean; output: string }> {
-    return new Promise((resolve) => {
-      // Використовуємо збільшений буфер (10MB), оскільки npm run build може видавати багато логів
-      exec('bash /root/deploy.sh', { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-        if (error) {
-          this.logger.error(`❌ Deploy failed: ${error.message}`);
-          return resolve({ success: false, output: error.message + '\n' + stderr });
-        }
-        this.logger.log(`✅ Deploy finished successfully`);
-        resolve({ success: true, output: stdout || stderr });
+  /**
+   * Запускає деплой ВІД'ЄДНАНО і одразу повертає керування.
+   *
+   * Чекати на завершення тут не можна: останній крок скрипта — `pm2 restart all`,
+   * який вбиває цей самий процес разом із ботом. Тому setsid + detached: скрипт
+   * переживає рестарт, а про хід деплою звітує в Telegram сам (curl), і робить це
+   * навіть тоді, коли бот уже мертвий.
+   */
+  public startDeploy(chatId: number, force = false): boolean {
+    const script =
+      this.configService.get<string>('DEPLOY_SCRIPT') || '/root/deploy.sh';
+
+    const args = ['bash', script, String(chatId)];
+    if (force) args.push('--force');
+
+    try {
+      const child = spawn('setsid', args, {
+        detached: true,
+        stdio: 'ignore',
       });
-    });
+      child.unref();
+      this.logger.log(`Деплой запущено (${script}, chat ${chatId})`);
+      return true;
+    } catch (err) {
+      this.logger.error(`Не вдалося запустити деплой: ${err.message}`);
+      return false;
+    }
   }
 
   public async checkUserHasAiAccess(telegramId: number): Promise<boolean> {
