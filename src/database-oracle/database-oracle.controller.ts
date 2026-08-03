@@ -79,7 +79,10 @@ export class DatabaseOracleController {
       'p_carrier.run',
       { func: 'perev_list', kod_per: mid, body: JSON.stringify(body || {}) },
     );
-    return result?.content || result;
+    // Віддаємо повну відповідь разом із props.pagination — вона потрібна
+    // вкладці «Невиставлені рахунки». Споживачі, яким треба лише масив,
+    // розпаковують content самі (carrier-statistic.service.ts).
+    return result;
   }
 
   @Post('carrier-transportation/:mid')
