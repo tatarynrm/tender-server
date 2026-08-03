@@ -3,6 +3,10 @@ import { Context, Telegraf, Markup } from 'telegraf';
 import { TelegramService } from './telegram.service';
 import { MESSAGES } from './common/telegram.messages';
 import { UserGateway } from 'src/user/user.gateway';
+import {
+  MailReaderService,
+  UnreadDigestItem,
+} from 'src/mail-reader/mail-reader.service';
 
 @Update()
 export class TelegramUpdate {
@@ -10,6 +14,7 @@ export class TelegramUpdate {
     @InjectBot() private readonly bot: Telegraf<Context>,
     private readonly telegramService: TelegramService,
     private readonly userGateway: UserGateway,
+    private readonly mailReaderService: MailReaderService,
   ) {}
 
   @Start()
@@ -55,9 +60,11 @@ export class TelegramUpdate {
       const inlineButtons: any[] = [];
       if (isAdmin) {
 
+        inlineButtons.push([Markup.button.callback('📬 Непрочитані листи', 'check_unread_mail')]);
         inlineButtons.push([Markup.button.callback('🚀 Запустити DEPLOY', 'run_deploy')]);
         inlineButtons.push([Markup.button.callback('📊 Статистика', 'get_stats')]);
       }
+      // ШІ-кнопка тимчасово відключена
       // if (hasAiAccess) {
       //   inlineButtons.push([Markup.button.callback('🤖 ШІ-Агент', 'enter_ai')]);
       // }
@@ -124,6 +131,53 @@ export class TelegramUpdate {
     );
   }
 
+  @Command('mail')
+  @Action('check_unread_mail')
+  async handleUnreadMail(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    const isCallback = Boolean((ctx as any).callbackQuery);
+    if (isCallback) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
+
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.reply('⛔️ У вас немає прав для цієї команди.');
+    }
+
+    const statusMsg = await ctx.reply('📬 Перевіряю непрочитані листи, зачекайте…');
+    const chatId = ctx.chat!.id;
+    const statusMsgId = statusMsg.message_id;
+
+    // Fire-and-forget: IMAP + AI можуть зайняти час, а webhook має відповісти одразу.
+    void (async () => {
+      try {
+        await ctx.sendChatAction('typing');
+        const digest = await this.mailReaderService.getUnreadDigest(15);
+        const text = formatUnreadDigest(digest);
+
+        await ctx.telegram.editMessageText(chatId, statusMsgId, undefined, text, {
+          parse_mode: 'HTML',
+          link_preview_options: { is_disabled: true },
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Оновити', 'check_unread_mail')],
+          ]),
+        });
+      } catch (err) {
+        console.error('handleUnreadMail error:', err);
+        try {
+          await ctx.telegram.editMessageText(
+            chatId,
+            statusMsgId,
+            undefined,
+            '❌ Не вдалося отримати листи. Спробуйте пізніше.',
+          );
+        } catch {
+          await ctx.telegram.sendMessage(chatId, '❌ Не вдалося отримати листи. Спробуйте пізніше.');
+        }
+      }
+    })();
+  }
+
   @Command('info')
   async infoCommand(ctx: Context) {
     await ctx.reply(
@@ -139,7 +193,9 @@ export class TelegramUpdate {
   @Command('ai')
   @Action('enter_ai')
   async enterAiScene(ctx: Context) {
-    await ctx.reply('🤖 Функції ШІ-Агента тимчасово недоступні.');
+    // ШІ-Агент тимчасово недоступний
+    if ((ctx as any).callbackQuery) await ctx.answerCbQuery();
+    return ctx.reply('⛔️ ШІ-Агент тимчасово недоступний. Спробуйте пізніше.');
   }
 
   @Command('exit')
@@ -251,66 +307,120 @@ export class TelegramUpdate {
 
     const statusMsg = await ctx.reply(markdownToHtml(`⏳ **Обробляю ваш запит до ${aiMode === 'oracle' ? 'БАЗИ' : 'Тендерної платформи'}...**`), { parse_mode: 'HTML' });
 
-    try {
-      await ctx.sendChatAction('typing');
-      const response = await this.telegramService.handleAiQuery(telegramId, text, voiceFileId, aiMode);
+    const chatId = ctx.chat!.id;
+    const statusMsgId = statusMsg.message_id;
 
-      // Split response into chunks under 4000 characters
-      const maxLength = 4000;
-      const chunks: string[] = [];
-      if (response.length > maxLength) {
-        const lines = response.split('\n');
-        let currentChunk = '';
-        for (const line of lines) {
-          if (currentChunk.length + line.length + 1 > maxLength) {
-            if (currentChunk.trim()) chunks.push(currentChunk);
-            currentChunk = line;
-          } else {
-            currentChunk = currentChunk ? `${currentChunk}\n${line}` : line;
-          }
-        }
-        if (currentChunk.trim()) chunks.push(currentChunk);
-      } else {
-        chunks.push(response);
-      }
-
-      // Edit the first status message with the first chunk
-      await ctx.telegram.editMessageText(
-        ctx.chat!.id,
-        statusMsg.message_id,
-        undefined,
-        markdownToHtml(chunks[0]),
-        {
-          parse_mode: 'HTML',
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
-          ])
-        }
-      );
-
-      // Send the remaining chunks
-      for (let i = 1; i < chunks.length; i++) {
-        await ctx.reply(markdownToHtml(chunks[i]), {
-          parse_mode: 'HTML',
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
-          ])
-        });
-      }
-    } catch (error) {
-      console.error('Error handling message in AI scene:', error);
+    // Fire-and-forget: виконуємо AI-запит у фоні, щоб Telegraf webhook повернувся одразу
+    // і не отримав таймаут 90s. Результат надсилаємо через bot.telegram асинхронно.
+    void (async () => {
       try {
+        await ctx.sendChatAction('typing');
+        const response = await this.telegramService.handleAiQuery(telegramId, text, voiceFileId, aiMode);
+
+        // Split response into chunks under 4000 characters
+        const maxLength = 4000;
+        const chunks: string[] = [];
+        if (response.length > maxLength) {
+          const lines = response.split('\n');
+          let currentChunk = '';
+          for (const line of lines) {
+            if (currentChunk.length + line.length + 1 > maxLength) {
+              if (currentChunk.trim()) chunks.push(currentChunk);
+              currentChunk = line;
+            } else {
+              currentChunk = currentChunk ? `${currentChunk}\n${line}` : line;
+            }
+          }
+          if (currentChunk.trim()) chunks.push(currentChunk);
+        } else {
+          chunks.push(response);
+        }
+
+        // Edit the first status message with the first chunk
         await ctx.telegram.editMessageText(
-          ctx.chat!.id,
-          statusMsg.message_id,
+          chatId,
+          statusMsgId,
           undefined,
-          '❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.'
+          markdownToHtml(chunks[0]),
+          {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
+            ])
+          }
         );
-      } catch (editErr) {
-        await ctx.reply('❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.');
+
+        // Send the remaining chunks
+        for (let i = 1; i < chunks.length; i++) {
+          await ctx.telegram.sendMessage(chatId, markdownToHtml(chunks[i]), {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
+            ])
+          });
+        }
+      } catch (error) {
+        console.error('Error handling message in AI scene:', error);
+        try {
+          await ctx.telegram.editMessageText(
+            chatId,
+            statusMsgId,
+            undefined,
+            '❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.'
+          );
+        } catch (editErr) {
+          await ctx.telegram.sendMessage(chatId, '❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.');
+        }
       }
+    })();
+  }
+}
+
+function escapeHtml(s: string): string {
+  return (s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** Коротке ім'я відправника: до "<" або до "@". */
+function shortSender(from: string): string {
+  if (!from) return '—';
+  const beforeBracket = from.split('<')[0].trim();
+  const base = beforeBracket || from;
+  return (base.split('@')[0] || base).trim().slice(0, 40);
+}
+
+/** Компактний дайджест непрочитаних листів, поділений за важливістю. */
+function formatUnreadDigest(items: UnreadDigestItem[]): string {
+  if (!items.length) {
+    return '✅ Непрочитаних листів немає.';
+  }
+
+  const groups: { key: UnreadDigestItem['importance']; title: string }[] = [
+    { key: 'high', title: '🔴 <b>ВАЖЛИВІ</b>' },
+    { key: 'medium', title: '🟡 <b>СЕРЕДНІ</b>' },
+    { key: 'low', title: '⚪️ <b>НЕВАЖЛИВІ</b>' },
+  ];
+
+  const lines: string[] = [`📬 <b>Непрочитані листи:</b> ${items.length}`];
+
+  for (const g of groups) {
+    const inGroup = items.filter((i) => i.importance === g.key);
+    if (!inGroup.length) continue;
+
+    lines.push('', `${g.title} (${inGroup.length})`);
+    for (const it of inGroup) {
+      const cat = it.category && it.category !== '—' ? `[${escapeHtml(it.category)}] ` : '';
+      const sender = escapeHtml(shortSender(it.from));
+      const essence = escapeHtml(it.essence);
+      lines.push(`• ${cat}<b>${sender}</b> — ${essence}`);
     }
   }
+
+  let text = lines.join('\n');
+  if (text.length > 3900) text = text.slice(0, 3900) + '\n…';
+  return text;
 }
 
 function markdownToHtml(text: string): string {

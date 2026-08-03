@@ -39,6 +39,8 @@ export class TelegramService implements OnModuleInit {
       await this.bot.telegram.setMyCommands([
         { command: 'start', description: 'Запустити / Перезапустити бота' },
         { command: 'info', description: 'Інформація про бота' },
+        // { command: 'ai', description: '🤖 ШІ-Агент (тільки для ICT адміністраторів)' }, // тимчасово відключено
+        // { command: 'exit', description: '🚪 Вийти з режиму ШІ-Агента' }, // тимчасово відключено
       ]);
       this.logger.log('✅ Команди бота успішно встановлено');
     } catch (error) {
@@ -276,6 +278,29 @@ export class TelegramService implements OnModuleInit {
 
   public isAdmin(telegramId: number): boolean {
     return telegramId === ADMIN_ID;
+  }
+
+  /**
+   * Надсилає службове сповіщення адміністратору (лише йому).
+   * ID береться з TELEGRAM_ADMIN_ID, інакше — константа ADMIN_ID.
+   */
+  async notifyAdmin(
+    message: string,
+    extra?: Parameters<Telegraf<any>['telegram']['sendMessage']>[2],
+  ): Promise<boolean> {
+    const adminId =
+      Number(this.configService.get<string>('TELEGRAM_ADMIN_ID')) || ADMIN_ID;
+    try {
+      await this.bot.telegram.sendMessage(adminId, message, {
+        parse_mode: 'HTML',
+        link_preview_options: { is_disabled: true },
+        ...(extra || {}),
+      });
+      return true;
+    } catch (err) {
+      this.logger.error(`Не вдалося надіслати сповіщення адміну: ${err.message}`);
+      return false;
+    }
   }
 
   public async runDeploy(): Promise<{ success: boolean; output: string }> {

@@ -134,6 +134,87 @@ export class AiService {
 
 
   /**
+   * Класифікує пачку листів: коротка суть українською + рівень важливості.
+   * Один запит на всі листи заради швидкості й економії токенів.
+   */
+  async classifyEmails(
+    emails: { from: string; subject: string; body: string }[],
+  ): Promise<
+    { index: number; essence: string; importance: 'high' | 'medium' | 'low'; category: string }[]
+  > {
+    if (!emails.length) return [];
+
+    const aiModel = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: `Ти — асистент керівника логістично-тендерної компанії ICT. Тобі дають список непрочитаних листів.
+Для КОЖНОГО листа:
+1. "essence" — стисло опиши суть листа ОДНИМ реченням українською (максимум 15 слів, по ділу, без вступів).
+2. "importance" — оціни важливість: "high" (термінове/гроші/договори/претензії/дедлайни/особисте звернення від клієнта чи керівництва), "medium" (робоче листування, тендери, звичайні запити), "low" (розсилки, реклама, автоматичні сповіщення, спам, соцмережі).
+3. "category" — коротка категорія 1-2 слова українською (напр. "Тендер", "Договір", "Претензія", "Розсилка", "Рахунок", "Особисте").
+Поверни РІВНО стільки елементів, скільки листів, зберігаючи їхній порядок через поле "index".`,
+    });
+
+    const emailsText = emails
+      .map(
+        (e, i) =>
+          `#${i}\nВід: ${e.from}\nТема: ${e.subject}\nТекст: ${(e.body || '').slice(0, 1200)}`,
+      )
+      .join('\n---\n');
+
+    try {
+      const result = await aiModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: emailsText }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+          responseSchema: {
+            type: SchemaType.OBJECT,
+            properties: {
+              results: {
+                type: SchemaType.ARRAY,
+                items: {
+                  type: SchemaType.OBJECT,
+                  properties: {
+                    index: { type: SchemaType.INTEGER },
+                    essence: { type: SchemaType.STRING },
+                    importance: {
+                      type: SchemaType.STRING,
+                      format: 'enum',
+                      enum: ['high', 'medium', 'low'],
+                    },
+                    category: { type: SchemaType.STRING },
+                  },
+                  required: ['index', 'essence', 'importance', 'category'],
+                },
+              },
+            },
+            required: ['results'],
+          } as Schema,
+        },
+      });
+
+      const rawText = result.response.text();
+      const cleanJson = rawText
+        .trim()
+        .replace(/^```json\n?/, '')
+        .replace(/```$/, '')
+        .trim();
+      const parsed = JSON.parse(cleanJson) as {
+        results: {
+          index: number;
+          essence: string;
+          importance: 'high' | 'medium' | 'low';
+          category: string;
+        }[];
+      };
+      return parsed.results || [];
+    } catch (err) {
+      console.error('classifyEmails failed:', err);
+      return [];
+    }
+  }
+
+  /**
    * Identifies which Oracle database tables are relevant to the user query out of all 400+ tables.
    */
   async findOracleTables(prompt: string, tablesList: { name: string; comments?: string }[]): Promise<string[]> {
@@ -207,13 +288,11 @@ Select the exact table names from the list above that are necessary to construct
         },
       });
       const rawText = result.response.text();
-      console.log('findOracleTables raw response:', rawText);
       const cleanJson = rawText.trim()
         .replace(/^```json\n?/, '')
         .replace(/```$/, '')
         .trim();
       const parsed = JSON.parse(cleanJson) as string[];
-      console.log('findOracleTables parsed tables:', parsed);
       return parsed;
     } catch (err) {
       console.error('Failed to classify Oracle tables:', err);
@@ -256,13 +335,11 @@ Select the exact table names from the list above that are necessary to construct
         },
       });
       const rawText = result.response.text();
-      console.log('findPostgresTables raw response:', rawText);
       const cleanJson = rawText.trim()
         .replace(/^```json\n?/, '')
         .replace(/```$/, '')
         .trim();
       const parsed = JSON.parse(cleanJson) as string[];
-      console.log('findPostgresTables parsed tables:', parsed);
       return parsed;
     } catch (err) {
       console.error('Failed to classify PostgreSQL tables:', err);

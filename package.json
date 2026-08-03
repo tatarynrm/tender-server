@@ -52,6 +52,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.1",
     "googleapis": "^155.0.1",
+    "imapflow": "^1.6.5",
     "ioredis": "^5.8.2",
     "multer": "^1.4.5-lts.1",
     "nest-winston": "^1.10.2",

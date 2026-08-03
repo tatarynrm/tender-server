@@ -51,6 +51,8 @@ import { FilesModule } from './files/files.module';
 import { NotificationModule } from './notification/notification.module';
 import { DbEventsModule } from './modules/db-events/db-events.module';
 import { UserActivityModule } from './common/user-activity.module';
+import { MailReaderModule } from './mail-reader/mail-reader.module';
+import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
 
 
 @Module({
@@ -121,6 +123,8 @@ import { UserActivityModule } from './common/user-activity.module';
     NotificationModule,
     DbEventsModule,
     UserActivityModule,
+    MailReaderModule,
+    MailReaderTasksModule,
   ],
   controllers: [],
   providers: [
