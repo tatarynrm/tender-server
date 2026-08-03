@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { RedisClientType } from 'redis';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
@@ -123,6 +123,13 @@ async function bootstrap() {
 
   const port = config.get<number>('APPLICATION_PORT') || 7000;
   await app.listen(port, '0.0.0.0');
+
+  // Маркер деплою: видно в `pm2 logs tender-server` одразу після рестарту.
+  // Змінюй DEPLOY_MARK, щоб відрізнити нову викатку від старої.
+  const DEPLOY_MARK = 'deploy-check-1';
+  new Logger('Bootstrap').log(
+    `BACKEND ЗАПУЩЕНО [${DEPLOY_MARK}] порт ${port}, старт ${new Date().toISOString()}`,
+  );
 }
 
 bootstrap();
