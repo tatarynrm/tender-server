@@ -7,6 +7,7 @@ import {
   MailReaderService,
   UnreadDigestItem,
 } from 'src/mail-reader/mail-reader.service';
+import { ApprovalService } from 'src/approval/approval.service';
 
 @Update()
 export class TelegramUpdate {
@@ -15,7 +16,72 @@ export class TelegramUpdate {
     private readonly telegramService: TelegramService,
     private readonly userGateway: UserGateway,
     private readonly mailReaderService: MailReaderService,
+    private readonly approvalService: ApprovalService,
   ) {}
+
+  // --- Погодження дій Claude Code -----------------------------------------
+  // Дві стадії навмисно: перше натискання нічого не вирішує, лише показує
+  // другу пару кнопок. Сповіщення легко зачепити випадково, а рішення тут
+  // незворотні.
+
+  @Action(/^apv:[a-f0-9]+:(yes|no)$/)
+  async handleApprovalPress(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.answerCbQuery('⛔️ Немає прав');
+    }
+
+    const [, id, verdict] = (ctx.callbackQuery as any).data.split(':');
+    const rec = await this.approvalService.firstPress(id, verdict === 'yes');
+
+    if (!rec) {
+      await ctx.answerCbQuery('Запит прострочений');
+      return ctx.editMessageText('⏱ Запит на погодження прострочений.');
+    }
+
+    if (rec.status === 'denied') {
+      await ctx.answerCbQuery('Заборонено');
+      return ctx.editMessageText(`⛔️ Заборонено\n\n${rec.summary}`);
+    }
+
+    if (rec.status !== 'confirming') {
+      return ctx.answerCbQuery('Це вже вирішено');
+    }
+
+    await ctx.answerCbQuery();
+    return ctx.editMessageText(
+      `❓ Підтвердіть ще раз\n\nІнструмент: ${rec.tool}\nДія: ${rec.summary}`,
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback('✅ Так, дозволяю', `apv2:${id}:yes`),
+          Markup.button.callback('⛔️ Ні, скасувати', `apv2:${id}:no`),
+        ],
+      ]),
+    );
+  }
+
+  @Action(/^apv2:[a-f0-9]+:(yes|no)$/)
+  async handleApprovalConfirm(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.answerCbQuery('⛔️ Немає прав');
+    }
+
+    const [, id, verdict] = (ctx.callbackQuery as any).data.split(':');
+    const rec = await this.approvalService.confirm(id, verdict === 'yes');
+
+    if (!rec) {
+      await ctx.answerCbQuery('Запит прострочений');
+      return ctx.editMessageText('⏱ Запит на погодження прострочений.');
+    }
+
+    await ctx.answerCbQuery(rec.status === 'approved' ? 'Погоджено' : 'Заборонено');
+    return ctx.editMessageText(
+      rec.status === 'approved'
+        ? `✅ Погоджено\n\nІнструмент: ${rec.tool}\nДія: ${rec.summary}`
+        : `⛔️ Заборонено\n\nІнструмент: ${rec.tool}\nДія: ${rec.summary}`,
+    );
+  }
 
   @Start()
   async startCommand(ctx: Context) {

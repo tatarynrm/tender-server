@@ -43,6 +43,7 @@ import { AdminUserModule } from './admin/admin-user/admin-user.module';
 import { DownloadModule } from './download/download.module';
 import { CronTasksModule } from './crons-tasks/crons-tasks.module';
 import { SuggestionModule } from './suggestion/suggestion.module';
+import { ApprovalModule } from './approval/approval.module';
 import { AiModule } from './ai/ai.module';
 import { LogisticsModule } from './ai/logistics/logistics.module';
 import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
@@ -116,6 +117,7 @@ import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
     DownloadModule,
     CronTasksModule,
     SuggestionModule,
+    ApprovalModule,
     AiModule,
     LogisticsModule,
     DatabaseOracleModule,

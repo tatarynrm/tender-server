@@ -44,6 +44,7 @@ import { TelegramRepository } from './telegram.repository';
 import { AiModule } from 'src/ai/ai.module';
 import { DatabaseOracleModule } from 'src/database-oracle/database-oracle.module';
 import { MailReaderModule } from 'src/mail-reader/mail-reader.module';
+import { ApprovalModule } from 'src/approval/approval.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { MailReaderModule } from 'src/mail-reader/mail-reader.module';
     AiModule,
     DatabaseOracleModule,
     MailReaderModule,
+    ApprovalModule,
     TelegrafModule.forRootAsync({
 
 
