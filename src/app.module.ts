@@ -44,6 +44,7 @@ import { DownloadModule } from './download/download.module';
 import { CronTasksModule } from './crons-tasks/crons-tasks.module';
 import { SuggestionModule } from './suggestion/suggestion.module';
 import { ApprovalModule } from './approval/approval.module';
+import { ClaudeAgentModule } from './claude-agent/claude-agent.module';
 import { AiModule } from './ai/ai.module';
 import { LogisticsModule } from './ai/logistics/logistics.module';
 import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
@@ -118,6 +119,7 @@ import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
     CronTasksModule,
     SuggestionModule,
     ApprovalModule,
+    ClaudeAgentModule,
     AiModule,
     LogisticsModule,
     DatabaseOracleModule,

@@ -8,6 +8,7 @@ import {
   UnreadDigestItem,
 } from 'src/mail-reader/mail-reader.service';
 import { ApprovalService } from 'src/approval/approval.service';
+import { ClaudeAgentService } from 'src/claude-agent/claude-agent.service';
 
 @Update()
 export class TelegramUpdate {
@@ -17,6 +18,7 @@ export class TelegramUpdate {
     private readonly userGateway: UserGateway,
     private readonly mailReaderService: MailReaderService,
     private readonly approvalService: ApprovalService,
+    private readonly claudeAgentService: ClaudeAgentService,
   ) {}
 
   // --- Погодження дій Claude Code -----------------------------------------
@@ -191,6 +193,80 @@ export class TelegramUpdate {
     );
   }
 
+
+  /**
+   * `/task [server|front] <опис>` — автономна задача Claude Code.
+   *
+   * Результат — гілка з кодом і посилання на diff. У main нічого не йде,
+   * pm2 не чіпається: викочування лишається окремою свідомою дією (/deploy).
+   */
+  @Command('task')
+  async handleTask(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.reply('⛔️ У вас немає прав для виконання цієї команди.');
+    }
+
+    const text = String((ctx.message as any)?.text ?? '');
+    let body = text.replace(/^\/task(@\S+)?\s*/i, '').trim();
+
+    // перше слово може вказувати репозиторій; типово — фронт
+    let target: 'client' | 'server' = 'client';
+    const firstWord = body.split(/\s+/)[0]?.toLowerCase();
+    if (['server', 'бек', 'бекенд', 'backend'].includes(firstWord)) {
+      target = 'server';
+      body = body.slice(firstWord.length).trim();
+    } else if (['client', 'front', 'фронт', 'фронтенд'].includes(firstWord)) {
+      body = body.slice(firstWord.length).trim();
+    }
+
+    if (body.length < 15) {
+      return ctx.reply(
+        [
+          'Опиши задачу докладніше — від опису прямо залежить результат.',
+          '',
+          'Приклад:',
+          '/task Сторінка в LOG зі статистикою тендерів за 24 місяці:',
+          'графік кількості по місяцях і таблиця середніх ставок по напрямках.',
+          '',
+          'Типово задача йде у фронт. Для бекенда: /task server <опис>',
+        ].join('\n'),
+      );
+    }
+
+    if (this.claudeAgentService.isBusy()) {
+      return ctx.reply(
+        '⏳ Уже виконується інша задача. Робочий каталог один, тому дочекайся звіту про попередню.',
+      );
+    }
+
+    const requestedBy =
+      ctx.from?.username ?? ctx.from?.first_name ?? String(telegramId);
+
+    const started = this.claudeAgentService.start({
+      chatId: telegramId,
+      target,
+      task: body,
+      requestedBy,
+    });
+
+    if (!started.ok) {
+      return ctx.reply(`❌ Не вдалося запустити задачу: ${started.reason}`);
+    }
+
+    await ctx.reply(
+      [
+        '🤖 Задача передана Claude',
+        '',
+        `Репозиторій: ${target === 'server' ? 'бекенд' : 'фронт'}`,
+        '',
+        'Далі звітую окремими повідомленнями: прогрес, перевірка збірки,',
+        'потім кнопка на пуш гілки. Це 10-20 хвилин.',
+        '',
+        'Прод не чіпаю: ні main, ні pm2. Вийде гілка й посилання на diff.',
+      ].join('\n'),
+    );
+  }
 
   @Action('get_stats')
   async handleStats(ctx: Context) {

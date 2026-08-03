@@ -45,6 +45,7 @@ import { AiModule } from 'src/ai/ai.module';
 import { DatabaseOracleModule } from 'src/database-oracle/database-oracle.module';
 import { MailReaderModule } from 'src/mail-reader/mail-reader.module';
 import { ApprovalModule } from 'src/approval/approval.module';
+import { ClaudeAgentModule } from 'src/claude-agent/claude-agent.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { ApprovalModule } from 'src/approval/approval.module';
     DatabaseOracleModule,
     MailReaderModule,
     ApprovalModule,
+    ClaudeAgentModule,
     TelegrafModule.forRootAsync({
 
 
