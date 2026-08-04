@@ -18,7 +18,6 @@ import { UserGateway } from './user/user.gateway';
 import { AdminModule } from './admin/admin.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { TelegramTokenModule } from './telegram/telegram-token/telegram-token.module';
-import { TelegramUpdate } from './telegram/telegram.update';
 import { ChatModule } from './chat/chat.module';
 import { LoadGateway } from './crm/load/load.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -132,7 +131,9 @@ import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
   ],
   controllers: [],
   providers: [
-    TelegramUpdate,
+    // TelegramUpdate живе в TelegramModule — дублювати його тут не можна:
+    // у корені немає його залежностей (ReportFileService тощо), а подвійна
+    // реєстрація @Update() веде до повторної обробки повідомлень бота.
     LoadGateway,
     FileCleanupService,
     DatabaseMonitorService,
