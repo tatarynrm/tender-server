@@ -5,8 +5,8 @@ import { Markup } from 'telegraf';
  *
  * Чотири рівні (кожен наступний включає попередній):
  *  - registered            — звичайний користувач (перевізник);
- *  - isIct                 — менеджер ІКТ (person_role.is_ict);
- *  - isIctAdmin            — адміністратор ІКТ (is_ict + is_admin);
+ *  - isIct                 — менеджер ІСТ (person_role.is_ict);
+ *  - isIctAdmin            — адміністратор ІСТ (is_ict + is_admin);
  *  - isSuperAdmin          — головний адмін із TELEGRAM_ADMIN_ID (системні дії).
  */
 export interface TelegramAccess {
@@ -95,7 +95,7 @@ export function formatProfile(access: TelegramAccess): string {
   const p = access.profile || {};
   const roles: string[] = [];
   if (p.is_admin) roles.push('Адміністратор');
-  if (p.is_ict) roles.push('Менеджер ІКТ');
+  if (p.is_ict) roles.push('Менеджер ІСТ');
   if (!roles.length) roles.push('Перевізник');
 
   const lines = ['👤 <b>Мій профіль</b>', ''];
@@ -115,7 +115,7 @@ export function formatProfile(access: TelegramAccess): string {
   return lines.join('\n');
 }
 
-/** Детальний список активних напрямків — для менеджерів ІКТ. */
+/** Детальний список активних напрямків — для менеджерів ІСТ. */
 export function formatActiveTendersList(rows: any[]): string {
   if (!rows.length) return '📋 Активних тендерів зараз немає.';
 

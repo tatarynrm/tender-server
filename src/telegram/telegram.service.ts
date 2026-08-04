@@ -37,18 +37,62 @@ export class TelegramService implements OnModuleInit {
 
   private async setupBotCommands() {
     try {
+      // Глобальний (default) список — лише те, що доступне всім.
+      // Рольові команди (звіти, пошта, деплой) додаються персонально
+      // через syncUserCommands із chat-скоупом — чужі команди в меню не видно.
       await this.bot.telegram.setMyCommands([
         { command: 'start', description: 'Запустити / Перезапустити бота' },
         { command: 'menu', description: '📱 Головне меню' },
+        { command: 'profile', description: '👤 Мій профіль' },
+        { command: 'tenders', description: '📢 Активні тендери' },
         { command: 'info', description: 'Інформація про бота' },
-        { command: 'reports', description: '📊 Звіти по тендерах (для адміністраторів ІКТ)' },
-        { command: 'exit', description: '🚪 Вийти з режиму звітів / ШІ' },
-        // { command: 'ai', description: '🤖 ШІ-Агент (тільки для ICT адміністраторів)' }, // тимчасово відключено
-        // { command: 'exit', description: '🚪 Вийти з режиму ШІ-Агента' }, // тимчасово відключено
       ]);
       this.logger.log('✅ Команди бота успішно встановлено');
     } catch (error) {
       this.logger.error('❌ Помилка при встановленні команд бота:', error);
+    }
+  }
+
+  /**
+   * Персональний список команд для конкретного чату — залежить від ролі.
+   * Telegram показує в меню лише те, що дозволено саме цьому користувачу;
+   * захистом це не є (хендлери перевіряють роль самі), але зайві пункти
+   * користувачі без доступу більше не бачать.
+   */
+  public async syncUserCommands(telegramId: number, access: TelegramAccess) {
+    const commands = [
+      { command: 'start', description: 'Запустити / Перезапустити бота' },
+      { command: 'menu', description: '📱 Головне меню' },
+      { command: 'profile', description: '👤 Мій профіль' },
+      { command: 'tenders', description: '📢 Активні тендери' },
+      { command: 'info', description: 'Інформація про бота' },
+    ];
+
+    if (access.isIct) {
+      commands.push({ command: 'summary', description: '📈 Зведення по тендерах' });
+    }
+    if (access.isIctAdmin) {
+      commands.push(
+        { command: 'reports', description: '📊 Звіти по тендерах (ШІ)' },
+        { command: 'exit', description: '🚪 Вийти з режиму звітів / ШІ' },
+      );
+    }
+    if (access.isSuperAdmin) {
+      commands.push(
+        { command: 'mail', description: '📬 Непрочитані листи' },
+        { command: 'deploy', description: '🚀 Деплой' },
+        { command: 'task', description: '🤖 Задача для Claude Code' },
+      );
+    }
+
+    try {
+      await this.bot.telegram.setMyCommands(commands, {
+        scope: { type: 'chat', chat_id: telegramId },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Не вдалося оновити персональні команди для ${telegramId}: ${error?.message}`,
+      );
     }
   }
 
@@ -481,39 +525,23 @@ export class TelegramService implements OnModuleInit {
     }
 
     if (result.type === 'sql' && result.sql) {
-      const sqlQuery = result.sql.trim();
+      const sqlQuery = result.sql.trim().replace(/;\s*$/, '');
 
-      // SQL Safety check: Case-insensitive match for select query
-      // Must start with SELECT and NOT contain mutating keywords
-      const upperQuery = sqlQuery.toUpperCase();
-      const forbiddenKeywords = [
-        'INSERT',
-        'UPDATE',
-        'DELETE',
-        'DROP',
-        'ALTER',
-        'CREATE',
-        'TRUNCATE',
-        'GRANT',
-        'REVOKE',
-        'REPLACE',
-      ];
-      const hasForbidden = forbiddenKeywords.some((keyword) => {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-        return regex.test(upperQuery);
-      });
-
-      if (!upperQuery.startsWith('SELECT') || hasForbidden) {
-        this.logger.warn(`Rejected unsafe generated SQL from TG User ${telegramId}: ${sqlQuery}`);
-        return '❌ Запит відхилено з міркувань безпеки. Згенерований SQL-запит містив недозволені інструкції.';
+      const rejectReason = this.validateReadOnlySql(sqlQuery);
+      if (rejectReason) {
+        this.logger.warn(
+          `Rejected unsafe generated SQL from TG User ${telegramId} (${rejectReason}): ${sqlQuery}`,
+        );
+        return '❌ Запит відхилено з міркувань безпеки: ШІ-агенту дозволено виключно читання даних (SELECT).';
       }
 
       try {
-        // Run SQL query on the selected database
+        // Виконання лише через read-only шляхи: навіть якщо валідація щось
+        // пропустить, транзакція READ ONLY в самій БД запис не дасть зробити.
         let rows: any[] = [];
         if (result.database === 'oracle') {
           this.logger.log(`Executing AI generated Oracle SQL: ${sqlQuery}`);
-          rows = await this.oracleService.executeQuery(sqlQuery);
+          rows = await this.oracleService.executeReadOnlyQuery(sqlQuery);
         } else {
           this.logger.log(`Executing AI generated Postgres SQL: ${sqlQuery}`);
           rows = await this.repository.runReadOnlyQuery(sqlQuery);
@@ -535,6 +563,64 @@ export class TelegramService implements OnModuleInit {
 
 
     return '🤔 Не вдалося розпізнати запит або згенерувати SQL. Будь ласка, переформулюйте ваше питання.';
+  }
+
+  /**
+   * Строга перевірка SQL від ШІ: ЛИШЕ ЧИТАННЯ.
+   * Повертає причину відмови або null, якщо запит безпечний.
+   *
+   * Це перший рубіж; другий — виконання в транзакції READ ONLY
+   * (runReadOnlyQuery / executeReadOnlyQuery), де сама БД відхиляє запис.
+   */
+  private validateReadOnlySql(sql: string): string | null {
+    const normalized = sql.trim();
+
+    // Одна інструкція: ніяких "SELECT 1; DELETE ..."
+    if (normalized.includes(';')) {
+      return 'multiple statements';
+    }
+
+    // Дозволений лише SELECT (без WITH: CTE в Postgres може містити INSERT/UPDATE)
+    if (!/^SELECT\b/i.test(normalized)) {
+      return 'not a SELECT';
+    }
+
+    // Будь-яка мутація, DDL, керування транзакціями чи виконання коду — відмова
+    const forbiddenKeywords = [
+      'INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE',
+      'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'RENAME', 'COMMENT',
+      'GRANT', 'REVOKE', 'AUDIT', 'NOAUDIT',
+      'COMMIT', 'ROLLBACK', 'SAVEPOINT', 'LOCK',
+      'CALL', 'EXEC', 'EXECUTE', 'BEGIN', 'DECLARE', 'DO',
+      'COPY', 'VACUUM', 'CLUSTER', 'REINDEX', 'REFRESH', 'LISTEN', 'NOTIFY',
+      'SET', 'RESET', 'FLASHBACK', 'PURGE', 'INTO',
+    ];
+    for (const keyword of forbiddenKeywords) {
+      if (new RegExp(`\\b${keyword}\\b`, 'i').test(normalized)) {
+        return `forbidden keyword: ${keyword}`;
+      }
+    }
+
+    // SELECT ... FOR UPDATE / FOR SHARE блокує рядки — це вже не «лише читання»
+    if (/\bFOR\s+(UPDATE|SHARE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b/i.test(normalized)) {
+      return 'row locking (FOR UPDATE/SHARE)';
+    }
+
+    // Функції з побічними ефектами, які формально живуть усередині SELECT
+    const forbiddenFunctions = [
+      'NEXTVAL', 'SETVAL', 'CURRVAL',
+      'PG_SLEEP', 'PG_TERMINATE_BACKEND', 'PG_CANCEL_BACKEND', 'PG_RELOAD_CONF',
+      'PG_READ_FILE', 'PG_READ_BINARY_FILE', 'PG_LS_DIR', 'PG_STAT_FILE',
+      'LO_IMPORT', 'LO_EXPORT', 'DBLINK',
+      'DBMS_', 'UTL_', 'SYS\\.',
+    ];
+    for (const fn of forbiddenFunctions) {
+      if (new RegExp(`\\b${fn}`, 'i').test(normalized)) {
+        return `forbidden function: ${fn}`;
+      }
+    }
+
+    return null;
   }
 }
 

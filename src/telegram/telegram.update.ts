@@ -21,7 +21,7 @@ import {
   formatIctSummary,
 } from './telegram.menu';
 
-// --- Режим звітів по тендерах (тільки для адміністраторів ІКТ: is_ict + is_admin) ---
+// --- Режим звітів по тендерах (тільки для адміністраторів ІСТ: is_ict + is_admin) ---
 const REPORT_EXIT_BUTTON = '🚪 Вийти зі звітів';
 const REPORT_EXAMPLES_BUTTON = '💡 Приклади звітів';
 // Кнопки швидких звітів: текст кнопки → готове запитання для ШІ-агента
@@ -168,10 +168,16 @@ export class TelegramUpdate {
   }
 
   private async showMainMenu(ctx: Context, access: TelegramAccess, edit = false) {
+    // Фоново підганяємо персональний список команд під роль користувача,
+    // щоб у меню Telegram не світилися команди, до яких немає доступу.
+    if (ctx.from?.id) {
+      void this.telegramService.syncUserCommands(ctx.from.id, access);
+    }
+
     const title = access.isIctAdmin
-      ? '👑 <b>Меню адміністратора ІКТ</b>'
+      ? '👑 <b>Меню адміністратора ІСТ</b>'
       : access.isIct
-        ? '🏢 <b>Меню менеджера ІКТ</b>'
+        ? '🏢 <b>Меню менеджера ІСТ</b>'
         : '🚚 <b>Головне меню</b>';
     const hello = access.fullName ? `\n${escapeHtml(access.fullName)}` : '';
     const text = `${title}${hello}\n\nОберіть розділ 👇`;
@@ -246,7 +252,7 @@ export class TelegramUpdate {
 
     try {
       if (access.isIct) {
-        // Менеджери ІКТ бачать деталі напрямків прямо в боті
+        // Менеджери ІСТ бачать деталі напрямків прямо в боті
         const rows = await this.telegramService.getActiveTenders(10);
         await ctx.reply(formatActiveTendersList(rows), {
           parse_mode: 'HTML',
@@ -325,7 +331,7 @@ export class TelegramUpdate {
     const access = await this.requireAccess(ctx);
     if (!access) return;
     if (!access.isIct) {
-      return ctx.reply('⛔️ Зведення доступне лише працівникам ІКТ.', BACK_TO_MENU_KEYBOARD);
+      return ctx.reply('⛔️ Зведення доступне лише працівникам ІСТ.', BACK_TO_MENU_KEYBOARD);
     }
 
     try {
@@ -458,7 +464,7 @@ export class TelegramUpdate {
     const telegramId = ctx.from?.id;
     if (!telegramId) return;
 
-    // Статистика підписників не містить чутливого — відкрита адміністраторам ІКТ
+    // Статистика підписників не містить чутливого — відкрита адміністраторам ІСТ
     const access = await this.telegramService.getAccess(telegramId);
     if (!access.isIctAdmin && !access.isSuperAdmin) {
       return ctx.answerCbQuery('⛔️ Немає прав');
@@ -535,7 +541,7 @@ export class TelegramUpdate {
         '• 👤 вашого профілю;\n' +
         '• 📢 активних тендерів;\n' +
         '• 💰 ставок і 🏆 перемог вашої компанії (для перевізників);\n' +
-        '• 📈 зведення активності (для менеджерів ІКТ).\n\n' +
+        '• 📈 зведення активності (для менеджерів ІСТ).\n\n' +
         '🚀 Функціонал поступово розширюється — слідкуйте за оновленнями!'
       ),
       { parse_mode: 'HTML', ...BACK_TO_MENU_KEYBOARD }
@@ -552,7 +558,7 @@ export class TelegramUpdate {
 
   /**
    * `/reports` — ШІ-агент звітів по тендерах (Gemini поверх Postgres).
-   * Доступ лише для адміністраторів ІКТ: ролі is_ict + is_admin у person_role.
+   * Доступ лише для адміністраторів ІСТ: ролі is_ict + is_admin у person_role.
    */
   @Command('reports')
   @Action('enter_reports')
@@ -566,7 +572,7 @@ export class TelegramUpdate {
 
     const isIctAdmin = await this.telegramService.checkUserHasAiAccess(telegramId);
     if (!isIctAdmin) {
-      return ctx.reply('⛔️ Звіти доступні лише адміністраторам ІКТ.');
+      return ctx.reply('⛔️ Звіти доступні лише адміністраторам ІСТ.');
     }
 
     const session = (ctx as any).session;

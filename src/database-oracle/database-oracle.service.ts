@@ -205,6 +205,44 @@ export class DatabaseOracleService implements OnModuleInit, OnModuleDestroy {
       }
     }
   }
+  /**
+   * Виконання SELECT-запиту в транзакції READ ONLY — для SQL, згенерованого ШІ.
+   * Oracle сам відхилить будь-яку спробу запису (включно з SELECT ... FOR UPDATE),
+   * незалежно від того, що саме згенерувала модель. Після запиту — rollback.
+   */
+  async executeReadOnlyQuery<T>(
+    sql: string,
+    params: Record<string, any> = {},
+  ): Promise<T[]> {
+    let connection: oracledb.Connection | undefined;
+
+    try {
+      connection = await this.pool.getConnection();
+      await connection.execute(`ALTER SESSION SET CURRENT_SCHEMA = ICTDAT`);
+      await connection.execute(`SET TRANSACTION READ ONLY`);
+      const result = await connection.execute<T>(sql, params, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
+      });
+      return result.rows || [];
+    } catch (err) {
+      this.logger.error(`Error executing read-only query: ${sql}`, err);
+      throw err;
+    } finally {
+      if (connection) {
+        try {
+          await connection.rollback();
+        } catch (rollbackErr) {
+          this.logger.error('Error rolling back read-only transaction', rollbackErr);
+        }
+        try {
+          await connection.close();
+        } catch (closeErr) {
+          this.logger.error('Error closing connection', closeErr);
+        }
+      }
+    }
+  }
+
   async onModuleDestroy() {
     if (this.pool) {
       await this.pool.close(0);

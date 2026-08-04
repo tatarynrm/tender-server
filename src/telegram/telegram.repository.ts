@@ -223,9 +223,26 @@ export class TelegramRepository implements OnModuleInit {
   }
 
 
+  /**
+   * Виконання SQL, згенерованого ШІ, у транзакції READ ONLY з таймаутом.
+   * Postgres сам відхилить будь-який запис (INSERT/UPDATE/DELETE, nextval,
+   * setval тощо) незалежно від тексту запиту; після виконання — rollback.
+   */
   async runReadOnlyQuery(sql: string, params: any[] = []): Promise<any[]> {
-    const { rows } = await this.pool.query(sql, params);
-    return rows;
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN TRANSACTION READ ONLY');
+      await client.query(`SET LOCAL statement_timeout = '15s'`);
+      const { rows } = await client.query(sql, params);
+      return rows;
+    } finally {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        this.logger.error('Rollback of read-only query failed', rollbackErr);
+      }
+      client.release();
+    }
   }
 
   // --- Дані для рольового меню бота ---
@@ -255,7 +272,7 @@ export class TelegramRepository implements OnModuleInit {
     return rows[0] || null;
   }
 
-  /** Активні напрямки тендерів, найближчі до завершення — для меню ІКТ. */
+  /** Активні напрямки тендерів, найближчі до завершення — для меню ІСТ. */
   async getActiveTenders(limit: number) {
     const { rows } = await this.pool.query(
       `
@@ -337,7 +354,7 @@ export class TelegramRepository implements OnModuleInit {
     return rows;
   }
 
-  /** Лічильники активності для зведення менеджерів ІКТ. */
+  /** Лічильники активності для зведення менеджерів ІСТ. */
   async getIctSummary() {
     const { rows } = await this.pool.query(`
       SELECT
