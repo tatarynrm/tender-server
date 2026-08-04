@@ -18,11 +18,17 @@ export interface NewMailSummary {
 
 export interface UnreadDigestItem {
   from: string;
+  /** Чиста адреса відправника — ключ для групування частих розсилок. */
+  fromAddress: string;
   subject: string;
   date: Date | null;
   essence: string;
   importance: 'high' | 'medium' | 'low';
   category: string;
+  /** Масова розсилка/реклама (Logist Pro тощо) — у дайджесті згортається до лічильника. */
+  isSpam: boolean;
+  /** Схоже на фішинг чи інший небезпечний лист — позначається окремо. */
+  isSuspicious: boolean;
 }
 
 /**
@@ -249,11 +255,14 @@ export class MailReaderService {
       const c = byIndex.get(i);
       return {
         from: m.from,
+        fromAddress: m.fromAddress,
         subject: m.subject,
         date: m.date,
         essence: c?.essence || m.preview.slice(0, 120) || '(порожній лист)',
         importance: c?.importance || 'medium',
         category: c?.category || '—',
+        isSpam: !!c?.is_spam,
+        isSuspicious: !!c?.is_suspicious,
       };
     });
 

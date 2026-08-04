@@ -140,7 +140,14 @@ export class AiService {
   async classifyEmails(
     emails: { from: string; subject: string; body: string }[],
   ): Promise<
-    { index: number; essence: string; importance: 'high' | 'medium' | 'low'; category: string }[]
+    {
+      index: number;
+      essence: string;
+      importance: 'high' | 'medium' | 'low';
+      category: string;
+      is_spam: boolean;
+      is_suspicious: boolean;
+    }[]
   > {
     if (!emails.length) return [];
 
@@ -151,6 +158,8 @@ export class AiService {
 1. "essence" — стисло опиши суть листа ОДНИМ реченням українською (максимум 15 слів, по ділу, без вступів).
 2. "importance" — оціни важливість: "high" (термінове/гроші/договори/претензії/дедлайни/особисте звернення від клієнта чи керівництва), "medium" (робоче листування, тендери, звичайні запити), "low" (розсилки, реклама, автоматичні сповіщення, спам, соцмережі).
 3. "category" — коротка категорія 1-2 слова українською (напр. "Тендер", "Договір", "Претензія", "Розсилка", "Рахунок", "Особисте").
+4. "is_spam" — true, якщо це масова розсилка, реклама, автоматичне маркетингове сповіщення сервісів (Logist Pro, Lardi-Trans, біржі, вебінари, соцмережі тощо), а НЕ особисте робоче звернення. Робочі листи від людей — завжди false.
+5. "is_suspicious" — true, якщо лист виглядає небезпечним: фішинг, підробка під банк/держоргани/відомий сервіс, вимагання термінової оплати за дивними реквізитами, підозрілі посилання чи вкладення.
 Поверни РІВНО стільки елементів, скільки листів, зберігаючи їхній порядок через поле "index".`,
     });
 
@@ -183,8 +192,10 @@ export class AiService {
                       enum: ['high', 'medium', 'low'],
                     },
                     category: { type: SchemaType.STRING },
+                    is_spam: { type: SchemaType.BOOLEAN },
+                    is_suspicious: { type: SchemaType.BOOLEAN },
                   },
-                  required: ['index', 'essence', 'importance', 'category'],
+                  required: ['index', 'essence', 'importance', 'category', 'is_spam', 'is_suspicious'],
                 },
               },
             },
@@ -205,6 +216,8 @@ export class AiService {
           essence: string;
           importance: 'high' | 'medium' | 'low';
           category: string;
+          is_spam: boolean;
+          is_suspicious: boolean;
         }[];
       };
       return parsed.results || [];

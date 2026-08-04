@@ -870,11 +870,49 @@ function shortSender(from: string): string {
   return (base.split('@')[0] || base).trim().slice(0, 40);
 }
 
-/** Компактний дайджест непрочитаних листів, поділений за важливістю. */
+/** Ключ групування листів одного відправника: адреса, без неї — ім'я. */
+function senderKey(it: UnreadDigestItem): string {
+  return (it.fromAddress || shortSender(it.from)).toLowerCase().trim();
+}
+
+/** 1 лист, 2-4 листи, 5+ листів. */
+function mailCountWord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} лист`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} листи`;
+  return `${n} листів`;
+}
+
+/**
+ * Компактний дайджест непрочитаних листів.
+ *
+ * Правило: адекватні (робочі) листи показуються з суттю, поділені за важливістю.
+ * Спам/розсилки (Logist Pro тощо) та підозрілі листи текстом НЕ виводяться —
+ * лише відправник і кількість, із позначкою 🚫 спам чи ⚠️ небезпечно.
+ * Додатково згортаються часті відправники: 2+ неважливі листи від одного
+ * відправника — теж у зведений рядок, навіть якщо ШІ не назвав їх спамом.
+ */
 function formatUnreadDigest(items: UnreadDigestItem[]): string {
   if (!items.length) {
     return '✅ Непрочитаних листів немає.';
   }
+
+  const senderCounts = new Map<string, number>();
+  for (const it of items) {
+    const key = senderKey(it);
+    senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
+  }
+
+  const isCollapsed = (it: UnreadDigestItem) =>
+    it.isSpam ||
+    it.isSuspicious ||
+    (it.importance === 'low' && (senderCounts.get(senderKey(it)) || 0) >= 2);
+
+  const normal = items.filter((i) => !isCollapsed(i));
+  const collapsed = items.filter(isCollapsed);
+
+  const lines: string[] = [`📬 <b>Непрочитані листи:</b> ${items.length}`];
 
   const groups: { key: UnreadDigestItem['importance']; title: string }[] = [
     { key: 'high', title: '🔴 <b>ВАЖЛИВІ</b>' },
@@ -882,10 +920,8 @@ function formatUnreadDigest(items: UnreadDigestItem[]): string {
     { key: 'low', title: '⚪️ <b>НЕВАЖЛИВІ</b>' },
   ];
 
-  const lines: string[] = [`📬 <b>Непрочитані листи:</b> ${items.length}`];
-
   for (const g of groups) {
-    const inGroup = items.filter((i) => i.importance === g.key);
+    const inGroup = normal.filter((i) => i.importance === g.key);
     if (!inGroup.length) continue;
 
     lines.push('', `${g.title} (${inGroup.length})`);
@@ -894,6 +930,34 @@ function formatUnreadDigest(items: UnreadDigestItem[]): string {
       const sender = escapeHtml(shortSender(it.from));
       const essence = escapeHtml(it.essence);
       lines.push(`• ${cat}<b>${sender}</b> — ${essence}`);
+    }
+  }
+
+  if (collapsed.length) {
+    // Зводимо по відправнику: кількість + найгірша позначка серед його листів
+    const bySender = new Map<
+      string,
+      { name: string; count: number; suspicious: boolean }
+    >();
+    for (const it of collapsed) {
+      const key = senderKey(it);
+      const rec = bySender.get(key) || {
+        name: shortSender(it.from),
+        count: 0,
+        suspicious: false,
+      };
+      rec.count += 1;
+      rec.suspicious = rec.suspicious || it.isSuspicious;
+      bySender.set(key, rec);
+    }
+
+    lines.push('', `🚫 <b>СПАМ / РОЗСИЛКИ</b> (${collapsed.length})`);
+    const sorted = [...bySender.values()].sort(
+      (a, b) => Number(b.suspicious) - Number(a.suspicious) || b.count - a.count,
+    );
+    for (const s of sorted) {
+      const danger = s.suspicious ? ' ⚠️ <b>схоже на фішинг — не відкривати</b>' : '';
+      lines.push(`• <b>${escapeHtml(s.name)}</b> — ${mailCountWord(s.count)}${danger}`);
     }
   }
 
