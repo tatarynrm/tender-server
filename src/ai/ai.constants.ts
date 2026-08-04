@@ -6,7 +6,7 @@ Here is the COMPLETE PostgreSQL database schema (Tender Platform):
 - Table: person (Individuals / employees of partners)
   Columns: id (bigint PK), surname (varchar), name (varchar), last_name (varchar / patronymic), email (varchar), id_company (bigint FK company.id), position (varchar)
 - Table: person_role (Access roles of individuals)
-  Columns: id (bigint PK), id_person (bigint FK person.id), is_admin (bool), is_ict (bool), is_manager (bool)
+  Columns: id (bigint PK), id_person (bigint FK person.id), is_admin (bool), is_ict (bool), is_manager (bool), is_head_department (bool), is_inspect_tender_close (bool)
 - Table: person_phone (Contact phones)
   Columns: id (bigint PK), id_person (bigint FK person.id), phone (varchar), is_telegram (bool), is_viber (bool), is_whatsapp (bool)
 - Table: person_telegram (Telegram accounts links)
@@ -14,17 +14,19 @@ Here is the COMPLETE PostgreSQL database schema (Tender Platform):
 - Table: vehicle (Trucks / vehicles registered by carriers)
   Columns: id (bigint PK), carnum (varchar), id_company (bigint FK company.id), ids_trailer_type (varchar), vin (varchar), year_release (int)
 - Table: tender (Cargo listings created by clients for bidding)
-  Columns: id (bigint PK), cargo (varchar), id_owner_company (bigint FK company.id), price_start (numeric), price_step (numeric), price_redemption (numeric), price_client (numeric), weight (numeric), volume (numeric), date_load (timestamp), date_unload (timestamp), time_start (timestamp), time_end (timestamp)
+  Columns: id (bigint PK), cargo (varchar), id_owner_company (bigint FK company.id), id_author (bigint FK person.id - the ICT manager who created/published the tender), created_at (timestamp - when the tender was created), price_start (numeric), price_step (numeric), price_redemption (numeric), price_client (numeric), weight (numeric), volume (numeric), car_count (int), date_load (timestamp), date_unload (timestamp), time_start (timestamp), time_end (timestamp)
 - Table: tender_lst (Routes, countries and current status of each tender)
-  Columns: id (bigint PK), id_tender (bigint FK tender.id), city_from (varchar), city_to (varchar), ids_country_from (varchar), ids_country_to (varchar), ids_status (varchar e.g. ACTIVE, CLOSED), car_count_all (int), car_count_actual (int), car_count_closed (int)
+  Columns: id (bigint PK), id_tender (bigint FK tender.id), city_from (varchar), city_to (varchar), ids_country_from (varchar), ids_country_to (varchar), ids_status (varchar, one of: DRAFT, ANALYZE, ACTIVE, CLOSED, ARCHIVE), car_count_all (int), car_count_actual (int), car_count_closed (int)
 - Table: tender_rate (Bids/offers proposed by carriers)
   Columns: id (bigint PK), id_tender (bigint FK tender.id), id_company (bigint FK company.id), price_proposed (numeric), time_add (timestamp), id_author (bigint FK person.id)
 - Table: tender_winner (Assigned winners for each tender)
   Columns: id (bigint PK), id_tender (bigint FK tender.id), id_company (bigint FK company.id), id_person (bigint FK person.id), id_tender_rate (bigint FK tender_rate.id), car_count (int)
 - Table: crm_load (Client cargo bookings)
   Columns: id (bigint PK), id_client (bigint FK company.id), price (numeric), date_load (date), date_unload (date), load_info (text)
-- Table: department (Company departments)
-  Columns: id (bigint PK), department_name (varchar), id_company (bigint FK company.id)
+- Table: department (Company departments / відділи, e.g. 'Відділ міжнародних перевезень', 'Комерційний відділ')
+  Columns: id (bigint PK), department_name (varchar - Ukrainian department name), id_company (bigint FK company.id), root_company (bigint - parent department id for nested sub-departments, NULL for top-level)
+- Table: person_department (Links employees to their departments)
+  Columns: id (bigint PK), id_department (bigint FK department.id), id_person (bigint FK person.id)
 - Table: files (Uploaded attachments / scans)
   Columns: id (bigint PK), display_name (varchar), extension (varchar), file_size (bigint), url (text), tblref (varchar e.g. company, tender), id_tblref (bigint)
 - Table: usr (Web login credentials)
@@ -47,6 +49,27 @@ RELATIONSHIPS AND JOINS GUIDE (PostgreSQL):
   JOIN person_telegram ON person.id = person_telegram.id_person
 - To join a vehicle with its owner company:
   JOIN company ON vehicle.id_company = company.id
+- To find the department of the manager who created a tender:
+  JOIN person ON tender.id_author = person.id
+  JOIN person_department ON person.id = person_department.id_person
+  JOIN department ON person_department.id_department = department.id
+`;
+
+export const POSTGRES_REPORT_GUIDE = `
+REPORT MODE — the user is an ICT logistics administrator asking for aggregated management reports.
+Guidelines:
+- Prefer aggregate queries: COUNT(*), SUM(...), GROUP BY with ORDER BY, and clear column aliases.
+- "Відділ" (department) of a tender = department of its author:
+  FROM tender t
+  JOIN person p ON t.id_author = p.id
+  JOIN person_department pd ON pd.id_person = p.id
+  JOIN department d ON d.id = pd.id_department
+  Group by d.department_name. Use LEFT JOIN from department when the user wants to see departments with zero tenders too.
+- Ignore person-named sub-departments (department.root_company IS NOT NULL) unless the user asks about specific people; top-level departments have root_company IS NULL.
+- Tender status lives in tender_lst.ids_status (DRAFT, ANALYZE, ACTIVE, CLOSED, ARCHIVE). "Проведені/закриті" = CLOSED, "активні" = ACTIVE.
+- Time filters: tender.created_at (when published), tender_rate.time_add (when carriers bid). "Активність" по тендеру = кількість ставок (tender_rate) на його тендери.
+- Department names are Ukrainian; match user-provided names with ILIKE '%фрагмент%' (e.g. 'міжнарод' → 'Відділ міжнародних перевезень').
+- Round numeric aggregates to 2 decimals.
 `;
 
 export const ORACLE_SCHEMA = `

@@ -10,6 +10,17 @@ import {
 import { ApprovalService } from 'src/approval/approval.service';
 import { ClaudeAgentService } from 'src/claude-agent/claude-agent.service';
 
+// --- Режим звітів по тендерах (тільки для адміністраторів ІКТ: is_ict + is_admin) ---
+const REPORT_EXIT_BUTTON = '🚪 Вийти зі звітів';
+const REPORT_EXAMPLES_BUTTON = '💡 Приклади звітів';
+// Кнопки швидких звітів: текст кнопки → готове запитання для ШІ-агента
+const REPORT_QUICK_QUESTIONS: Record<string, string> = {
+  '📊 Тендери по відділах за місяць':
+    'Скільки тендерів виставив кожен відділ за останні 30 днів? Покажи кількість тендерів по кожному відділу, відсортуй за спаданням.',
+  '📈 Активність відділів за тиждень':
+    'Покажи активність відділів за останні 7 днів: скільки тендерів створено кожним відділом і скільки ставок перевізників отримали їхні тендери.',
+};
+
 @Update()
 export class TelegramUpdate {
   constructor(
@@ -122,20 +133,21 @@ export class TelegramUpdate {
         return;
       }
 
-      const hasAiAccess = await this.telegramService.checkUserHasAiAccess(telegramId);
+      // Адмін-меню бачать лише адміністратори ІКТ (ролі is_ict + is_admin у БД;
+      // окремої ролі is_ict_admin не існує). Системні кнопки (деплой, пошта) —
+      // додатково лише для головного адміна з TELEGRAM_ADMIN_ID.
+      const isIctAdmin = await this.telegramService.checkUserHasAiAccess(telegramId);
       const isAdmin = this.telegramService.isAdmin(telegramId);
 
       const inlineButtons: any[] = [];
+      if (isIctAdmin) {
+        inlineButtons.push([Markup.button.callback('📊 Звіти по тендерах', 'enter_reports')]);
+      }
       if (isAdmin) {
-
         inlineButtons.push([Markup.button.callback('📬 Непрочитані листи', 'check_unread_mail')]);
         inlineButtons.push([Markup.button.callback('🚀 Запустити DEPLOY', 'run_deploy')]);
-        inlineButtons.push([Markup.button.callback('📊 Статистика', 'get_stats')]);
+        inlineButtons.push([Markup.button.callback('📈 Статистика', 'get_stats')]);
       }
-      // ШІ-кнопка тимчасово відключена
-      // if (hasAiAccess) {
-      //   inlineButtons.push([Markup.button.callback('🤖 ШІ-Агент', 'enter_ai')]);
-      // }
 
       if (inlineButtons.length > 0) {
         await ctx.reply(
@@ -270,6 +282,10 @@ export class TelegramUpdate {
 
   @Action('get_stats')
   async handleStats(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.answerCbQuery('⛔️ Немає прав');
+    }
     const stats = await this.telegramService.getSubscriberStats();
     await ctx.answerCbQuery();
     await ctx.reply(
@@ -348,20 +364,66 @@ export class TelegramUpdate {
     return ctx.reply('⛔️ ШІ-Агент тимчасово недоступний. Спробуйте пізніше.');
   }
 
+  /**
+   * `/reports` — ШІ-агент звітів по тендерах (Gemini поверх Postgres).
+   * Доступ лише для адміністраторів ІКТ: ролі is_ict + is_admin у person_role.
+   */
+  @Command('reports')
+  @Action('enter_reports')
+  async enterReportsScene(ctx: Context) {
+    if ((ctx as any).callbackQuery) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
+
+    const telegramId = ctx.from?.id;
+    if (!telegramId) return;
+
+    const isIctAdmin = await this.telegramService.checkUserHasAiAccess(telegramId);
+    if (!isIctAdmin) {
+      return ctx.reply('⛔️ Звіти доступні лише адміністраторам ІКТ.');
+    }
+
+    const session = (ctx as any).session;
+    if (session) {
+      session.scene = 'report';
+      session.ai_mode = 'postgres';
+    }
+
+    await ctx.reply(
+      markdownToHtml(
+        '📊 **Режим звітів по тендерах**\n\n' +
+        'Опишіть потрібний звіт своїми словами (текстом або голосовим) — я згенерую його з даних тендерної платформи.\n\n' +
+        'Наприклад:\n' +
+        '• *"Скільки тендерів виставив відділ міжнародних перевезень за липень?"*\n' +
+        '• *"Чи була активність по тендерах комерційного відділу цього тижня?"*\n' +
+        '• *"Порівняй відділи за кількістю закритих тендерів за квартал"*'
+      ),
+      {
+        parse_mode: 'HTML',
+        ...Markup.keyboard([
+          [Object.keys(REPORT_QUICK_QUESTIONS)[0]],
+          [Object.keys(REPORT_QUICK_QUESTIONS)[1]],
+          [REPORT_EXAMPLES_BUTTON, REPORT_EXIT_BUTTON],
+        ]).resize(),
+      },
+    );
+  }
+
   @Command('exit')
   @Action('exit_ai')
   async exitAiScene(ctx: Context) {
     if ((ctx as any).session) {
       (ctx as any).session.scene = undefined;
     }
-    await ctx.reply('🚪 Ви вийшли з режиму ШІ-Агента. Повертаємось до звичайного режиму.', Markup.removeKeyboard());
+    await ctx.reply('🚪 Ви вийшли з режиму помічника. Повертаємось до звичайного режиму.', Markup.removeKeyboard());
   }
 
   @On('message')
   async handleAllMessages(ctx: Context) {
     const session = (ctx as any).session;
-    if (!session || session.scene !== 'ai') {
-      // If not in AI scene, do nothing (pass it through)
+    const scene = session?.scene;
+    if (!session || (scene !== 'ai' && scene !== 'report')) {
+      // Не в режимі ШІ/звітів — пропускаємо повідомлення далі
       return;
     }
 
@@ -371,6 +433,11 @@ export class TelegramUpdate {
     const message: any = ctx.message;
     const text = message?.text;
     const voiceFileId = message?.voice?.file_id;
+
+    if (scene === 'report') {
+      await this.handleReportMessage(ctx, text, voiceFileId);
+      return;
+    }
 
     if (text === '🚪 Вийти з ШІ-Агента') {
       await this.exitAiScene(ctx);
@@ -455,17 +522,85 @@ export class TelegramUpdate {
       return;
     }
 
-    const statusMsg = await ctx.reply(markdownToHtml(`⏳ **Обробляю ваш запит до ${aiMode === 'oracle' ? 'БАЗИ' : 'Тендерної платформи'}...**`), { parse_mode: 'HTML' });
+    await this.runAiQueryAndReply(ctx, {
+      text,
+      voiceFileId,
+      aiMode,
+      statusText: `⏳ **Обробляю ваш запит до ${aiMode === 'oracle' ? 'БАЗИ' : 'Тендерної платформи'}...**`,
+      exitButtonText: '🚪 Вийти з ШІ-Агента',
+    });
+  }
 
+  /** Повідомлення в режимі звітів по тендерах (scene === 'report'). */
+  private async handleReportMessage(ctx: Context, text?: string, voiceFileId?: string) {
+    if (text === REPORT_EXIT_BUTTON) {
+      await this.exitAiScene(ctx);
+      return;
+    }
+
+    if (text === REPORT_EXAMPLES_BUTTON) {
+      const examples =
+        '💡 **Приклади звітів:**\n\n' +
+        '• *"Скільки тендерів виставив кожен відділ за останній місяць?"*\n' +
+        '• *"Який відділ отримав найбільше ставок перевізників за тиждень?"*\n' +
+        '• *"Покажи закриті тендери відділу перевезень по Україні за липень"*\n' +
+        '• *"Чи була активність по тендерах Вінницького відділення за останні 14 днів?"*\n' +
+        '• *"Середня стартова ціна тендерів по відділах за квартал"*';
+      await ctx.reply(markdownToHtml(examples), { parse_mode: 'HTML' });
+      return;
+    }
+
+    // Кнопка швидкого звіту підміняється готовим запитанням для ШІ
+    const question = (text && REPORT_QUICK_QUESTIONS[text]) || text;
+
+    if (!question && !voiceFileId) {
+      await ctx.reply('❓ Опишіть потрібний звіт текстом або голосовим повідомленням.');
+      return;
+    }
+
+    await this.runAiQueryAndReply(ctx, {
+      text: question,
+      voiceFileId,
+      aiMode: 'postgres',
+      reportMode: true,
+      statusText: '⏳ **Готую звіт, це може зайняти до хвилини...**',
+      exitButtonText: REPORT_EXIT_BUTTON,
+    });
+  }
+
+  /**
+   * Виконує ШІ-запит у фоні й надсилає відповідь частинами до 4000 символів.
+   * Fire-and-forget: Telegraf-webhook має відповісти одразу, інакше таймаут 90s.
+   */
+  private async runAiQueryAndReply(
+    ctx: Context,
+    opts: {
+      text?: string;
+      voiceFileId?: string;
+      aiMode: 'postgres' | 'oracle';
+      reportMode?: boolean;
+      statusText: string;
+      exitButtonText: string;
+    },
+  ) {
+    const telegramId = ctx.from!.id;
+    const statusMsg = await ctx.reply(markdownToHtml(opts.statusText), { parse_mode: 'HTML' });
     const chatId = ctx.chat!.id;
     const statusMsgId = statusMsg.message_id;
+    const exitKeyboard = Markup.inlineKeyboard([
+      [Markup.button.callback(opts.exitButtonText, 'exit_ai')],
+    ]);
 
-    // Fire-and-forget: виконуємо AI-запит у фоні, щоб Telegraf webhook повернувся одразу
-    // і не отримав таймаут 90s. Результат надсилаємо через bot.telegram асинхронно.
     void (async () => {
       try {
         await ctx.sendChatAction('typing');
-        const response = await this.telegramService.handleAiQuery(telegramId, text, voiceFileId, aiMode);
+        const response = await this.telegramService.handleAiQuery(
+          telegramId,
+          opts.text,
+          opts.voiceFileId,
+          opts.aiMode,
+          opts.reportMode ?? false,
+        );
 
         // Split response into chunks under 4000 characters
         const maxLength = 4000;
@@ -494,9 +629,7 @@ export class TelegramUpdate {
           markdownToHtml(chunks[0]),
           {
             parse_mode: 'HTML',
-            ...Markup.inlineKeyboard([
-              [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
-            ])
+            ...exitKeyboard,
           }
         );
 
@@ -504,22 +637,20 @@ export class TelegramUpdate {
         for (let i = 1; i < chunks.length; i++) {
           await ctx.telegram.sendMessage(chatId, markdownToHtml(chunks[i]), {
             parse_mode: 'HTML',
-            ...Markup.inlineKeyboard([
-              [Markup.button.callback('🚪 Вийти з ШІ-Агента', 'exit_ai')]
-            ])
+            ...exitKeyboard,
           });
         }
       } catch (error) {
-        console.error('Error handling message in AI scene:', error);
+        console.error('Error handling AI/report query:', error);
         try {
           await ctx.telegram.editMessageText(
             chatId,
             statusMsgId,
             undefined,
-            '❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.'
+            '❌ Сталася помилка при обробці запиту. Спробуйте пізніше.'
           );
         } catch (editErr) {
-          await ctx.telegram.sendMessage(chatId, '❌ Сталася помилка при обробці запиту ШІ. Спробуйте пізніше.');
+          await ctx.telegram.sendMessage(chatId, '❌ Сталася помилка при обробці запиту. Спробуйте пізніше.');
         }
       }
     })();

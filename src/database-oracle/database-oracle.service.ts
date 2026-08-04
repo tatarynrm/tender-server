@@ -11,7 +11,7 @@ import * as path from 'path';
 @Injectable()
 export class DatabaseOracleService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DatabaseOracleService.name);
-  private pool: oracledb.Pool;
+  private pool!: oracledb.Pool;
 
   private oracleTables: { name: string; comments?: string }[] = [];
 

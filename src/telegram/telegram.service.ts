@@ -39,6 +39,8 @@ export class TelegramService implements OnModuleInit {
       await this.bot.telegram.setMyCommands([
         { command: 'start', description: 'Запустити / Перезапустити бота' },
         { command: 'info', description: 'Інформація про бота' },
+        { command: 'reports', description: '📊 Звіти по тендерах (для адміністраторів ІКТ)' },
+        { command: 'exit', description: '🚪 Вийти з режиму звітів / ШІ' },
         // { command: 'ai', description: '🤖 ШІ-Агент (тільки для ICT адміністраторів)' }, // тимчасово відключено
         // { command: 'exit', description: '🚪 Вийти з режиму ШІ-Агента' }, // тимчасово відключено
       ]);
@@ -349,6 +351,7 @@ export class TelegramService implements OnModuleInit {
     text?: string,
     voiceFileId?: string,
     targetDb?: 'postgres' | 'oracle',
+    reportMode = false,
   ): Promise<string> {
     // 1. Check access permissions (must be both is_admin and is_ict)
     const roles = await this.repository.getUserRoles(telegramId);
@@ -401,7 +404,9 @@ export class TelegramService implements OnModuleInit {
       } catch (err) {
         this.logger.error('Error resolving dynamic Oracle schema:', err);
       }
-    } else if (targetDb === 'postgres') {
+    } else if (targetDb === 'postgres' && !reportMode) {
+      // У режимі звітів динамічний вибір таблиць пропускаємо: звітам потрібна
+      // повна статична схема з гайдом по відділах, а не вирізка з пари таблиць.
       try {
         const tablesList = this.repository.getTablesList();
         if (tablesList && tablesList.length > 0) {
@@ -416,7 +421,7 @@ export class TelegramService implements OnModuleInit {
       }
     }
 
-    const result = await this.aiService.generateDbQuery(text || '', voiceFile, targetDb, customSchema);
+    const result = await this.aiService.generateDbQuery(text || '', voiceFile, targetDb, customSchema, reportMode);
 
 
 

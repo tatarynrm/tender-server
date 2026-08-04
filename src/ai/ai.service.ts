@@ -1,7 +1,7 @@
 // src/ai/ai.service.ts
 import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, Part, Schema, SchemaType } from '@google/generative-ai';
-import { POSTGRES_SCHEMA, ORACLE_SCHEMA } from './ai.constants';
+import { POSTGRES_SCHEMA, ORACLE_SCHEMA, POSTGRES_REPORT_GUIDE } from './ai.constants';
 import * as fs from 'fs';
 import * as pdf from 'pdf-parse';
 
@@ -391,6 +391,7 @@ Select the exact table names from the list above that are necessary to construct
     voiceFile?: { buffer: Buffer; mimetype: string },
     targetDb?: 'postgres' | 'oracle',
     customSchema?: string,
+    reportMode = false,
   ): Promise<{ type: 'sql' | 'conversational'; database?: 'postgres' | 'oracle'; sql?: string; reply?: string }> {
     let schemaDefinition = '';
     
@@ -421,7 +422,7 @@ You must write a read-only PostgreSQL SELECT query to answer the user request.
 CRITICAL: Always write SQL dialect compatible with PostgreSQL. Limit output rows to 50 using LIMIT 50.
 
 ${POSTGRES_SCHEMA}
-
+${reportMode ? POSTGRES_REPORT_GUIDE : ''}
 Task: Write a clean, read-only SELECT query for PostgreSQL database to get the requested information. If the user request is just a greeting or general message, set type to "conversational" and return a friendly reply.
 Do NOT write mutating queries (INSERT, UPDATE, DELETE, etc.). Only SELECT.
 Return JSON matching this schema:
