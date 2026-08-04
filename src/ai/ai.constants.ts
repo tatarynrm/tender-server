@@ -67,7 +67,13 @@ Guidelines:
   Group by d.department_name. Use LEFT JOIN from department when the user wants to see departments with zero tenders too.
 - Ignore person-named sub-departments (department.root_company IS NOT NULL) unless the user asks about specific people; top-level departments have root_company IS NULL.
 - Tender status lives in tender_lst.ids_status (DRAFT, ANALYZE, ACTIVE, CLOSED, ARCHIVE). "Проведені/закриті" = CLOSED, "активні" = ACTIVE.
-- Time filters: tender.created_at (when published), tender_rate.time_add (when carriers bid). "Активність" по тендеру = кількість ставок (tender_rate) на його тендери.
+- Time filters: tender.created_at (when published), tender_rate.time_add (when carriers bid).
+- Do NOT include cargo weight (tender.weight) or volume (tender.volume) in reports unless the user explicitly asks for them.
+- Focus on tender start price (tender.price_start): include AVG/MIN/MAX price_start in department and period summaries.
+- "Активність" has two sides — report both when asked about activity:
+  * managers: COUNT of tenders created (tender.id_author → person → department) per period;
+  * carriers: COUNT of bids (tender_rate) on those tenders and COUNT(DISTINCT tender_rate.id_company) of bidding carriers.
+- "Звіт перед нарадою" / detailed period report = one aggregated row per department for the requested period: tenders created, breakdown by tender_lst.ids_status (ACTIVE/CLOSED), carrier bids received, distinct bidding carriers, AVG price_start.
 - Department names are Ukrainian; match user-provided names with ILIKE '%фрагмент%' (e.g. 'міжнарод' → 'Відділ міжнародних перевезень').
 - Round numeric aggregates to 2 decimals.
 `;
