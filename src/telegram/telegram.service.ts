@@ -8,9 +8,24 @@ import { TelegramGateway } from './telegram.gateway';
 import { AiService } from '../ai/ai.service';
 import { DatabaseOracleService } from '../database-oracle/database-oracle.service';
 import { TelegramAccess } from './telegram.menu';
+import { MailService } from 'src/libs/common/mail/mail.service';
 import axios from 'axios';
 
 const ADMIN_ID = 282039969;
+
+function escapeHtmlBasic(s: string): string {
+  return (s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** Результат ШІ-запиту: текст для чату + сирі рядки для PDF/Excel-звітів. */
+export interface AiQueryResult {
+  text: string;
+  rows?: any[];
+  question?: string;
+}
 
 @Injectable()
 export class TelegramService implements OnModuleInit {
@@ -23,6 +38,7 @@ export class TelegramService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly aiService: AiService,
     private readonly oracleService: DatabaseOracleService,
+    private readonly mailService: MailService,
     @InjectBot() private readonly bot: Telegraf<any>,
   ) {
     this.channelId = this.configService.get<string>('TELEGRAM_CHANNEL_ID')!;
@@ -79,6 +95,7 @@ export class TelegramService implements OnModuleInit {
     }
     if (access.isSuperAdmin) {
       commands.push(
+        { command: 'ai', description: '🧠 ШІ-База' },
         { command: 'mail', description: '📬 Непрочитані листи' },
         { command: 'deploy', description: '🚀 Деплой' },
         { command: 'task', description: '🤖 Задача для Claude Code' },
@@ -434,6 +451,51 @@ export class TelegramService implements OnModuleInit {
     return this.repository.getIctSummary();
   }
 
+  /** Email адміністратора з його профілю в БД (person.email). */
+  public async getAdminEmail(telegramId: number): Promise<string | null> {
+    const profile = await this.repository.getProfileByTelegramId(telegramId);
+    return profile?.email || null;
+  }
+
+  /**
+   * Відправка звіту «ШІ-Бази» на пошту адміністратора вкладенням (PDF/Excel).
+   * Адреса береться з профілю — стороннім відправити неможливо.
+   */
+  public async sendAiReportByEmail(
+    telegramId: number,
+    question: string,
+    fileName: string,
+    fileBuffer: Buffer,
+  ): Promise<string> {
+    const email = await this.getAdminEmail(telegramId);
+    if (!email) {
+      return '❌ У вашому профілі не вказано email — не маю куди відправити звіт.';
+    }
+
+    const from = `"ICT TENDER" <${this.configService.get<string>('ICT_MAIL_SUPPORT_LOGIN')}>`;
+    const html = `
+      <p>Вітаю!</p>
+      <p>У вкладенні — звіт «ШІ-База», сформований Telegram-ботом ICT Tender.</p>
+      <p><b>Питання:</b> ${escapeHtmlBasic(question || '—')}</p>
+      <p>Файл: ${escapeHtmlBasic(fileName)}</p>
+    `;
+
+    try {
+      await this.mailService.sendMail(
+        email,
+        `Звіт ШІ-База — ${new Date().toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })}`,
+        html,
+        [{ filename: fileName, content: fileBuffer }],
+        'support',
+        from,
+      );
+      return `📧 Звіт відправлено на <b>${escapeHtmlBasic(email)}</b>.`;
+    } catch (err) {
+      this.logger.error('Не вдалося відправити звіт ШІ-Бази на пошту:', err);
+      return '❌ Не вдалося відправити лист. Перевірте налаштування пошти або спробуйте пізніше.';
+    }
+  }
+
   public async checkUserHasAiAccess(telegramId: number): Promise<boolean> {
     const roles = await this.repository.getUserRoles(telegramId);
     if (!roles) return false;
@@ -446,11 +508,11 @@ export class TelegramService implements OnModuleInit {
     voiceFileId?: string,
     targetDb?: 'postgres' | 'oracle',
     reportMode = false,
-  ): Promise<string> {
+  ): Promise<AiQueryResult> {
     // 1. Check access permissions (must be both is_admin and is_ict)
     const roles = await this.repository.getUserRoles(telegramId);
     if (!roles || !roles.is_admin || !roles.is_ict) {
-      return '⛔️ Доступ заборонено. Тільки користувачі з ролями Адміністратора та ICT мають доступ до ШІ-Агента.';
+      return { text: '⛔️ Доступ заборонено. Тільки користувачі з ролями Адміністратора та ICT мають доступ до ШІ-Агента.' };
     }
     const userFullName = [roles.surname, roles.name, roles.last_name].filter(Boolean).join(' ');
 
@@ -475,12 +537,12 @@ export class TelegramService implements OnModuleInit {
         }
       } catch (err) {
         this.logger.error('Failed to download or transcribe Telegram voice file:', err);
-        return '❌ Не вдалося завантажити голосове повідомлення. Спробуйте ще раз.';
+        return { text: '❌ Не вдалося завантажити голосове повідомлення. Спробуйте ще раз.' };
       }
     }
 
     if (!text && !voiceFile) {
-      return '❓ Будь ласка, введіть текстовий або запишіть голосовий запит.';
+      return { text: '❓ Будь ласка, введіть текстовий або запишіть голосовий запит.' };
     }
 
     // 3. Request Gemini to construct query
@@ -521,7 +583,7 @@ export class TelegramService implements OnModuleInit {
 
 
     if (result.type === 'conversational') {
-      return result.reply || 'Привіт! Чим я можу допомогти вам сьогодні?';
+      return { text: result.reply || 'Привіт! Чим я можу допомогти вам сьогодні?', question: text };
     }
 
     if (result.type === 'sql' && result.sql) {
@@ -532,7 +594,7 @@ export class TelegramService implements OnModuleInit {
         this.logger.warn(
           `Rejected unsafe generated SQL from TG User ${telegramId} (${rejectReason}): ${sqlQuery}`,
         );
-        return '❌ Запит відхилено з міркувань безпеки: ШІ-агенту дозволено виключно читання даних (SELECT).';
+        return { text: '❌ Запит відхилено з міркувань безпеки: ШІ-агенту дозволено виключно читання даних (SELECT).' };
       }
 
       try {
@@ -553,16 +615,16 @@ export class TelegramService implements OnModuleInit {
           rows,
           userFullName,
         );
-        return finalAnswer;
+        return { text: finalAnswer, rows, question: text };
 
       } catch (dbErr) {
         this.logger.error(`Database query failed on ${result.database || 'postgres'}: ${sqlQuery}`, dbErr);
-        return `❌ Помилка при виконанні запиту до бази даних ${result.database === 'oracle' ? 'Oracle' : 'PostgreSQL'}.\nЛог: ${dbErr.message}`;
+        return { text: `❌ Помилка при виконанні запиту до бази даних ${result.database === 'oracle' ? 'Oracle' : 'PostgreSQL'}.\nЛог: ${dbErr.message}` };
       }
     }
 
 
-    return '🤔 Не вдалося розпізнати запит або згенерувати SQL. Будь ласка, переформулюйте ваше питання.';
+    return { text: '🤔 Не вдалося розпізнати запит або згенерувати SQL. Будь ласка, переформулюйте ваше питання.' };
   }
 
   /**

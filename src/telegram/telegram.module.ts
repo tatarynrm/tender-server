@@ -41,6 +41,7 @@ import { DatabaseModule } from 'src/database/database.module';
 import { RedisModule } from 'src/libs/common/redis/redis.module';
 import { UserModule } from 'src/user/user.module';
 import { TelegramRepository } from './telegram.repository';
+import { ReportFileService } from './report-file.service';
 import { AiModule } from 'src/ai/ai.module';
 import { DatabaseOracleModule } from 'src/database-oracle/database-oracle.module';
 import { MailReaderModule } from 'src/mail-reader/mail-reader.module';
@@ -75,6 +76,7 @@ import { ClaudeAgentModule } from 'src/claude-agent/claude-agent.module';
     TelegramUpdate,
     TelegramGateway,
     TelegramRepository,
+    ReportFileService,
   ],
   exports: [TelegramService],
 })

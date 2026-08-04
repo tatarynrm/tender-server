@@ -70,6 +70,7 @@ export function buildMainMenu(access: TelegramAccess, portalUrl: string) {
   }
 
   if (access.isSuperAdmin) {
+    rows.push([Markup.button.callback('🧠 ШІ-База', 'enter_ai')]);
     rows.push([
       Markup.button.callback('📬 Непрочитані листи', 'check_unread_mail'),
       Markup.button.callback('🚀 Деплой', 'run_deploy'),

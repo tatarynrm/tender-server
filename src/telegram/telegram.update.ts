@@ -9,6 +9,7 @@ import {
 } from 'src/mail-reader/mail-reader.service';
 import { ApprovalService } from 'src/approval/approval.service';
 import { ClaudeAgentService } from 'src/claude-agent/claude-agent.service';
+import { ReportFileService } from './report-file.service';
 import {
   TelegramAccess,
   buildMainMenu,
@@ -20,6 +21,9 @@ import {
   formatCompanyWins,
   formatIctSummary,
 } from './telegram.menu';
+
+// --- Режим «ШІ-База» (тільки для головного адміністратора) ---
+const AI_EXIT_BUTTON = '🚪 Вийти з ШІ-Бази';
 
 // --- Режим звітів по тендерах (тільки для адміністраторів ІСТ: is_ict + is_admin) ---
 const REPORT_EXIT_BUTTON = '🚪 Вийти зі звітів';
@@ -41,6 +45,7 @@ export class TelegramUpdate {
     private readonly mailReaderService: MailReaderService,
     private readonly approvalService: ApprovalService,
     private readonly claudeAgentService: ClaudeAgentService,
+    private readonly reportFileService: ReportFileService,
   ) {}
 
   // --- Погодження дій Claude Code -----------------------------------------
@@ -548,12 +553,49 @@ export class TelegramUpdate {
     );
   }
 
+  /**
+   * «ШІ-База» — режим запитів до обох БД з доставкою звітів (PDF/Excel,
+   * Telegram або email). Доступ виключно для головного адміністратора
+   * (TELEGRAM_ADMIN_ID) — іншим кнопка не показується, а виклик відхиляється.
+   */
   @Command('ai')
   @Action('enter_ai')
   async enterAiScene(ctx: Context) {
-    // ШІ-Агент тимчасово недоступний
-    if ((ctx as any).callbackQuery) await ctx.answerCbQuery();
-    return ctx.reply('⛔️ ШІ-Агент тимчасово недоступний. Спробуйте пізніше.');
+    if ((ctx as any).callbackQuery) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
+
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.reply('⛔️ ШІ-База доступна лише головному адміністратору.');
+    }
+
+    const session = (ctx as any).session;
+    if (session) {
+      session.scene = 'ai';
+      session.ai_mode = undefined;
+      session.lastAiResult = undefined;
+    }
+
+    await ctx.reply(
+      markdownToHtml(
+        '🧠 **ШІ-База**\n\n' +
+        'Ставте завдання своїми словами — текстом або голосовим. Я сформую відповідь чи звіт із даних, ' +
+        'а потім запропоную відправити його файлом **PDF** чи **Excel** — сюди в Telegram або на вашу пошту.\n\n' +
+        'Спочатку оберіть джерело даних кнопками внизу:\n' +
+        '• **🟢 Тендерна платформа** — тендери, ставки, компанії (PostgreSQL)\n' +
+        '• **🔴 БАЗА** — договори, заявки, претензії, фінанси (Oracle ERP)\n\n' +
+        '🔒 Режим суворо «лише читання»: жодних змін у базах ШІ зробити не може.'
+      ),
+      {
+        parse_mode: 'HTML',
+        ...Markup.keyboard([
+          ['🟢 Тендерна платформа', '🔴 БАЗА'],
+          ['💡 Приклади запитів', '📋 Доступні таблиці'],
+          [AI_EXIT_BUTTON],
+        ]).resize(),
+      },
+    );
   }
 
   /**
@@ -601,6 +643,71 @@ export class TelegramUpdate {
     );
   }
 
+  /**
+   * Доставка останнього результату «ШІ-Бази» файлом: PDF/Excel,
+   * у Telegram або на пошту адміністратора (адреса — з профілю в БД).
+   */
+  @Action(/^aib:(pdf|xlsx):(tg|mail)$/)
+  async handleAiReportDelivery(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.answerCbQuery('⛔️ Немає прав');
+    }
+
+    const session = (ctx as any).session;
+    const last = session?.lastAiResult;
+    if (!last || !Array.isArray(last.rows) || !last.rows.length) {
+      return ctx.answerCbQuery('Немає даних для звіту — спершу зробіть запит.');
+    }
+
+    const data = String((ctx.callbackQuery as any).data);
+    const match = data.match(/^aib:(pdf|xlsx):(tg|mail)$/);
+    if (!match) return;
+    const format = match[1] as 'pdf' | 'xlsx';
+    const channel = match[2] as 'tg' | 'mail';
+
+    try {
+      await ctx.answerCbQuery(format === 'pdf' ? '📄 Готую PDF…' : '📊 Готую Excel…');
+    } catch {}
+
+    const chatId = ctx.chat!.id;
+
+    // Fire-and-forget: генерація файлу й пошта можуть зайняти час,
+    // а webhook має відповісти одразу.
+    void (async () => {
+      try {
+        await ctx.sendChatAction('upload_document');
+        const fileName = this.reportFileService.buildFileName(format);
+        const buffer =
+          format === 'pdf'
+            ? await this.reportFileService.buildPdf(last.question, last.answer, last.rows)
+            : this.reportFileService.buildXlsx(last.question, last.answer, last.rows);
+
+        if (channel === 'tg') {
+          await ctx.telegram.sendDocument(
+            chatId,
+            { source: buffer, filename: fileName },
+            { caption: `📎 Звіт «ШІ-База» (${format === 'pdf' ? 'PDF' : 'Excel'})` },
+          );
+        } else {
+          const resultMsg = await this.telegramService.sendAiReportByEmail(
+            telegramId,
+            last.question,
+            fileName,
+            buffer,
+          );
+          await ctx.telegram.sendMessage(chatId, resultMsg, { parse_mode: 'HTML' });
+        }
+      } catch (err) {
+        console.error('handleAiReportDelivery error:', err);
+        await ctx.telegram.sendMessage(
+          chatId,
+          '❌ Не вдалося сформувати чи відправити звіт. Спробуйте ще раз.',
+        );
+      }
+    })();
+  }
+
   @Command('exit')
   @Action('exit_ai')
   async exitAiScene(ctx: Context) {
@@ -643,7 +750,14 @@ export class TelegramUpdate {
       return;
     }
 
-    if (text === '🚪 Вийти з ШІ-Агента') {
+    // Сцена «ШІ-База» — суворо для головного адміністратора: якщо сюди якось
+    // потрапив хтось інший, тихо скидаємо сцену й нічого не виконуємо.
+    if (!this.telegramService.isAdmin(telegramId)) {
+      session.scene = undefined;
+      return;
+    }
+
+    if (text === AI_EXIT_BUTTON) {
       await this.exitAiScene(ctx);
       return;
     }
@@ -731,7 +845,7 @@ export class TelegramUpdate {
       voiceFileId,
       aiMode,
       statusText: `⏳ **Обробляю ваш запит до ${aiMode === 'oracle' ? 'БАЗИ' : 'Тендерної платформи'}...**`,
-      exitButtonText: '🚪 Вийти з ШІ-Агента',
+      exitButtonText: AI_EXIT_BUTTON,
     });
   }
 
@@ -791,9 +905,6 @@ export class TelegramUpdate {
     const statusMsg = await ctx.reply(markdownToHtml(opts.statusText), { parse_mode: 'HTML' });
     const chatId = ctx.chat!.id;
     const statusMsgId = statusMsg.message_id;
-    const exitKeyboard = Markup.inlineKeyboard([
-      [Markup.button.callback(opts.exitButtonText, 'exit_ai')],
-    ]);
 
     void (async () => {
       try {
@@ -805,12 +916,39 @@ export class TelegramUpdate {
           opts.aiMode,
           opts.reportMode ?? false,
         );
+        const answerText = response.text;
+
+        // Запам'ятовуємо останній результат для кнопок доставки (PDF/Excel):
+        // головний адміністратор зможе відправити його файлом у Telegram чи на пошту.
+        const session = (ctx as any).session;
+        const hasRows = Array.isArray(response.rows) && response.rows.length > 0;
+        if (session && hasRows) {
+          session.lastAiResult = {
+            question: response.question || opts.text || '(голосове повідомлення)',
+            answer: answerText,
+            rows: response.rows,
+          };
+        }
+
+        const keyboardRows = [] as ReturnType<typeof Markup.button.callback>[][];
+        if (hasRows && this.telegramService.isAdmin(telegramId)) {
+          keyboardRows.push([
+            Markup.button.callback('📄 PDF сюди', 'aib:pdf:tg'),
+            Markup.button.callback('📊 Excel сюди', 'aib:xlsx:tg'),
+          ]);
+          keyboardRows.push([
+            Markup.button.callback('📧 PDF на пошту', 'aib:pdf:mail'),
+            Markup.button.callback('📧 Excel на пошту', 'aib:xlsx:mail'),
+          ]);
+        }
+        keyboardRows.push([Markup.button.callback(opts.exitButtonText, 'exit_ai')]);
+        const exitKeyboard = Markup.inlineKeyboard(keyboardRows);
 
         // Split response into chunks under 4000 characters
         const maxLength = 4000;
         const chunks: string[] = [];
-        if (response.length > maxLength) {
-          const lines = response.split('\n');
+        if (answerText.length > maxLength) {
+          const lines = answerText.split('\n');
           let currentChunk = '';
           for (const line of lines) {
             if (currentChunk.length + line.length + 1 > maxLength) {
@@ -822,7 +960,7 @@ export class TelegramUpdate {
           }
           if (currentChunk.trim()) chunks.push(currentChunk);
         } else {
-          chunks.push(response);
+          chunks.push(answerText);
         }
 
         // Edit the first status message with the first chunk
