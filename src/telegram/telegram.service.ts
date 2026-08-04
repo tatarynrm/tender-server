@@ -7,6 +7,7 @@ import { TelegramRepository } from './telegram.repository';
 import { TelegramGateway } from './telegram.gateway';
 import { AiService } from '../ai/ai.service';
 import { DatabaseOracleService } from '../database-oracle/database-oracle.service';
+import { TelegramAccess } from './telegram.menu';
 import axios from 'axios';
 
 const ADMIN_ID = 282039969;
@@ -38,6 +39,7 @@ export class TelegramService implements OnModuleInit {
     try {
       await this.bot.telegram.setMyCommands([
         { command: 'start', description: 'Запустити / Перезапустити бота' },
+        { command: 'menu', description: '📱 Головне меню' },
         { command: 'info', description: 'Інформація про бота' },
         { command: 'reports', description: '📊 Звіти по тендерах (для адміністраторів ІКТ)' },
         { command: 'exit', description: '🚪 Вийти з режиму звітів / ШІ' },
@@ -338,6 +340,54 @@ export class TelegramService implements OnModuleInit {
       this.logger.error(`Не вдалося запустити деплой: ${err.message}`);
       return false;
     }
+  }
+
+  /**
+   * Повний рівень доступу для рольового меню бота.
+   * Ролі беруться з person_role у БД, isSuperAdmin — з TELEGRAM_ADMIN_ID.
+   */
+  public async getAccess(telegramId: number): Promise<TelegramAccess> {
+    const isSuperAdmin = this.isAdmin(telegramId);
+    const profile = await this.repository.getProfileByTelegramId(telegramId);
+
+    if (!profile) {
+      return { registered: false, isIct: false, isIctAdmin: false, isSuperAdmin };
+    }
+
+    const isIct = !!profile.is_ict;
+    return {
+      registered: true,
+      isIct,
+      isIctAdmin: isIct && !!profile.is_admin,
+      isSuperAdmin,
+      personId: Number(profile.person_id),
+      companyId: profile.company_id ? Number(profile.company_id) : undefined,
+      fullName: [profile.surname, profile.name, profile.last_name]
+        .filter(Boolean)
+        .join(' '),
+      profile,
+    };
+  }
+
+  // Обгортки над репозиторієм для пунктів меню
+  public getActiveTenders(limit = 10) {
+    return this.repository.getActiveTenders(limit);
+  }
+
+  public getActiveTendersCount() {
+    return this.repository.getActiveTendersCount();
+  }
+
+  public getCompanyRates(companyId: number, limit = 10) {
+    return this.repository.getCompanyRates(companyId, limit);
+  }
+
+  public getCompanyWins(companyId: number, limit = 10) {
+    return this.repository.getCompanyWins(companyId, limit);
+  }
+
+  public getIctSummary() {
+    return this.repository.getIctSummary();
   }
 
   public async checkUserHasAiAccess(telegramId: number): Promise<boolean> {

@@ -227,5 +227,128 @@ export class TelegramRepository implements OnModuleInit {
     const { rows } = await this.pool.query(sql, params);
     return rows;
   }
+
+  // --- Дані для рольового меню бота ---
+
+  /** Профіль користувача бота: особа + компанія + ролі одним запитом. */
+  async getProfileByTelegramId(telegramId: number) {
+    const { rows } = await this.pool.query(
+      `
+      SELECT
+        p.id AS person_id,
+        p.name, p.surname, p.last_name, p.email, p.position,
+        p.id_company AS company_id,
+        c.company_name, c.edrpou,
+        u.is_blocked,
+        pr.is_admin, pr.is_ict,
+        pt.username, pt.first_name
+      FROM person_telegram pt
+      JOIN person p ON p.id = pt.id_person
+      LEFT JOIN company c ON c.id = p.id_company
+      LEFT JOIN usr u ON u.email = p.email
+      LEFT JOIN person_role pr ON pr.id_person = p.id
+      WHERE pt.telegram_id = $1
+      LIMIT 1
+      `,
+      [telegramId],
+    );
+    return rows[0] || null;
+  }
+
+  /** Активні напрямки тендерів, найближчі до завершення — для меню ІКТ. */
+  async getActiveTenders(limit: number) {
+    const { rows } = await this.pool.query(
+      `
+      SELECT
+        t.id, t.cargo, t.price_start, t.ids_valut, t.request_price,
+        t.time_end, t.car_count,
+        tl.city_from, tl.city_to, tl.ids_country_from, tl.ids_country_to
+      FROM tender_lst tl
+      JOIN tender t ON t.id = tl.id_tender
+      WHERE tl.ids_status = 'ACTIVE'
+      ORDER BY t.time_end ASC NULLS LAST
+      LIMIT $1
+      `,
+      [limit],
+    );
+    return rows;
+  }
+
+  async getActiveTendersCount(): Promise<number> {
+    const { rows } = await this.pool.query(
+      `SELECT COUNT(*)::int AS cnt FROM tender_lst WHERE ids_status = 'ACTIVE'`,
+    );
+    return rows[0]?.cnt ?? 0;
+  }
+
+  /** Останні ставки компанії-перевізника з позначкою перемоги. */
+  async getCompanyRates(companyId: number, limit: number) {
+    const { rows } = await this.pool.query(
+      `
+      SELECT
+        tr.id, tr.price_proposed, tr.car_count, tr.time_add,
+        t.id AS tender_id, t.cargo, t.ids_valut,
+        tl.city_from, tl.city_to,
+        (tw.id IS NOT NULL) AS is_winner
+      FROM tender_rate tr
+      JOIN tender t ON t.id = tr.id_tender
+      LEFT JOIN LATERAL (
+        SELECT city_from, city_to
+        FROM tender_lst
+        WHERE id_tender = t.id
+        ORDER BY id
+        LIMIT 1
+      ) tl ON true
+      LEFT JOIN tender_winner tw ON tw.id_tender_rate = tr.id
+      WHERE tr.id_company = $1
+      ORDER BY tr.time_add DESC
+      LIMIT $2
+      `,
+      [companyId, limit],
+    );
+    return rows;
+  }
+
+  /** Виграні тендери компанії-перевізника. */
+  async getCompanyWins(companyId: number, limit: number) {
+    const { rows } = await this.pool.query(
+      `
+      SELECT
+        tw.id, tw.car_count,
+        t.id AS tender_id, t.cargo, t.ids_valut,
+        tr.price_proposed, tr.time_add,
+        tl.city_from, tl.city_to
+      FROM tender_winner tw
+      JOIN tender t ON t.id = tw.id_tender
+      LEFT JOIN tender_rate tr ON tr.id = tw.id_tender_rate
+      LEFT JOIN LATERAL (
+        SELECT city_from, city_to
+        FROM tender_lst
+        WHERE id_tender = t.id
+        ORDER BY id
+        LIMIT 1
+      ) tl ON true
+      WHERE tw.id_company = $1
+      ORDER BY tw.id DESC
+      LIMIT $2
+      `,
+      [companyId, limit],
+    );
+    return rows;
+  }
+
+  /** Лічильники активності для зведення менеджерів ІКТ. */
+  async getIctSummary() {
+    const { rows } = await this.pool.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM tender_lst WHERE ids_status = 'ACTIVE') AS active_lines,
+        (SELECT COUNT(*)::int FROM tender_lst WHERE ids_status = 'ANALYZE') AS analyze_lines,
+        (SELECT COUNT(*)::int FROM tender WHERE created_at >= now() - interval '1 day') AS tenders_24h,
+        (SELECT COUNT(*)::int FROM tender WHERE created_at >= now() - interval '7 days') AS tenders_7d,
+        (SELECT COUNT(*)::int FROM tender_rate WHERE time_add >= now() - interval '1 day') AS rates_24h,
+        (SELECT COUNT(*)::int FROM tender_rate WHERE time_add >= now() - interval '7 days') AS rates_7d
+    `);
+    return rows[0];
+  }
 }
 

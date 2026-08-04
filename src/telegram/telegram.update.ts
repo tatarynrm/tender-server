@@ -9,6 +9,17 @@ import {
 } from 'src/mail-reader/mail-reader.service';
 import { ApprovalService } from 'src/approval/approval.service';
 import { ClaudeAgentService } from 'src/claude-agent/claude-agent.service';
+import {
+  TelegramAccess,
+  buildMainMenu,
+  BACK_TO_MENU_KEYBOARD,
+  formatProfile,
+  formatActiveTendersList,
+  formatActiveTendersTeaser,
+  formatCompanyRates,
+  formatCompanyWins,
+  formatIctSummary,
+} from './telegram.menu';
 
 // --- Режим звітів по тендерах (тільки для адміністраторів ІКТ: is_ict + is_admin) ---
 const REPORT_EXIT_BUTTON = '🚪 Вийти зі звітів';
@@ -126,44 +137,206 @@ export class TelegramUpdate {
         }
       }
 
-      const user = await this.telegramService.checkIfUserExist(telegramId);
-      if (!user) {
+      const access = await this.telegramService.getAccess(telegramId);
+      if (!access.registered) {
         const unregistered = MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!);
         await ctx.reply(unregistered.text, unregistered.options);
         return;
       }
 
-      // Адмін-меню бачать лише адміністратори ІКТ (ролі is_ict + is_admin у БД;
-      // окремої ролі is_ict_admin не існує). Системні кнопки (деплой, пошта) —
-      // додатково лише для головного адміна з TELEGRAM_ADMIN_ID.
-      const isIctAdmin = await this.telegramService.checkUserHasAiAccess(telegramId);
-      const isAdmin = this.telegramService.isAdmin(telegramId);
-
-      const inlineButtons: any[] = [];
-      if (isIctAdmin) {
-        inlineButtons.push([Markup.button.callback('📊 Звіти по тендерах', 'enter_reports')]);
-      }
-      if (isAdmin) {
-        inlineButtons.push([Markup.button.callback('📬 Непрочитані листи', 'check_unread_mail')]);
-        inlineButtons.push([Markup.button.callback('🚀 Запустити DEPLOY', 'run_deploy')]);
-        inlineButtons.push([Markup.button.callback('📈 Статистика', 'get_stats')]);
-      }
-
-      if (inlineButtons.length > 0) {
-        await ctx.reply(
-          markdownToHtml('👑 **Вітаємо!**\n\nВи маєте доступ до спеціальних функцій бота.'),
-          {
-            parse_mode: 'HTML',
-            ...Markup.inlineKeyboard(inlineButtons)
-          }
-        );
-        return;
-      }
-
-      await ctx.reply('👋 Ласкаво просимо! Ви підключені до системи сповіщень ICT Tender.', Markup.removeKeyboard());
+      // Скидаємо сцену звітів/ШІ і залишки reply-клавіатури, потім — рольове меню
+      if ((ctx as any).session) (ctx as any).session.scene = undefined;
+      await ctx.reply(
+        '👋 Вітаємо! Ви підключені до системи сповіщень ICT Tender.',
+        Markup.removeKeyboard(),
+      );
+      await this.showMainMenu(ctx, access);
     } catch (err) {
       console.error(err);
       await ctx.reply('Сталася помилка, спробуйте пізніше.');
+    }
+  }
+
+  // --- Рольове головне меню ------------------------------------------------
+  // Набір кнопок залежить від рівня доступу (див. TelegramAccess):
+  // перевізник → ставки/перемоги; is_ict → зведення й активні тендери;
+  // is_ict + is_admin → звіти ШІ та статистика; TELEGRAM_ADMIN_ID → системне.
+  // Кожен хендлер перевіряє роль сам — наявність кнопки не є захистом.
+
+  private portalUrl(): string {
+    return (process.env.ALLOWED_ORIGIN || 'https://tender.ict.lviv.ua').replace(/\/+$/, '');
+  }
+
+  private async showMainMenu(ctx: Context, access: TelegramAccess, edit = false) {
+    const title = access.isIctAdmin
+      ? '👑 <b>Меню адміністратора ІКТ</b>'
+      : access.isIct
+        ? '🏢 <b>Меню менеджера ІКТ</b>'
+        : '🚚 <b>Головне меню</b>';
+    const hello = access.fullName ? `\n${escapeHtml(access.fullName)}` : '';
+    const text = `${title}${hello}\n\nОберіть розділ 👇`;
+    const keyboard = buildMainMenu(access, this.portalUrl());
+
+    if (edit && (ctx as any).callbackQuery) {
+      try {
+        await ctx.editMessageText(text, { parse_mode: 'HTML', ...keyboard });
+        return;
+      } catch {
+        // повідомлення могло бути видалене або незмінне — шлемо нове
+      }
+    }
+    await ctx.reply(text, { parse_mode: 'HTML', ...keyboard });
+  }
+
+  /** Доступ користувача; для непідключених шле інструкцію й повертає null. */
+  private async requireAccess(ctx: Context): Promise<TelegramAccess | null> {
+    const telegramId = ctx.from?.id;
+    if (!telegramId) return null;
+
+    const access = await this.telegramService.getAccess(telegramId);
+    if (!access.registered) {
+      const unregistered = MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!);
+      await ctx.reply(unregistered.text, unregistered.options);
+      return null;
+    }
+    return access;
+  }
+
+  @Command('menu')
+  @Action('main_menu')
+  async handleMainMenu(ctx: Context) {
+    const isCallback = Boolean((ctx as any).callbackQuery);
+    if (isCallback) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
+
+    const access = await this.requireAccess(ctx);
+    if (!access) return;
+
+    // Меню завжди виводить із режиму звітів/ШІ
+    if ((ctx as any).session) (ctx as any).session.scene = undefined;
+    await this.showMainMenu(ctx, access, isCallback);
+  }
+
+  @Command('profile')
+  @Action('my_profile')
+  async handleMyProfile(ctx: Context) {
+    if ((ctx as any).callbackQuery) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
+
+    const access = await this.requireAccess(ctx);
+    if (!access) return;
+
+    await ctx.reply(formatProfile(access), {
+      parse_mode: 'HTML',
+      ...BACK_TO_MENU_KEYBOARD,
+    });
+  }
+
+  @Command('tenders')
+  @Action('active_tenders')
+  async handleActiveTenders(ctx: Context) {
+    if ((ctx as any).callbackQuery) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
+
+    const access = await this.requireAccess(ctx);
+    if (!access) return;
+
+    try {
+      if (access.isIct) {
+        // Менеджери ІКТ бачать деталі напрямків прямо в боті
+        const rows = await this.telegramService.getActiveTenders(10);
+        await ctx.reply(formatActiveTendersList(rows), {
+          parse_mode: 'HTML',
+          ...BACK_TO_MENU_KEYBOARD,
+        });
+        return;
+      }
+
+      // Перевізникам — лише кількість і посилання: видимість конкретних
+      // тендерів (рейтинг, коло учасників) вирішують процедури БД на порталі.
+      const count = await this.telegramService.getActiveTendersCount();
+      await ctx.reply(formatActiveTendersTeaser(count), {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([
+          [Markup.button.url('🌐 Перейти до тендерів', `${this.portalUrl()}/dashboard`)],
+          [Markup.button.callback('⬅️ Меню', 'main_menu')],
+        ]),
+      });
+    } catch (err) {
+      console.error('handleActiveTenders error:', err);
+      await ctx.reply('❌ Не вдалося отримати тендери. Спробуйте пізніше.', BACK_TO_MENU_KEYBOARD);
+    }
+  }
+
+  @Action('my_rates')
+  async handleMyRates(ctx: Context) {
+    try { await ctx.answerCbQuery(); } catch {}
+
+    const access = await this.requireAccess(ctx);
+    if (!access) return;
+    if (!access.companyId) {
+      return ctx.reply('⚠️ Ваш профіль не прив’язаний до компанії.', BACK_TO_MENU_KEYBOARD);
+    }
+
+    try {
+      const rows = await this.telegramService.getCompanyRates(access.companyId, 10);
+      await ctx.reply(formatCompanyRates(rows), {
+        parse_mode: 'HTML',
+        ...BACK_TO_MENU_KEYBOARD,
+      });
+    } catch (err) {
+      console.error('handleMyRates error:', err);
+      await ctx.reply('❌ Не вдалося отримати ставки. Спробуйте пізніше.', BACK_TO_MENU_KEYBOARD);
+    }
+  }
+
+  @Action('my_wins')
+  async handleMyWins(ctx: Context) {
+    try { await ctx.answerCbQuery(); } catch {}
+
+    const access = await this.requireAccess(ctx);
+    if (!access) return;
+    if (!access.companyId) {
+      return ctx.reply('⚠️ Ваш профіль не прив’язаний до компанії.', BACK_TO_MENU_KEYBOARD);
+    }
+
+    try {
+      const rows = await this.telegramService.getCompanyWins(access.companyId, 10);
+      await ctx.reply(formatCompanyWins(rows), {
+        parse_mode: 'HTML',
+        ...BACK_TO_MENU_KEYBOARD,
+      });
+    } catch (err) {
+      console.error('handleMyWins error:', err);
+      await ctx.reply('❌ Не вдалося отримати дані. Спробуйте пізніше.', BACK_TO_MENU_KEYBOARD);
+    }
+  }
+
+  @Command('summary')
+  @Action('ict_summary')
+  async handleIctSummary(ctx: Context) {
+    if ((ctx as any).callbackQuery) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
+
+    const access = await this.requireAccess(ctx);
+    if (!access) return;
+    if (!access.isIct) {
+      return ctx.reply('⛔️ Зведення доступне лише працівникам ІКТ.', BACK_TO_MENU_KEYBOARD);
+    }
+
+    try {
+      const summary = await this.telegramService.getIctSummary();
+      await ctx.reply(formatIctSummary(summary), {
+        parse_mode: 'HTML',
+        ...BACK_TO_MENU_KEYBOARD,
+      });
+    } catch (err) {
+      console.error('handleIctSummary error:', err);
+      await ctx.reply('❌ Не вдалося зібрати зведення. Спробуйте пізніше.', BACK_TO_MENU_KEYBOARD);
     }
   }
 
@@ -283,17 +456,22 @@ export class TelegramUpdate {
   @Action('get_stats')
   async handleStats(ctx: Context) {
     const telegramId = ctx.from?.id;
-    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+    if (!telegramId) return;
+
+    // Статистика підписників не містить чутливого — відкрита адміністраторам ІКТ
+    const access = await this.telegramService.getAccess(telegramId);
+    if (!access.isIctAdmin && !access.isSuperAdmin) {
       return ctx.answerCbQuery('⛔️ Немає прав');
     }
+
     const stats = await this.telegramService.getSubscriberStats();
-    await ctx.answerCbQuery();
+    try { await ctx.answerCbQuery(); } catch {}
     await ctx.reply(
       `📊 *Статистика бота:*\n\n` +
       `👥 Всього підписників: *${stats.total}*\n` +
       `🏢 Менеджери ICT: *${stats.ict_count}*\n` +
       `🚚 Перевізники: *${stats.carrier_count}*`,
-      { parse_mode: 'Markdown' }
+      { parse_mode: 'Markdown', ...BACK_TO_MENU_KEYBOARD }
     );
   }
 
@@ -345,14 +523,22 @@ export class TelegramUpdate {
   }
 
   @Command('info')
+  @Action('bot_info')
   async infoCommand(ctx: Context) {
+    if ((ctx as any).callbackQuery) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
     await ctx.reply(
       markdownToHtml(
         'ℹ️ **Про бота**\n\n' +
-        'На даному етапі цей бот буде використовуватись для надсилання сповіщень про тендери та важливі події.\n\n' +
-        '🚀 У подальшому тут з’явиться багато корисних функцій для керування вашими заявками та документами прямо з Telegram!'
+        'Бот надсилає сповіщення про тендери та важливі події платформи ICT Tender, а через меню (команда /menu) дає швидкий доступ до:\n\n' +
+        '• 👤 вашого профілю;\n' +
+        '• 📢 активних тендерів;\n' +
+        '• 💰 ставок і 🏆 перемог вашої компанії (для перевізників);\n' +
+        '• 📈 зведення активності (для менеджерів ІКТ).\n\n' +
+        '🚀 Функціонал поступово розширюється — слідкуйте за оновленнями!'
       ),
-      { parse_mode: 'HTML' }
+      { parse_mode: 'HTML', ...BACK_TO_MENU_KEYBOARD }
     );
   }
 
@@ -412,10 +598,22 @@ export class TelegramUpdate {
   @Command('exit')
   @Action('exit_ai')
   async exitAiScene(ctx: Context) {
+    if ((ctx as any).callbackQuery) {
+      try { await ctx.answerCbQuery(); } catch {}
+    }
     if ((ctx as any).session) {
       (ctx as any).session.scene = undefined;
     }
-    await ctx.reply('🚪 Ви вийшли з режиму помічника. Повертаємось до звичайного режиму.', Markup.removeKeyboard());
+    await ctx.reply('🚪 Ви вийшли з режиму помічника.', Markup.removeKeyboard());
+
+    // Після виходу одразу повертаємо користувача в головне меню
+    const telegramId = ctx.from?.id;
+    if (telegramId) {
+      const access = await this.telegramService.getAccess(telegramId);
+      if (access.registered) {
+        await this.showMainMenu(ctx, access);
+      }
+    }
   }
 
   @On('message')
