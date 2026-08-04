@@ -674,38 +674,52 @@ export class TelegramUpdate {
 
     // Fire-and-forget: генерація файлу й пошта можуть зайняти час,
     // а webhook має відповісти одразу.
-    void (async () => {
-      try {
-        await ctx.sendChatAction('upload_document');
-        const fileName = this.reportFileService.buildFileName(format);
-        const buffer =
-          format === 'pdf'
-            ? await this.reportFileService.buildPdf(last.question, last.answer, last.rows)
-            : this.reportFileService.buildXlsx(last.question, last.answer, last.rows);
+    void this.deliverAiReportFile(ctx, chatId, telegramId, last, format, channel);
+  }
 
-        if (channel === 'tg') {
-          await ctx.telegram.sendDocument(
-            chatId,
-            { source: buffer, filename: fileName },
-            { caption: `📎 Звіт «ШІ-База» (${format === 'pdf' ? 'PDF' : 'Excel'})` },
-          );
-        } else {
-          const resultMsg = await this.telegramService.sendAiReportByEmail(
-            telegramId,
-            last.question,
-            fileName,
-            buffer,
-          );
-          await ctx.telegram.sendMessage(chatId, resultMsg, { parse_mode: 'HTML' });
-        }
-      } catch (err) {
-        console.error('handleAiReportDelivery error:', err);
-        await ctx.telegram.sendMessage(
+  /**
+   * Генерує файл звіту «ШІ-Бази» і доставляє його: документом у Telegram
+   * або вкладенням на пошту адміністратора. Спільний шлях для кнопок доставки
+   * і для автоматичної генерації, коли формат попросили прямо в запиті.
+   */
+  private async deliverAiReportFile(
+    ctx: Context,
+    chatId: number,
+    telegramId: number,
+    last: { question: string; answer: string; rows: any[] },
+    format: 'pdf' | 'xlsx',
+    channel: 'tg' | 'mail',
+  ) {
+    try {
+      await ctx.sendChatAction('upload_document');
+      const fileName = this.reportFileService.buildFileName(format);
+      const buffer =
+        format === 'pdf'
+          ? await this.reportFileService.buildPdf(last.question, last.answer, last.rows)
+          : await this.reportFileService.buildXlsx(last.question, last.answer, last.rows);
+
+      if (channel === 'tg') {
+        await ctx.telegram.sendDocument(
           chatId,
-          '❌ Не вдалося сформувати чи відправити звіт. Спробуйте ще раз.',
+          { source: buffer, filename: fileName },
+          { caption: `📎 Звіт «ШІ-База» (${format === 'pdf' ? 'PDF' : 'Excel'})` },
         );
+      } else {
+        const resultMsg = await this.telegramService.sendAiReportByEmail(
+          telegramId,
+          last.question,
+          fileName,
+          buffer,
+        );
+        await ctx.telegram.sendMessage(chatId, resultMsg, { parse_mode: 'HTML' });
       }
-    })();
+    } catch (err) {
+      console.error('deliverAiReportFile error:', err);
+      await ctx.telegram.sendMessage(
+        chatId,
+        '❌ Не вдалося сформувати чи відправити звіт. Спробуйте ще раз.',
+      );
+    }
   }
 
   @Command('exit')
@@ -981,6 +995,24 @@ export class TelegramUpdate {
             parse_mode: 'HTML',
             ...exitKeyboard,
           });
+        }
+
+        // Користувач попросив звіт файлом прямо в запиті («зроби звіт в Excel») —
+        // генеруємо й шлемо документ одразу, без натискання кнопок.
+        if (
+          hasRows &&
+          response.reportFormat &&
+          session?.lastAiResult &&
+          this.telegramService.isAdmin(telegramId)
+        ) {
+          await this.deliverAiReportFile(
+            ctx,
+            chatId,
+            telegramId,
+            session.lastAiResult,
+            response.reportFormat,
+            'tg',
+          );
         }
       } catch (error) {
         console.error('Error handling AI/report query:', error);

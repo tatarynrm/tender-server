@@ -25,6 +25,8 @@ export interface AiQueryResult {
   text: string;
   rows?: any[];
   question?: string;
+  /** Формат файлу, який користувач попросив у самому запиті («звіт в Excel»). */
+  reportFormat?: 'pdf' | 'xlsx';
 }
 
 @Injectable()
@@ -615,7 +617,15 @@ export class TelegramService implements OnModuleInit {
           rows,
           userFullName,
         );
-        return { text: finalAnswer, rows, question: text };
+        return {
+          text: finalAnswer,
+          rows,
+          question: text,
+          reportFormat:
+            result.report_format && result.report_format !== 'none'
+              ? result.report_format
+              : undefined,
+        };
 
       } catch (dbErr) {
         this.logger.error(`Database query failed on ${result.database || 'postgres'}: ${sqlQuery}`, dbErr);

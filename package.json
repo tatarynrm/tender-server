@@ -55,6 +55,7 @@
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.1",
+    "exceljs": "^4.4.0",
     "googleapis": "^155.0.1",
     "imapflow": "^1.6.5",
     "ioredis": "^5.8.2",

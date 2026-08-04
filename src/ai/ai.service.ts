@@ -405,7 +405,25 @@ Select the exact table names from the list above that are necessary to construct
     targetDb?: 'postgres' | 'oracle',
     customSchema?: string,
     reportMode = false,
-  ): Promise<{ type: 'sql' | 'conversational'; database?: 'postgres' | 'oracle'; sql?: string; reply?: string }> {
+  ): Promise<{
+    type: 'sql' | 'conversational';
+    database?: 'postgres' | 'oracle';
+    sql?: string;
+    reply?: string;
+    report_format?: 'pdf' | 'xlsx' | 'none';
+  }> {
+    // Платформа сама вміє пакувати результати SQL у гарно оформлені PDF/Excel:
+    // модель НІКОЛИ не повинна відмовляти у «звіті файлом» — лише генерувати SQL
+    // і вказати бажаний формат у report_format.
+    const reportCapability = `
+FILE REPORTS CAPABILITY (IMPORTANT):
+The platform automatically converts your SQL results into beautifully formatted Excel (.xlsx) or PDF report files and delivers them to the user (Telegram or email).
+- If the user asks for a report, file, document, "звіт", "у файлі", "в Excel", "в ексель", "у PDF", "гарно оформлений звіт", "деталізований звіт" etc. — you MUST still respond with type "sql" and a valid read-only SELECT query, and set "report_format" to "xlsx" (Excel) or "pdf" accordingly. If format is not specified by the user, prefer "xlsx" for tabular/detailed reports and "pdf" for summaries.
+- NEVER reply that you cannot create Excel/PDF files or reports — that is false, the platform does it for you.
+- For "деталізований" (detailed) reports select MORE relevant columns (not just aggregates) so the file is informative. In that case you may return up to 200 rows (LIMIT 200 for PostgreSQL, ROWNUM <= 200 for Oracle) instead of the usual 50.
+- If no file was requested, set "report_format" to "none".
+`;
+
     let schemaDefinition = '';
     
     if (targetDb === 'oracle') {
@@ -474,6 +492,8 @@ Return JSON matching this schema:
 `;
     }
 
+    schemaDefinition += reportCapability;
+
     const responseSchema: Schema = {
       type: SchemaType.OBJECT,
       properties: {
@@ -482,6 +502,13 @@ Return JSON matching this schema:
           enum: ['sql', 'conversational'],
           format: 'enum',
           description: 'Whether a SQL query is needed or it is a simple conversational message',
+        },
+        report_format: {
+          type: SchemaType.STRING,
+          enum: ['pdf', 'xlsx', 'none'],
+          format: 'enum',
+          description:
+            'File format the user asked the report to be delivered in: "xlsx" for Excel, "pdf" for PDF, "none" when no file was requested. The platform generates the file automatically from the SQL results.',
         },
         database: {
           type: SchemaType.STRING,
