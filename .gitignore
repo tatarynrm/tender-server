@@ -48,6 +48,9 @@ lerna-debug.log*
 .temp
 .tmp
 
+# локальний зашифрований снапшот схеми Oracle (генерується сервером)
+/storage/
+
 # Runtime data
 pids
 *.pid
