@@ -75,6 +75,7 @@ export class DatabaseOracleController {
     @Param('mid', ParseIntPipe) mid: number,
     @Body() body: any,
   ) {
+console.log(mid,'mid')
     const result = await this.oracleService.executeProcedure<any>(
       'p_carrier.run',
       { func: 'perev_list', kod_per: mid, body: JSON.stringify(body || {}) },

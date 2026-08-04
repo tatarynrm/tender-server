@@ -395,9 +395,22 @@ async function main() {
 
   if (!task) await fail('порожній опис задачі');
 
-  if (!env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+  // Ключ — не єдиний спосіб автентифікації: моделі Claude можна брати через
+  // Vertex AI (Google Cloud), Bedrock або Foundry, і тоді рахунок іде туди.
+  // Код від цього не залежить — достатньо змінних оточення.
+  const hasAuth =
+    env.ANTHROPIC_API_KEY ||
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.ANTHROPIC_AUTH_TOKEN ||
+    process.env.CLAUDE_CODE_USE_VERTEX === '1' ||
+    process.env.CLAUDE_CODE_USE_BEDROCK === '1' ||
+    process.env.CLAUDE_CODE_USE_FOUNDRY === '1';
+
+  if (!hasAuth) {
     await fail(
-      'ANTHROPIC_API_KEY не заданий у server-ai/.env — Claude Code не запуститься.',
+      'Немає автентифікації для Claude Code.\n' +
+        'Постав ANTHROPIC_API_KEY у server-ai/.env або ввімкни ' +
+        'CLAUDE_CODE_USE_VERTEX / CLAUDE_CODE_USE_BEDROCK.',
     );
   }
 
@@ -457,10 +470,16 @@ async function main() {
         maxTurns: 120,
         maxBudgetUsd: BUDGET_USD,
         abortController: ac,
+        // ключ підставляємо лише якщо він є: при роботі через Vertex/Bedrock
+        // його немає взагалі, і порожнє значення тут усе б зламало
         env: {
           ...process.env,
-          ANTHROPIC_API_KEY:
-            process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY,
+          ...(process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY
+            ? {
+                ANTHROPIC_API_KEY:
+                  process.env.ANTHROPIC_API_KEY || env.ANTHROPIC_API_KEY,
+              }
+            : {}),
         },
         // Fail-closed: усе, що не в білому списку, отримує відмову з
         // поясненням. Нікого немає, хто міг би відповісти на запит.
