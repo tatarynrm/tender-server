@@ -65,9 +65,13 @@ export class ToolRegistryService {
   ): Promise<ToolResult> {
     const tool = this.tools.get(name);
 
+    // Назва tool лишається в логах, але не в тексті помилки: користувачу вона
+    // нічого не пояснює, зате розкриває внутрішню кухню помічника
     if (!tool) {
       this.logger.warn(`Модель попросила неіснуючий tool: ${name}`);
-      throw new ForbiddenException(`Невідома функція: ${name}`);
+      throw new ForbiddenException(
+        'Такий тип запиту не підтримується — спробуйте переформулювати',
+      );
     }
 
     if (!this.isAllowed(tool, ctx)) {
@@ -75,7 +79,7 @@ export class ToolRegistryService {
         `Користувач ${ctx.user?.id ?? '-'} не має доступу до tool ${name}`,
       );
       throw new ForbiddenException(
-        `Функція ${name} доступна лише співробітникам ICT`,
+        'Ці дані доступні лише співробітникам ICT',
       );
     }
 

@@ -5,6 +5,8 @@ import type { RedisClientType } from 'redis';
 import {
   ChatHistoryStore,
   ChatSession,
+  MessagePage,
+  MessagePageQuery,
   StoredMessage,
 } from './chat-history.types';
 
@@ -24,6 +26,9 @@ import {
 @Injectable()
 export class RedisChatHistoryStore implements ChatHistoryStore {
   private readonly logger = new Logger(RedisChatHistoryStore.name);
+
+  /** Розмір сторінки історії, якщо клієнт не попросив свій. */
+  private static readonly DEFAULT_PAGE = 30;
 
   private readonly ttlSeconds: number;
   private readonly maxMessages: number;
@@ -204,16 +209,34 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
     return stored;
   }
 
+  /**
+   * Вікно повідомлень від кінця розмови.
+   *
+   * Повідомлення лежать у LIST у хронологічному порядку, тому сторінка — це
+   * звичайний зріз за індексами: `offset` відлічується від найновішого.
+   * Так фронт бере спершу хвіст розмови, а потім довантажує старіше вгору,
+   * не тягнучи всю історію з таблицями даних одним запитом.
+   */
   public async getMessages(
     userId: number,
     sessionId: string,
-    limit?: number,
-  ): Promise<StoredMessage[]> {
+    query: MessagePageQuery = {},
+  ): Promise<MessagePage> {
     const key = this.messagesKey(userId, sessionId);
-    const start = limit && limit > 0 ? -limit : 0;
-    const raws = await this.redis.lRange(key, start, -1);
+    const total = await this.redis.lLen(key);
 
-    return raws
+    const limit = Math.max(1, query.limit ?? RedisChatHistoryStore.DEFAULT_PAGE);
+    const offset = Math.max(0, query.offset ?? 0);
+
+    const stop = total - offset - 1;
+    if (total === 0 || stop < 0) {
+      return { messages: [], total, hasMore: false };
+    }
+
+    const start = Math.max(stop - limit + 1, 0);
+    const raws = await this.redis.lRange(key, start, stop);
+
+    const messages = raws
       .map((raw) => {
         try {
           return JSON.parse(raw) as StoredMessage;
@@ -223,6 +246,8 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
         }
       })
       .filter((m): m is StoredMessage => m !== null);
+
+    return { messages, total, hasMore: start > 0 };
   }
 
   private async requireSession(

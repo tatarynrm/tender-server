@@ -1,37 +1,17 @@
 /**
  * Типи OpenAI-сумісного протоколу LM Studio.
  *
- * LM Studio віддає /v1/chat/completions у форматі OpenAI, тому ці ж типи
- * підійдуть будь-якому іншому локальному раннеру (Ollama, vLLM, llama.cpp server) —
- * саме на це розраховано вимогу «легко замінити модель у майбутньому».
+ * Формат діалогу спільний для всіх провайдерів і живе в
+ * [llm.types.ts](../llm/llm.types.ts) — тут лишилося тільки те, що специфічне
+ * саме для локального раннера (сира відповідь і розширений список моделей).
  */
 
-export type ChatRole = 'system' | 'user' | 'assistant';
-
-/** Мультимодальна частина повідомлення: qwen2.5-vl приймає зображення як data-URL. */
-export type ChatContentPart =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } };
-
-export interface ChatMessage {
-  role: ChatRole;
-  content: string | ChatContentPart[];
-}
-
-export interface ChatCompletionOptions {
-  /** Перевизначити модель для конкретного виклику (дефолт — LM_STUDIO_MODEL). */
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-  /**
-   * Примусити модель відповісти JSON за схемою.
-   * Саме цим ми замінюємо native tool calling: qwen2.5-vl ігнорує параметр `tools`,
-   * але json_schema тримає надійно.
-   */
-  jsonSchema?: { name: string; schema: Record<string, any> };
-  /** Таймаут конкретного виклику, мс (дефолт — LM_STUDIO_TIMEOUT_MS). */
-  timeoutMs?: number;
-}
+export type {
+  ChatContentPart,
+  ChatCompletionOptions,
+  ChatMessage,
+  ChatRole,
+} from '../llm/llm.types';
 
 export interface ChatCompletionResponse {
   choices: Array<{

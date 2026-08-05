@@ -12,10 +12,11 @@ export interface SqlGuardResult {
 }
 
 /**
- * Валідатор SQL для всього, що приходить від локальної моделі.
+ * Валідатор SQL для всього, що приходить від моделі.
  *
- * Відколи модель пише SQL сама (tool `runSqlQuery`), цей клас — головний рубіж
- * захисту, а не формальність. Правило одне й безумовне: **дозволено лише SELECT**.
+ * Модель пише SQL сама (tool `runSqlQuery`) і бачить усю схему бази, тому цей
+ * клас — головний рубіж захисту, а не формальність. Правило одне й безумовне:
+ * **дозволено лише SELECT**.
  * Будь-яка мутація (INSERT/UPDATE/DELETE/MERGE), DDL (DROP/ALTER/CREATE/TRUNCATE),
  * керування транзакціями і виклик коду відхиляються тут, до звернення до БД.
  *
@@ -32,15 +33,45 @@ export interface SqlGuardResult {
 export class SqlGuardService {
   private readonly logger = new Logger(SqlGuardService.name);
 
-  /** Мутації, DDL, керування транзакціями і виконання коду. */
-  private static readonly FORBIDDEN_KEYWORDS = [
-    'INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE',
-    'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'RENAME', 'COMMENT',
-    'GRANT', 'REVOKE', 'AUDIT', 'NOAUDIT',
-    'COMMIT', 'ROLLBACK', 'SAVEPOINT', 'LOCK',
-    'CALL', 'EXEC', 'EXECUTE', 'BEGIN', 'DECLARE', 'DO',
-    'COPY', 'VACUUM', 'CLUSTER', 'REINDEX', 'REFRESH', 'LISTEN', 'NOTIFY',
-    'SET', 'RESET', 'FLASHBACK', 'PURGE', 'INTO', 'RETURNING',
+  /**
+   * Мутації, DDL, керування транзакціями і виконання коду.
+   *
+   * Перевіряємо не голі слова, а команду разом із її продовженням. Причина
+   * практична: відколи модель бачить усю схему бази, у запит легально
+   * потрапляють колонки `comment`, `notify`, `copy` і функція `replace()` —
+   * пословний блек-лист відхиляв би нормальні вибірки й виглядав би як
+   * «помічник не працює». Мутація ж без свого продовження нешкідлива:
+   * запит усе одно мусить починатися з SELECT і не містити крапки з комою.
+   */
+  private static readonly FORBIDDEN_PATTERNS: Array<[RegExp, string]> = [
+    [/\bINSERT\s+INTO\b/i, 'INSERT'],
+    [/\bDELETE\s+FROM\b/i, 'DELETE'],
+    [/\bUPDATE\s+[a-z_"][\w".]*\s+SET\b/i, 'UPDATE'],
+    [/\bMERGE\s+INTO\b/i, 'MERGE'],
+    [/\bDROP\s+[a-z]/i, 'DROP'],
+    [/\bALTER\s+[a-z]/i, 'ALTER'],
+    [/\bCREATE\s+(?:[a-z]|OR\s+REPLACE)/i, 'CREATE'],
+    [/\bTRUNCATE\b/i, 'TRUNCATE'],
+    [/\bGRANT\b|\bREVOKE\b/i, 'GRANT/REVOKE'],
+    [/\bVACUUM\b|\bREINDEX\b|\bCLUSTER\s+[a-z]/i, 'обслуговування БД'],
+    [/\bREFRESH\s+MATERIALIZED\b/i, 'REFRESH MATERIALIZED VIEW'],
+    [/\bCOPY\s+[a-z_"(]/i, 'COPY'],
+    [/\bCALL\s+[a-z_"]/i, 'CALL'],
+    [/\bEXEC(?:UTE)?\s+[a-z_"]/i, 'EXECUTE'],
+    [/\$\$/, 'долар-цитування ($$)'],
+    [
+      /\bDECLARE\b|\bBEGIN\b|\bCOMMIT\b|\bROLLBACK\b|\bSAVEPOINT\b/i,
+      'керування транзакцією',
+    ],
+    [
+      /\bSET\s+(?:LOCAL|SESSION|ROLE|TRANSACTION|CONSTRAINTS|SEARCH_PATH)\b/i,
+      'SET',
+    ],
+    [/\bRESET\s+[a-z]/i, 'RESET'],
+    [/\bINTO\s+[a-z_"@:]/i, 'SELECT ... INTO'],
+    [/\bRETURNING\b/i, 'RETURNING'],
+    [/\bLOCK\s+TABLE\b/i, 'LOCK TABLE'],
+    [/\bFLASHBACK\b|\bPURGE\s+[a-z]/i, 'команда Oracle'],
   ];
 
   /**
@@ -65,13 +96,15 @@ export class SqlGuardService {
    * а не обмеження: 7B-модель цілком може згадати колонку з попереднього контексту.
    */
   private static readonly DENIED_COLUMNS = [
-    'private_info', 'password_hash', 'password',
+    'private_info', 'password_hash', 'password', 'ipn',
   ];
 
   /**
    * Таблиці з логінами й сесіями та системні каталоги.
-   * Дублює whitelist навмисно: якщо таку таблицю колись помилково додадуть
-   * у каталог схеми, доступ до неї все одно не відкриється.
+   *
+   * Дублює DENIED_TABLE_PATTERNS каталогу навмисно: інтроспекція тепер бере
+   * усі таблиці схеми, тому помилка в одному фільтрі не повинна одразу
+   * відкривати доступ до логінів.
    */
   private static readonly ALWAYS_DENIED = [
     'usr', 'session', 'sessions', 'pg_shadow', 'pg_authid', 'pg_user',
@@ -117,54 +150,81 @@ export class SqlGuardService {
       throw new ForbiddenException('Порожній SQL-запит');
     }
 
-    // Одна інструкція: ніяких "SELECT 1; DROP TABLE ..."
-    if (sql.includes(';')) {
-      this.deny(sql, dialect, 'кілька інструкцій в одному запиті');
-    }
-
-    // Коментарі — класичний спосіб сховати хвіст запиту від валідатора
-    if (/--|\/\*|\*\//.test(sql)) {
-      this.deny(sql, dialect, 'коментарі в SQL заборонені');
-    }
-
     // Лише SELECT. WITH не дозволяємо: CTE в Postgres може містити INSERT/UPDATE
     if (!/^SELECT\b/i.test(sql)) {
       this.deny(sql, dialect, 'дозволено лише SELECT');
     }
 
-    for (const keyword of SqlGuardService.FORBIDDEN_KEYWORDS) {
-      if (new RegExp(`\\b${keyword}\\b`, 'i').test(sql)) {
-        this.deny(sql, dialect, `заборонена команда: ${keyword}`);
+    // Далі аналізуємо запит без рядкових літералів: пошук ILIKE '%видалити%'
+    // не повинен виглядати для валідатора як спроба мутації
+    const probe = this.stripLiterals(sql);
+
+    if (probe.includes("'") || probe.includes('"')) {
+      this.deny(sql, dialect, 'незакритий рядковий літерал');
+    }
+
+    // Одна інструкція: ніяких "SELECT 1; DROP TABLE ..."
+    if (probe.includes(';')) {
+      this.deny(sql, dialect, 'кілька інструкцій в одному запиті');
+    }
+
+    // Коментарі — класичний спосіб сховати хвіст запиту від валідатора
+    if (/--|\/\*|\*\//.test(probe)) {
+      this.deny(sql, dialect, 'коментарі в SQL заборонені');
+    }
+
+    for (const [pattern, label] of SqlGuardService.FORBIDDEN_PATTERNS) {
+      if (pattern.test(probe)) {
+        this.deny(sql, dialect, `заборонена команда: ${label}`);
       }
     }
 
     // SELECT ... FOR UPDATE / FOR SHARE блокує рядки — це вже не «лише читання»
-    if (/\bFOR\s+(UPDATE|SHARE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b/i.test(sql)) {
+    if (/\bFOR\s+(UPDATE|SHARE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b/i.test(probe)) {
       this.deny(sql, dialect, 'блокування рядків (FOR UPDATE/SHARE)');
     }
 
     // Усе службове Postgres — pg_sleep, pg_read_file, pg_class тощо.
     // Прикладних сценаріїв для pg_* у нас немає, тому вирізаємо префікс цілком.
-    if (dialect === 'postgres' && /\bpg_/i.test(sql)) {
+    if (dialect === 'postgres' && /\bpg_/i.test(probe)) {
       this.deny(sql, dialect, 'службові об’єкти pg_* недоступні');
     }
 
     for (const fn of SqlGuardService.FORBIDDEN_FUNCTIONS) {
-      if (new RegExp(`\\b${fn}`, 'i').test(sql)) {
+      if (new RegExp(`\\b${fn}`, 'i').test(probe)) {
         this.deny(sql, dialect, `заборонена функція: ${fn.replace('\\\\.', '.')}`);
       }
     }
 
     for (const column of SqlGuardService.DENIED_COLUMNS) {
-      if (new RegExp(`\\b${column}\\b`, 'i').test(sql)) {
+      if (new RegExp(`\\b${column}\\b`, 'i').test(probe)) {
         this.deny(sql, dialect, `колонка "${column}" недоступна`);
       }
     }
 
-    const tables = this.extractTables(sql);
+    const tables = this.extractTables(probe);
     this.assertTablesAllowed(sql, dialect, tables);
 
     return { sql: this.enforceRowLimit(sql, dialect, maxRows), tables };
+  }
+
+  /**
+   * Замінити плейсхолдером усе, що є текстом, а не синтаксисом: спершу
+   * ідентифікатори в подвійних лапках, потім рядкові літерали в одинарних.
+   *
+   * Порядок важливий. Псевдоніми колонок тепер українські (`AS "Кількість"`),
+   * а в українських словах трапляється апостроф — `AS "Обʼєм"` чи `AS "Ім'я"`.
+   * Якби спершу зняли одинарні лапки, така назва відкрила б «літерал», якого
+   * не існує, і валідатор відхилив би нормальний запит.
+   *
+   * Лапки подвоюються всередині самих себе (`'O''Brien'`, `"він ""той"""`),
+   * тому regexp враховує пару. Ні одинарних, ні подвійних лапок у результаті
+   * не лишається: будь-яка вціліла означає незакритий літерал.
+   */
+  private stripLiterals(sql: string): string {
+    return sql
+      .replace(/"(?:[^"]|"")*"/g, '?')
+      .replace(/'(?:[^']|'')*'/g, '?');
   }
 
   /** Таблиці з FROM і JOIN — саме їх перевіряємо за whitelist. */
@@ -190,7 +250,8 @@ export class SqlGuardService {
       this.deny(sql, dialect, 'не вдалося визначити таблиці запиту');
     }
 
-    // Whitelist Postgres = каталог схеми: що не описано для моделі, того вона й не читає
+    // Whitelist Postgres = каталог схеми (усі таблиці public, крім заборонених):
+    // що модель не бачить у промпті, того вона й не прочитає
     const allowed =
       dialect === 'postgres'
         ? this.schemaCatalog.getAllowedTables()

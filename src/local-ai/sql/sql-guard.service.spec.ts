@@ -56,6 +56,64 @@ describe('SqlGuardService', () => {
         ForbiddenException,
       );
     });
+
+    it('відхиляє SELECT ... INTO — це створення таблиці', () => {
+      expect(() => validate('SELECT id INTO hack FROM tender')).toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('відхиляє долар-цитування (тіло анонімного блоку)', () => {
+      expect(() =>
+        validate('SELECT $$ DROP TABLE tender $$ FROM tender'),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('відхиляє незакритий рядковий літерал', () => {
+      expect(() =>
+        validate("SELECT id FROM tender WHERE cargo = 'зерно"),
+      ).toThrow(ForbiddenException);
+    });
+  });
+
+  /**
+   * Відколи модель бачить усю схему, у запит легально потрапляють колонки,
+   * що збігаються з назвами команд. Пословний блек-лист відхиляв би їх —
+   * ці кейси фіксують, що перевірка дивиться на команду з продовженням.
+   */
+  describe('легальні запити, схожі на команди', () => {
+    it('пропускає колонку comment', () => {
+      const { sql } = validate('SELECT t.comment FROM tender t');
+      expect(sql).toContain('t.comment');
+    });
+
+    it('пропускає функцію replace()', () => {
+      const { sql } = validate(
+        "SELECT REPLACE(t.cargo, 'а', 'о') AS cargo FROM tender t",
+      );
+      expect(sql).toContain('REPLACE');
+    });
+
+    it('пропускає українські псевдоніми колонок', () => {
+      const { sql } = validate(
+        'SELECT COUNT(t.id) AS "Кількість тендерів" FROM tender t',
+      );
+      expect(sql).toContain('"Кількість тендерів"');
+    });
+
+    it('пропускає псевдонім з апострофом — він не відкриває літерал', () => {
+      const { sql } = validate(
+        "SELECT c.company_name AS \"Ім'я компанії\" FROM company c WHERE c.is_carrier = TRUE",
+      );
+      expect(sql).toContain("Ім'я компанії");
+    });
+
+    it('пропускає пошук зі словом-командою всередині літерала', () => {
+      const { sql } = validate(
+        "SELECT id FROM tender WHERE cargo ILIKE '%delete from%'",
+      );
+      expect(sql).toContain('ILIKE');
+    });
   });
 
   describe('межі доступу', () => {

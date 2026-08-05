@@ -10,10 +10,12 @@ import { CHAT_HISTORY_STORE } from './history/chat-history.types';
 import type {
   ChatHistoryStore,
   ChatSession,
+  MessagePage,
   StoredMessage,
 } from './history/chat-history.types';
-import { LmStudioClient } from './lm-studio/lm-studio.client';
-import { ChatMessage } from './lm-studio/lm-studio.types';
+import { LLM_CLIENT } from './llm/llm-client.interface';
+import type { LlmClient } from './llm/llm-client.interface';
+import { ChatMessage } from './llm/llm.types';
 import {
   buildAnswerPrompt,
   buildRouterPrompt,
@@ -27,7 +29,8 @@ import { ToolContext } from './tools/tool.types';
 interface RouterDecision {
   action: 'tool' | 'reply';
   tool: string;
-  args: Record<string, any>;
+  /** Рядок із JSON (див. ROUTER_SCHEMA); терпимо приймаємо й готовий обʼєкт. */
+  args: string | Record<string, any>;
   reply: string;
 }
 
@@ -46,12 +49,12 @@ export interface ChatAnswer {
 }
 
 /**
- * Локальний AI-помічник на LM Studio.
+ * AI-помічник по даних компанії.
  *
- * Свідомо окремий сервіс, а не розширення наявного AiService: той працює на
- * хмарному Gemini і обслуговує Telegram-бота й пошту. Тут — інший контракт
- * (жодних зовнішніх викликів, дані не залишають мережу компанії) і інший
- * механізм роботи з БД (фіксовані tools замість генерації довільного SQL).
+ * Модель — Google Gemini через [LlmClient](./llm/llm-client.interface.ts)
+ * (провайдер перемикається `LOCAL_AI_PROVIDER`). Свідомо окремий сервіс, а не
+ * розширення наявного AiService: той обслуговує Telegram-бота й пошту, а тут
+ * інший контракт — сесії, поіменний доступ і жорстке правило «лише читання».
  *
  * Крок обробки повідомлення:
  *   1. роутер — модель обирає tool або відповідає текстом;
@@ -66,7 +69,7 @@ export class LocalAiService {
   private static readonly HISTORY_WINDOW = 8;
 
   constructor(
-    private readonly lmStudio: LmStudioClient,
+    @Inject(LLM_CLIENT) private readonly llm: LlmClient,
     private readonly toolRegistry: ToolRegistryService,
     private readonly schemaCatalog: SchemaCatalogService,
     private readonly readOnly: ReadOnlyQueryService,
@@ -87,8 +90,19 @@ export class LocalAiService {
     return this.history.listSessions(this.requireUserId());
   }
 
-  public async getMessages(sessionId: string): Promise<StoredMessage[]> {
-    return this.history.getMessages(this.requireUserId(), sessionId);
+  /**
+   * Сторінка історії від кінця розмови.
+   * Фронт бере спершу хвіст (offset=0), а старіше довантажує при скролі вгору.
+   */
+  public async getMessages(
+    sessionId: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<MessagePage> {
+    return this.history.getMessages(this.requireUserId(), sessionId, {
+      limit,
+      offset,
+    });
   }
 
   public async renameSession(sessionId: string, title: string): Promise<void> {
@@ -105,17 +119,18 @@ export class LocalAiService {
     return { deleted };
   }
 
-  /** Стан локальної моделі — для індикатора в UI. */
+  /** Стан моделі — для індикатора в UI. */
   public async health() {
-    const health = await this.lmStudio.health();
+    const health = await this.llm.health();
     const schema = this.schemaCatalog.describe();
 
     return {
       ...health,
-      nativeToolCalling: await this.lmStudio.supportsNativeTools(),
-      tools: this.toolRegistry
-        .getAvailableTools(this.buildContext('health'))
-        .map((t) => t.name),
+      nativeToolCalling: await this.llm.supportsNativeTools(),
+      // Лише кількість: технічні назви функцій назовні не віддаємо —
+      // на екрані вони нічого не пояснюють, а внутрішню кухню розкривають
+      toolsCount: this.toolRegistry.getAvailableTools(this.buildContext('health'))
+        .length,
       limits: {
         // UI показує лічильник «N з 10», тому стеля приходить із сервера,
         // а не дублюється константою на фронті
@@ -126,6 +141,7 @@ export class LocalAiService {
         oracleEnabled: this.readOnly.isOracleEnabled(),
         access: 'read-only (SELECT)',
         tables: schema.tables.length,
+        relations: schema.relations.length,
         schemaSource: schema.source,
         schemaRefreshedAt: schema.refreshedAt,
       },
@@ -209,7 +225,7 @@ export class LocalAiService {
     try {
       const result = await this.toolRegistry.execute(
         decision.tool,
-        decision.args ?? {},
+        this.parseArgs(decision.args),
         ctx,
       );
 
@@ -281,14 +297,14 @@ export class LocalAiService {
     ];
 
     try {
-      const decision = await this.lmStudio.chatJson<RouterDecision>(
+      const decision = await this.llm.chatJson<RouterDecision>(
         messages,
         { name: 'router_decision', schema: ROUTER_SCHEMA as any },
         { temperature: 0 },
       );
 
       this.logger.log(
-        `Роутер: action=${decision.action} tool=${decision.tool || '-'} args=${JSON.stringify(decision.args ?? {})}`,
+        `Роутер: action=${decision.action} tool=${decision.tool || '-'} args=${JSON.stringify(this.parseArgs(decision.args))}`,
       );
       return decision;
     } catch (err: any) {
@@ -301,6 +317,34 @@ export class LocalAiService {
         reply:
           'Не вдалося розібрати запит. Спробуйте сформулювати конкретніше — наприклад, «покажи затримані рейси за сьогодні».',
       };
+    }
+  }
+
+  /**
+   * Аргументи tool із рішення роутера.
+   *
+   * За схемою вони приходять рядком із JSON (Gemini не приймає обʼєкт без
+   * переліку властивостей у responseSchema), але модель час від часу віддає
+   * готовий обʼєкт — приймаємо обидва варіанти, бо інакше через дрібницю
+   * формату втрачається вся відповідь.
+   */
+  private parseArgs(raw: string | Record<string, any> | undefined): Record<string, any> {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+
+    const cleaned = raw
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '');
+
+    if (!cleaned || cleaned === '{}') return {};
+
+    try {
+      const parsed = JSON.parse(cleaned);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      this.logger.warn(`Не вдалося розібрати args роутера: ${cleaned.slice(0, 200)}`);
+      return {};
     }
   }
 
@@ -330,7 +374,7 @@ export class LocalAiService {
       : undefined;
 
     try {
-      const answer = await this.lmStudio.chat(
+      const answer = await this.llm.chat(
         [
           { role: 'system', content: buildAnswerPrompt(fullName) },
           { role: 'user', content: payload },
@@ -351,10 +395,10 @@ export class LocalAiService {
   private async buildHistoryContext(
     sessionId: string,
   ): Promise<ChatMessage[]> {
-    const messages = await this.history.getMessages(
+    const { messages } = await this.history.getMessages(
       this.requireUserId(),
       sessionId,
-      LocalAiService.HISTORY_WINDOW,
+      { limit: LocalAiService.HISTORY_WINDOW },
     );
 
     return messages.map((m) => ({

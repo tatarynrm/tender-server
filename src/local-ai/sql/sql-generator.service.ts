@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { LmStudioClient } from '../lm-studio/lm-studio.client';
-import { ChatMessage } from '../lm-studio/lm-studio.types';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { LLM_CLIENT } from '../llm/llm-client.interface';
+import type { LlmClient } from '../llm/llm-client.interface';
+import { ChatMessage } from '../llm/llm.types';
 import {
   buildSqlPrompt,
   buildSqlRetryPrompt,
@@ -35,7 +36,7 @@ export class SqlGeneratorService {
   private readonly logger = new Logger(SqlGeneratorService.name);
 
   constructor(
-    private readonly lmStudio: LmStudioClient,
+    @Inject(LLM_CLIENT) private readonly llm: LlmClient,
     private readonly schemaCatalog: SchemaCatalogService,
   ) {}
 
@@ -67,11 +68,11 @@ export class SqlGeneratorService {
       });
     }
 
-    const result = await this.lmStudio.chatJson<GeneratedSql>(
+    const result = await this.llm.chatJson<GeneratedSql>(
       messages,
       { name: 'sql_query', schema: SQL_SCHEMA as any },
       // Нуль температури: SQL — не творчість, різні відповіді на те саме питання шкодять
-      { temperature: 0, maxTokens: 700 },
+      { temperature: 0, maxTokens: 1200 },
     );
 
     const sql = this.normalize(result?.sql ?? '');

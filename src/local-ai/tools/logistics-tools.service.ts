@@ -80,8 +80,11 @@ export class LogisticsToolsService {
         const delayedOnly = args.delayedOnly === true;
 
         const sql =
-          `SELECT z.KOD, z.NUMDOC, z.DATDOC, z.VANTAZH, z.MARSH, z.PUNKTZ, z.PUNKTR, ` +
-          `z.DATZAV, z.DATROZV, z.AM, z.PR, z.VOD1, z.VOD1TEL, z.VANTTON, f.NFIRMA AS PEREVIZNYK ` +
+          `SELECT z.NUMDOC AS "Номер заявки", z.DATDOC AS "Дата заявки", z.VANTAZH AS "Вантаж", ` +
+          `z.MARSH AS "Маршрут", z.PUNKTZ AS "Завантаження", z.PUNKTR AS "Розвантаження", ` +
+          `z.DATZAV AS "Дата завантаження", z.DATROZV AS "Дата розвантаження", ` +
+          `z.AM AS "Авто", z.PR AS "Причіп", z.VOD1 AS "Водій", z.VOD1TEL AS "Телефон водія", ` +
+          `z.VANTTON AS "Тонаж", f.NFIRMA AS "Перевізник" ` +
           `FROM ZAY z LEFT JOIN PEREV p ON z.KOD_PER = p.KOD LEFT JOIN FIRMA f ON p.KOD_FIRMA = f.KOD ` +
           `WHERE z.DATZAV >= TO_DATE(:date_from, 'YYYY-MM-DD') ` +
           `AND z.DATZAV < TO_DATE(:date_to, 'YYYY-MM-DD') + 1 ` +
@@ -141,7 +144,9 @@ export class LogisticsToolsService {
             : null;
 
         const sql =
-          `SELECT l.id, c.company_name AS client, l.price, l.date_load, l.date_unload, l.load_info ` +
+          `SELECT c.company_name AS "Клієнт", l.price AS "Ціна", ` +
+          `l.date_load AS "Завантаження", l.date_unload AS "Розвантаження", ` +
+          `l.load_info AS "Вантаж" ` +
           `FROM crm_load l LEFT JOIN company c ON l.id_client = c.id ` +
           `WHERE l.date_load >= $1::date AND l.date_load <= $2::date ` +
           `AND ($3::text IS NULL OR c.company_name ILIKE $3) ` +
@@ -191,8 +196,11 @@ export class LogisticsToolsService {
         }
 
         const sql =
-          `SELECT z.KOD, z.NUMDOC, z.DATDOC, z.AM, z.PR, z.MARSH, z.PUNKTZ, z.PUNKTR, ` +
-          `z.DATZAV, z.DATROZV, z.VANTAZH, z.VOD1, z.VOD1TEL, f.NFIRMA AS PEREVIZNYK ` +
+          `SELECT z.NUMDOC AS "Номер заявки", z.DATDOC AS "Дата заявки", z.AM AS "Авто", ` +
+          `z.PR AS "Причіп", z.MARSH AS "Маршрут", z.PUNKTZ AS "Завантаження", ` +
+          `z.PUNKTR AS "Розвантаження", z.DATZAV AS "Дата завантаження", ` +
+          `z.DATROZV AS "Дата розвантаження", z.VANTAZH AS "Вантаж", ` +
+          `z.VOD1 AS "Водій", z.VOD1TEL AS "Телефон водія", f.NFIRMA AS "Перевізник" ` +
           `FROM ZAY z LEFT JOIN PEREV p ON z.KOD_PER = p.KOD LEFT JOIN FIRMA f ON p.KOD_FIRMA = f.KOD ` +
           `WHERE UPPER(z.AM) LIKE :plate ORDER BY z.DATZAV DESC FETCH FIRST 5 ROWS ONLY`;
 
@@ -236,8 +244,11 @@ export class LogisticsToolsService {
         }
 
         const sql =
-          `SELECT z.KOD, z.NUMDOC, z.DATDOC, z.VOD1, z.VOD1TEL, z.AM, z.MARSH, ` +
-          `z.PUNKTZ, z.PUNKTR, z.DATZAV, z.DATROZV, z.VANTAZH, f.NFIRMA AS PEREVIZNYK ` +
+          `SELECT z.NUMDOC AS "Номер заявки", z.DATDOC AS "Дата заявки", z.VOD1 AS "Водій", ` +
+          `z.VOD1TEL AS "Телефон водія", z.AM AS "Авто", z.MARSH AS "Маршрут", ` +
+          `z.PUNKTZ AS "Завантаження", z.PUNKTR AS "Розвантаження", ` +
+          `z.DATZAV AS "Дата завантаження", z.DATROZV AS "Дата розвантаження", ` +
+          `z.VANTAZH AS "Вантаж", f.NFIRMA AS "Перевізник" ` +
           `FROM ZAY z LEFT JOIN PEREV p ON z.KOD_PER = p.KOD LEFT JOIN FIRMA f ON p.KOD_FIRMA = f.KOD ` +
           `WHERE UPPER(z.VOD1) LIKE :driver ORDER BY z.DATZAV DESC FETCH FIRST 10 ROWS ONLY`;
 
@@ -286,6 +297,8 @@ export class LogisticsToolsService {
         }
 
         // Нараховано — місячні акти по контрактах компанії
+        // Ці два запити не показуються користувачу напряму — їх зводить код нижче,
+        // тому назви колонок тут технічні, а українські заголовки зʼявляються в rows
         const billedSql =
           `SELECT f.KOD, f.NFIRMA, SUM(a.SUMA) AS NARAHOVANO, COUNT(a.KOD) AS AKTIV ` +
           `FROM AVRMONCLIENT a JOIN DOG d ON a.KOD_DOG = d.KOD JOIN FIRMA f ON d.KOD_FIRMA = f.KOD ` +
@@ -332,11 +345,14 @@ export class LogisticsToolsService {
           byKod.set(row.KOD, entry);
         }
 
+        // Ключі одразу українські: вони стають заголовками таблиці у відповіді
         const rows = [...byKod.values()].map((e) => ({
-          ...e,
-          narahovano: Number(e.narahovano.toFixed(2)),
-          oplacheno: Number(e.oplacheno.toFixed(2)),
-          zaborhovanist: Number((e.narahovano - e.oplacheno).toFixed(2)),
+          Клієнт: e.client,
+          Нараховано: Number(e.narahovano.toFixed(2)),
+          Оплачено: Number(e.oplacheno.toFixed(2)),
+          Заборгованість: Number((e.narahovano - e.oplacheno).toFixed(2)),
+          Актів: e.aktiv,
+          Платежів: e.platezhiv,
         }));
 
         return {
@@ -404,9 +420,9 @@ export class LogisticsToolsService {
 
         if (report === 'profit') {
           const sql =
-            `SELECT TO_CHAR(z.DATZAV, 'YYYY-MM') AS PERIOD, COUNT(z.KOD) AS REYSIV, ` +
-            `ROUND(SUM(z.ZAMSUMA), 2) AS DOHID, ROUND(SUM(z.PERSUMA), 2) AS VYTRATY, ` +
-            `ROUND(SUM(z.ZAMSUMA) - SUM(z.PERSUMA), 2) AS PRYBUTOK ` +
+            `SELECT TO_CHAR(z.DATZAV, 'YYYY-MM') AS "Період", COUNT(z.KOD) AS "Рейсів", ` +
+            `ROUND(SUM(z.ZAMSUMA), 2) AS "Дохід", ROUND(SUM(z.PERSUMA), 2) AS "Витрати", ` +
+            `ROUND(SUM(z.ZAMSUMA) - SUM(z.PERSUMA), 2) AS "Прибуток" ` +
             `FROM ZAY z WHERE z.DATZAV >= TO_DATE(:date_from, 'YYYY-MM-DD') ` +
             `AND z.DATZAV < TO_DATE(:date_to, 'YYYY-MM-DD') + 1 ` +
             `GROUP BY TO_CHAR(z.DATZAV, 'YYYY-MM') ORDER BY 1 DESC`;
@@ -426,8 +442,9 @@ export class LogisticsToolsService {
 
         if (report === 'carrier_activity') {
           const sql =
-            `SELECT c.company_name AS carrier, COUNT(r.id) AS stavok, ` +
-            `COUNT(DISTINCT r.id_tender) AS tenderiv, ROUND(AVG(r.price_proposed), 2) AS serednia_stavka ` +
+            `SELECT c.company_name AS "Перевізник", COUNT(r.id) AS "Ставок", ` +
+            `COUNT(DISTINCT r.id_tender) AS "Тендерів", ` +
+            `ROUND(AVG(r.price_proposed), 2) AS "Середня ставка" ` +
             `FROM tender_rate r JOIN company c ON r.id_company = c.id ` +
             `WHERE r.time_add >= $1::date AND r.time_add < ($2::date + 1) ` +
             `GROUP BY c.company_name ORDER BY COUNT(r.id) DESC`;
@@ -447,11 +464,11 @@ export class LogisticsToolsService {
 
         // tenders_by_department — відділ тендера визначається за його автором
         const sql =
-          `SELECT d.department_name AS viddil, COUNT(DISTINCT t.id) AS tenderiv, ` +
-          `COUNT(DISTINCT t.id) FILTER (WHERE tl.ids_status = 'ACTIVE') AS aktyvnyh, ` +
-          `COUNT(DISTINCT t.id) FILTER (WHERE tl.ids_status = 'CLOSED') AS zakrytyh, ` +
-          `COUNT(r.id) AS stavok, COUNT(DISTINCT r.id_company) AS pereviznykiv, ` +
-          `ROUND(AVG(t.price_start), 2) AS serednia_startova ` +
+          `SELECT d.department_name AS "Відділ", COUNT(DISTINCT t.id) AS "Тендерів", ` +
+          `COUNT(DISTINCT t.id) FILTER (WHERE tl.ids_status = 'ACTIVE') AS "Активних", ` +
+          `COUNT(DISTINCT t.id) FILTER (WHERE tl.ids_status = 'CLOSED') AS "Закритих", ` +
+          `COUNT(r.id) AS "Ставок", COUNT(DISTINCT r.id_company) AS "Перевізників", ` +
+          `ROUND(AVG(t.price_start), 2) AS "Середня стартова ціна" ` +
           `FROM tender t ` +
           `JOIN person p ON t.id_author = p.id ` +
           `JOIN person_department pd ON pd.id_person = p.id ` +
@@ -512,7 +529,8 @@ export class LogisticsToolsService {
             : null;
 
         const sql =
-          `SELECT f.id, f.display_name, f.extension, f.file_size, f.tblref, f.id_tblref ` +
+          `SELECT f.display_name AS "Назва файлу", f.extension AS "Тип", ` +
+          `f.file_size AS "Розмір", f.tblref AS "Привʼязаний до" ` +
           `FROM files f WHERE f.display_name ILIKE $1 ` +
           `AND ($2::text IS NULL OR f.tblref = $2) ORDER BY f.id DESC`;
 

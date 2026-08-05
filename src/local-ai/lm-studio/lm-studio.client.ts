@@ -4,24 +4,30 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LlmClient } from '../llm/llm-client.interface';
 import {
   ChatCompletionOptions,
-  ChatCompletionResponse,
   ChatMessage,
+  LlmHealth,
+  LlmProvider,
+} from '../llm/llm.types';
+import {
+  ChatCompletionResponse,
   LmStudioModelInfo,
 } from './lm-studio.types';
 
 /**
- * Конектор до локального LM Studio.
+ * Конектор до локального LM Studio — запасний провайдер помічника.
  *
- * Єдине місце в проєкті, яке знає про HTTP-протокол локальної LLM. Усе інше
- * (LocalAiService, tools) працює через методи цього класу, тому заміна моделі
- * чи навіть раннера зводиться до зміни env-змінних або цього одного файлу.
+ * Робочий провайдер зараз — [GeminiClient](../llm/gemini.client.ts); цей клас
+ * лишається живим і реалізує той самий [LlmClient](../llm/llm-client.interface.ts),
+ * тому перехід назад на локальну модель — це `LOCAL_AI_PROVIDER=lmstudio`,
+ * без правок сервісів.
  *
- * Хмарних викликів тут немає навмисно: дані компанії не залишають локальну мережу.
+ * Хмарних викликів тут немає: у цьому режимі дані не залишають мережу компанії.
  */
 @Injectable()
-export class LmStudioClient {
+export class LmStudioClient implements LlmClient {
   private readonly logger = new Logger(LmStudioClient.name);
 
   private readonly baseUrl: string;
@@ -39,6 +45,10 @@ export class LmStudioClient {
     this.defaultTimeoutMs = Number(
       this.configService.get<string>('LM_STUDIO_TIMEOUT_MS') ?? 120000,
     );
+  }
+
+  public getProvider(): LlmProvider {
+    return 'lmstudio';
   }
 
   public getDefaultModel(): string {
@@ -130,23 +140,20 @@ export class LmStudioClient {
   }
 
   /** Перевірка доступності локального сервера — для health-ендпоінта. */
-  public async health(): Promise<{
-    available: boolean;
-    model: string;
-    loaded: boolean;
-    error?: string;
-  }> {
+  public async health(): Promise<LlmHealth> {
     try {
       const models = await this.listModels();
       const info = models.find((m) => m.id === this.defaultModel);
       return {
         available: true,
+        provider: 'lmstudio',
         model: this.defaultModel,
         loaded: info?.state === 'loaded',
       };
     } catch (err: any) {
       return {
         available: false,
+        provider: 'lmstudio',
         model: this.defaultModel,
         loaded: false,
         error: err?.message ?? 'unknown error',

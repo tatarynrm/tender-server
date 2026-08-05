@@ -22,6 +22,30 @@ export interface ChatSession {
   messageCount: number;
 }
 
+/** Запит сторінки історії: вікно рахується від кінця розмови. */
+export interface MessagePageQuery {
+  /** Скільки повідомлень віддати. */
+  limit?: number;
+  /** Скільки найновіших пропустити. 0 — остання сторінка (те, що видно одразу). */
+  offset?: number;
+}
+
+/**
+ * Сторінка історії.
+ *
+ * Повертається саме об'єктом, а не масивом: без `hasMore` фронт не знає,
+ * чи є що довантажувати вгору, і або смикав би сервер на кожен скрол,
+ * або мовчки обривав історію.
+ */
+export interface MessagePage {
+  /** У хронологічному порядку — від старіших до новіших. */
+  messages: StoredMessage[];
+  /** Скільки повідомлень у розмові взагалі. */
+  total: number;
+  /** Чи лишилося щось СТАРІШЕ за цю сторінку. */
+  hasMore: boolean;
+}
+
 /**
  * Сховище історії AI-чату.
  *
@@ -46,10 +70,14 @@ export interface ChatHistoryStore {
     message: Omit<StoredMessage, 'id' | 'createdAt'>,
   ): Promise<StoredMessage>;
 
-  /** Повідомлення сесії у хронологічному порядку; limit обмежує «хвіст». */
+  /**
+   * Сторінка повідомлень сесії, від кінця розмови.
+   * Без параметрів — останнє вікно за замовчуванням, а не вся історія:
+   * у довгій розмові вона важить мегабайти через збережені таблиці даних.
+   */
   getMessages(
     userId: number,
     sessionId: string,
-    limit?: number,
-  ): Promise<StoredMessage[]>;
+    query?: MessagePageQuery,
+  ): Promise<MessagePage>;
 }

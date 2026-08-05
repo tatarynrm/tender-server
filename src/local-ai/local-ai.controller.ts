@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { LocalAiAccess } from './guards/local-ai-access.decorator';
@@ -68,10 +69,24 @@ export class LocalAiController {
     return this.localAiService.deleteAllSessions();
   }
 
-  @ApiOperation({ summary: 'Повідомлення сесії' })
+  @ApiOperation({
+    summary: 'Сторінка повідомлень сесії (від кінця розмови)',
+    description:
+      'offset відлічується від найновішого повідомлення: 0 — хвіст розмови, ' +
+      'далі фронт довантажує старіше при скролі вгору.',
+  })
   @Get('sessions/:id/messages')
-  public async getMessages(@Param('id') id: string) {
-    return this.localAiService.getMessages(id);
+  public async getMessages(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    // @Query завжди рядок; NaN від сміття на кшталт ?limit=abc гасимо тут,
+    // щоб у сховище не поїхав некоректний зріз
+    const toNumber = (v?: string) =>
+      v !== undefined && Number.isFinite(Number(v)) ? Number(v) : undefined;
+
+    return this.localAiService.getMessages(id, toNumber(limit), toNumber(offset));
   }
 
   @ApiOperation({ summary: 'Перейменувати сесію' })
