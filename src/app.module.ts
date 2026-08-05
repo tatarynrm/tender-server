@@ -46,6 +46,7 @@ import { ApprovalModule } from './approval/approval.module';
 import { ClaudeAgentModule } from './claude-agent/claude-agent.module';
 import { AiModule } from './ai/ai.module';
 import { LogisticsModule } from './ai/logistics/logistics.module';
+import { LocalAiModule } from './local-ai/local-ai.module';
 import { DatabaseOracleModule } from './database-oracle/database-oracle.module';
 import { HealthModule } from './health/health.module';
 import { FilesModule } from './files/files.module';
@@ -121,6 +122,7 @@ import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
     ClaudeAgentModule,
     AiModule,
     LogisticsModule,
+    LocalAiModule,
     DatabaseOracleModule,
     FilesModule,
     NotificationModule,
