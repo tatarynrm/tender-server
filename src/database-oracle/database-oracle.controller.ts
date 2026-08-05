@@ -45,10 +45,11 @@ export class DatabaseOracleController {
     // до оракловського content окремим полем tender_statistic. Виклик
     // відмовостійкий навмисне: збій процедури не повинен класти весь екран
     // статистики перевізника, фронт трактує null як нулі.
+    // вів
     let tenderStatistic: any = null;
     try {
       const tenderResult =
-        await this.databaseService.callProcedure('tender_statistic');
+        await this.databaseService.callProcedure('tender_statistic',{},{});
       tenderStatistic = tenderResult?.content ?? null;
     } catch (error: any) {
       this.logger.warn(`tender_statistic недоступна: ${error?.message}`);
