@@ -176,7 +176,7 @@ export class UserController {
 
 // Видаляє чутливі поля з профілю перед відправкою клієнту.
 // Серверна логіка (guards, сесія) використовує окремі механізми і не залежить від цього.
-const SENSITIVE_FIELDS = ['password_hash', 'is_admin', 'is_ict'];
+const SENSITIVE_FIELDS = ['password_hash'];
 
 function sanitizeProfile(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj;
