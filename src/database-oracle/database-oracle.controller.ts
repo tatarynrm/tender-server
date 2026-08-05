@@ -1,10 +1,19 @@
 // database-oracle.controller.ts
-import { Controller, Get, Post, Body, Query, ParseIntPipe, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, ParseIntPipe, Param, Logger } from '@nestjs/common';
 import { DatabaseOracleService } from './database-oracle.service';
+import { DatabaseService } from 'src/database/database.service';
+import { Authorization } from 'src/auth/decorators/auth.decorator';
 
+
+@Authorization()
 @Controller('oracle')
 export class DatabaseOracleController {
-  constructor(private readonly oracleService: DatabaseOracleService) { }
+  private readonly logger = new Logger(DatabaseOracleController.name);
+
+  constructor(
+    private readonly oracleService: DatabaseOracleService,
+    private readonly databaseService: DatabaseService,
+  ) { }
 
   @Get('test')
   async getTest() {
@@ -31,7 +40,23 @@ export class DatabaseOracleController {
       'p_carrier.run',
       { func: 'main', kod_per: mid, body: JSON.stringify(query || {}) },
     );
-    return result?.content || result;
+
+    // Статистика по тендерах живе в Postgres, а не в Oracle — доклеюємо її
+    // до оракловського content окремим полем tender_statistic. Виклик
+    // відмовостійкий навмисне: збій процедури не повинен класти весь екран
+    // статистики перевізника, фронт трактує null як нулі.
+    let tenderStatistic: any = null;
+    try {
+      const tenderResult =
+        await this.databaseService.callProcedure('tender_statistic');
+      tenderStatistic = tenderResult?.content ?? null;
+    } catch (error: any) {
+      this.logger.warn(`tender_statistic недоступна: ${error?.message}`);
+    }
+
+    const content = result?.content ?? result;
+
+    return { ...(content || {}), tender_statistic: tenderStatistic };
   }
 
   @Get('carrier-cooperation/:mid')
