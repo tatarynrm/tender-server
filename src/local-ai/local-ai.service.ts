@@ -11,6 +11,7 @@ import type {
   ChatHistoryStore,
   ChatSession,
   MessagePage,
+  SessionPage,
   StoredMessage,
 } from './history/chat-history.types';
 import { LLM_CLIENT } from './llm/llm-client.interface';
@@ -86,8 +87,12 @@ export class LocalAiService {
     return this.history.createSession(this.requireUserId(), title);
   }
 
-  public async listSessions(): Promise<ChatSession[]> {
-    return this.history.listSessions(this.requireUserId());
+  /** Сторінка списку розмов: фронт вантажить його порціями при скролі. */
+  public async listSessions(
+    limit?: number,
+    offset?: number,
+  ): Promise<SessionPage> {
+    return this.history.listSessions(this.requireUserId(), { limit, offset });
   }
 
   /**

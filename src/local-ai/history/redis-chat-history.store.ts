@@ -7,6 +7,8 @@ import {
   ChatSession,
   MessagePage,
   MessagePageQuery,
+  SessionPage,
+  SessionPageQuery,
   StoredMessage,
 } from './chat-history.types';
 
@@ -30,6 +32,9 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
   /** Розмір сторінки історії, якщо клієнт не попросив свій. */
   private static readonly DEFAULT_PAGE = 30;
 
+  /** Розмір сторінки списку розмов. */
+  private static readonly DEFAULT_SESSION_PAGE = 20;
+
   private readonly ttlSeconds: number;
   private readonly maxMessages: number;
   private readonly maxSessions: number;
@@ -46,9 +51,11 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
       this.configService.get<string>('LOCAL_AI_HISTORY_MAX_MESSAGES') ?? 200,
     );
     // Відповіді з таблицями важать по кілька десятків кілобайт, а Redis тримає
-    // все в памʼяті — тому розмов на користувача рівно стільки, скільки видно в UI
+    // все в памʼяті — тому в користувача зберігається обмежене вікно розмов.
+    // Список фронт вантажить сторінками, тож стеля не впирається в те,
+    // скільки рядків влазить на екран
     this.maxSessions = Number(
-      this.configService.get<string>('LOCAL_AI_MAX_SESSIONS') ?? 10,
+      this.configService.get<string>('LOCAL_AI_MAX_SESSIONS') ?? 50,
     );
   }
 
@@ -86,22 +93,48 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
     return raw ? (JSON.parse(raw) as ChatSession) : null;
   }
 
-  public async listSessions(userId: number): Promise<ChatSession[]> {
-    // Разом зі списком прибираємо хвіст: у користувачів, які накопичили розмови
-    // до появи ліміту, зайве інакше висіло б у Redis до кінця TTL
-    await this.trimOldSessions(userId);
+  /**
+   * Сторінка списку розмов, від найсвіжішої.
+   *
+   * Зачистку хвоста робимо лише на першій сторінці: на другій і далі вона
+   * нічого б не змінила, зате додавала б зайвий рейс до Redis на кожен скрол.
+   */
+  public async listSessions(
+    userId: number,
+    query: SessionPageQuery = {},
+  ): Promise<SessionPage> {
+    const limit = Math.min(
+      Math.max(1, query.limit ?? RedisChatHistoryStore.DEFAULT_SESSION_PAGE),
+      this.maxSessions,
+    );
+    const offset = Math.max(0, query.offset ?? 0);
+
+    if (offset === 0) {
+      // У користувачів, які накопичили розмови до появи ліміту, зайве інакше
+      // висіло б у Redis до кінця TTL
+      await this.trimOldSessions(userId);
+    }
+
+    const total = Math.min(
+      await this.redis.zCard(this.indexKey(userId)),
+      this.maxSessions,
+    );
+
+    if (offset >= total) {
+      return { sessions: [], total, hasMore: false };
+    }
 
     // ZSET відсортований за updatedAt — свіжі сесії зверху
-    const ids = await this.redis.zRange(
-      this.indexKey(userId),
-      0,
-      this.maxSessions - 1,
-      { REV: true },
-    );
-    if (!ids.length) return [];
+    const stop = Math.min(offset + limit, total) - 1;
+    const ids = await this.redis.zRange(this.indexKey(userId), offset, stop, {
+      REV: true,
+    });
+    if (!ids.length) return { sessions: [], total, hasMore: false };
 
-    const raws = await Promise.all(
-      ids.map((id) => this.redis.get(this.sessionKey(userId, id))),
+    // Один MGET замість N окремих GET: на сторінці в 20 розмов це 20 рейсів
+    // до Redis проти одного
+    const raws = await this.redis.mGet(
+      ids.map((id) => this.sessionKey(userId, id)),
     );
 
     const sessions: ChatSession[] = [];
@@ -109,7 +142,7 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
 
     raws.forEach((raw, i) => {
       if (raw) sessions.push(JSON.parse(raw) as ChatSession);
-      // Метадані вижив TTL, а індекс лишився — прибираємо, щоб список не брехав
+      // Метадані зʼїв TTL, а індекс лишився — прибираємо, щоб список не брехав
       else orphans.push(ids[i]);
     });
 
@@ -117,7 +150,11 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
       await this.redis.zRem(this.indexKey(userId), orphans);
     }
 
-    return sessions;
+    return {
+      sessions,
+      total,
+      hasMore: offset + ids.length < total,
+    };
   }
 
   public async renameSession(
@@ -135,22 +172,14 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
     userId: number,
     sessionId: string,
   ): Promise<void> {
-    await Promise.all([
-      this.redis.del(this.sessionKey(userId, sessionId)),
-      this.redis.del(this.messagesKey(userId, sessionId)),
-      this.redis.zRem(this.indexKey(userId), sessionId),
-    ]);
+    await this.removeSessions(userId, [sessionId]);
   }
 
   public async deleteAllSessions(userId: number): Promise<number> {
     const ids = await this.redis.zRange(this.indexKey(userId), 0, -1);
     if (!ids.length) return 0;
 
-    await Promise.all(ids.map((id) => this.deleteSession(userId, id)));
-    // Прибираємо з індексу саме прочитані id, а не весь ключ: між читанням і
-    // видаленням користувач міг з іншої вкладки почати нову розмову, і del
-    // сховав би її зі списку назавжди, лишивши дані висіти до кінця TTL
-    await this.redis.zRem(this.indexKey(userId), ids);
+    await this.removeSessions(userId, ids);
 
     this.logger.log(`Користувач ${userId} видалив усі розмови: ${ids.length}`);
     return ids.length;
@@ -171,12 +200,36 @@ export class RedisChatHistoryStore implements ChatHistoryStore {
       total - this.maxSessions - 1,
     );
 
-    await Promise.all(stale.map((id) => this.deleteSession(userId, id)));
+    await this.removeSessions(userId, stale);
 
     this.logger.log(
       `Користувач ${userId}: прибрано ${stale.length} старих розмов (ліміт ${this.maxSessions})`,
     );
     return stale.length;
+  }
+
+  /**
+   * Видалити розмови разом із їхніми повідомленнями.
+   *
+   * Один DEL на всі ключі й один ZREM замість трьох команд на кожну розмову:
+   * при очищенні півсотні розмов це 2 рейси до Redis замість 150.
+   *
+   * З індексу прибираємо саме передані id, а не весь ключ: між читанням списку
+   * і видаленням користувач міг з іншої вкладки почати нову розмову, і DEL
+   * індексу сховав би її назавжди, лишивши дані висіти до кінця TTL.
+   */
+  private async removeSessions(userId: number, ids: string[]): Promise<void> {
+    if (!ids.length) return;
+
+    const keys = ids.flatMap((id) => [
+      this.sessionKey(userId, id),
+      this.messagesKey(userId, id),
+    ]);
+
+    await Promise.all([
+      this.redis.del(keys),
+      this.redis.zRem(this.indexKey(userId), ids),
+    ]);
   }
 
   public async appendMessage(

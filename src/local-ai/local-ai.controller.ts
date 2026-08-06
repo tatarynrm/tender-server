@@ -13,6 +13,15 @@ import { LocalAiAccess } from './guards/local-ai-access.decorator';
 import { LocalAiService } from './local-ai.service';
 
 /**
+ * @Query завжди віддає рядок; NaN від сміття на кшталт ?limit=abc гасимо тут,
+ * щоб у сховище не поїхав некоректний зріз.
+ */
+const toNumber = (value?: string): number | undefined =>
+  value !== undefined && Number.isFinite(Number(value))
+    ? Number(value)
+    : undefined;
+
+/**
  * HTTP-вхід локального помічника.
  *
  * DTO типізовані як `any` свідомо: глобальний ValidationPipe стоїть із
@@ -51,10 +60,21 @@ export class LocalAiController {
     return this.localAiService.refreshSchema();
   }
 
-  @ApiOperation({ summary: 'Список сесій чату користувача' })
+  @ApiOperation({
+    summary: 'Сторінка списку сесій чату користувача',
+    description:
+      'Від найсвіжішої розмови. Фронт вантажить список порціями при скролі, ' +
+      'тому відповідь містить total і hasMore.',
+  })
   @Get('sessions')
-  public async listSessions() {
-    return this.localAiService.listSessions();
+  public async listSessions(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.localAiService.listSessions(
+      toNumber(limit),
+      toNumber(offset),
+    );
   }
 
   @ApiOperation({ summary: 'Створити нову сесію чату' })
@@ -81,11 +101,6 @@ export class LocalAiController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    // @Query завжди рядок; NaN від сміття на кшталт ?limit=abc гасимо тут,
-    // щоб у сховище не поїхав некоректний зріз
-    const toNumber = (v?: string) =>
-      v !== undefined && Number.isFinite(Number(v)) ? Number(v) : undefined;
-
     return this.localAiService.getMessages(id, toNumber(limit), toNumber(offset));
   }
 

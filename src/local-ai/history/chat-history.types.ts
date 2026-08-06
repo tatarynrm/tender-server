@@ -46,6 +46,29 @@ export interface MessagePage {
   hasMore: boolean;
 }
 
+/** Запит сторінки списку розмов: від найсвіжішої до найстарішої. */
+export interface SessionPageQuery {
+  /** Скільки розмов віддати. */
+  limit?: number;
+  /** Скільки найсвіжіших пропустити. */
+  offset?: number;
+}
+
+/**
+ * Сторінка списку розмов.
+ *
+ * Об'єктом, а не масивом, із тієї ж причини, що й MessagePage: фронт вантажить
+ * список порціями при скролі, і без `total`/`hasMore` він не знає ні коли
+ * зупинитися, ні що показати в лічильнику «N з 50».
+ */
+export interface SessionPage {
+  sessions: ChatSession[];
+  /** Скільки розмов у користувача взагалі. */
+  total: number;
+  /** Чи лишилося щось СТАРІШЕ за цю сторінку. */
+  hasMore: boolean;
+}
+
 /**
  * Сховище історії AI-чату.
  *
@@ -56,7 +79,11 @@ export interface MessagePage {
 export interface ChatHistoryStore {
   createSession(userId: number, title: string): Promise<ChatSession>;
   getSession(userId: number, sessionId: string): Promise<ChatSession | null>;
-  listSessions(userId: number): Promise<ChatSession[]>;
+  /**
+   * Сторінка списку розмов, від найсвіжішої.
+   * Без параметрів — перша сторінка розміром за замовчуванням.
+   */
+  listSessions(userId: number, query?: SessionPageQuery): Promise<SessionPage>;
   renameSession(userId: number, sessionId: string, title: string): Promise<void>;
   deleteSession(userId: number, sessionId: string): Promise<void>;
   /** Видалити всі розмови користувача. Повертає, скільки видалено. */
