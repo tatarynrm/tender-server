@@ -53,7 +53,7 @@ LocalAiService
 
 ## Що бачить модель: уся схема бази
 
-`SchemaCatalogService` на старті (і на `POST /local-ai/schema/refresh`) читає з живої бази:
+`SchemaCatalogService` не читає базу автоматично — старт сервера завжди йде зі статичного `postgres.catalog.ts`. Живу схему він читає лише за ручним `POST /local-ai/schema/refresh`:
 
 - **усі таблиці й представлення схеми `public`** — крім `DENIED_TABLE_PATTERNS`;
 - колонки, типи, `COMMENT ON TABLE/COLUMN` (у нашій базі коментарі українські, тож описи дістаються безкоштовно);

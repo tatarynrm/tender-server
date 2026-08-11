@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Pool } from 'pg';
 import {
   DENIED_TABLE_PATTERNS,
@@ -18,19 +18,20 @@ import {
  *
  * Джерело — жива інтроспекція схеми `public`: УСІ таблиці й представлення, їхні
  * колонки, типи, `COMMENT ON TABLE/COLUMN`, первинні ключі та звʼязки. Модель
- * не обмежена заздалегідь описаним списком: нова таблиця в базі стає їй видимою
- * після рестарту або `POST /local-ai/schema/refresh`.
+ * не обмежена заздалегідь описаним списком, але інтроспекція не запускається
+ * сама собою — нова таблиця стає видимою лише після ручного
+ * `POST /local-ai/schema/refresh`.
  *
  * Поверх інтроспекції лягає [postgres.catalog.ts](./postgres.catalog.ts) —
- * описи, підказки, правила й приклади для найуживаніших таблиць. Якщо база
- * недоступна на старті, лишається сам файл: без нього генератор SQL не має що
+ * описи, підказки, правила й приклади для найуживаніших таблиць. Доки refresh
+ * не викликаний, каталог — це сам файл: без нього генератор SQL не має що
  * показати моделі.
  *
  * Цей же список таблиць — whitelist для SqlGuardService, тому DENIED_TABLE_PATTERNS —
  * не косметика: усе, що не потрапило в каталог, для моделі не існує.
  */
 @Injectable()
-export class SchemaCatalogService implements OnModuleInit {
+export class SchemaCatalogService {
   private readonly logger = new Logger(SchemaCatalogService.name);
 
   private catalog: SchemaCatalog = POSTGRES_CATALOG;
@@ -42,16 +43,7 @@ export class SchemaCatalogService implements OnModuleInit {
 
   constructor(@Inject('PG_POOL') private readonly pool: Pool) {}
 
-  public async onModuleInit(): Promise<void> {
-    // Старт бекенда не має падати через недоступну базу — тоді просто лишається статичний каталог
-    await this.refresh().catch((err) =>
-      this.logger.warn(
-        `Каталог схеми лишається статичним: ${err?.message ?? err}`,
-      ),
-    );
-  }
-
-  /** Перечитати всю схему з живої бази. Викликається на старті й вручну через API. */
+  /** Перечитати всю схему з живої бази. Викликається лише вручну через API. */
   public async refresh(): Promise<void> {
     const tableRows = await this.fetchTables();
     const [columnRows, primaryKeys, relations] = await Promise.all([

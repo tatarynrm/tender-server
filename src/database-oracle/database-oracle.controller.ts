@@ -3,6 +3,7 @@ import { Controller, Get, Post, Body, Query, ParseIntPipe, Param, Logger } from 
 import { DatabaseOracleService } from './database-oracle.service';
 import { DatabaseService } from 'src/database/database.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 
 @Authorization()
@@ -185,6 +186,7 @@ console.log(mid,'mid')
     return result;
   }
 
+  @Public()
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {

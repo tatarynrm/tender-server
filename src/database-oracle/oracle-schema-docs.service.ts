@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnApplicationBootstrap,
-  ServiceUnavailableException,
-} from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -71,10 +65,13 @@ export interface SnapshotMeta {
 }
 
 /**
- * Стежить за схемою ICTDAT в Oracle: щодня о 20:00 і після старту сервера
- * звіряє «відбиток» схеми (лічильники + MAX(LAST_DDL_TIME) по типах об'єктів);
- * повний збір метаданих і регенерація документації запускаються лише коли
- * відбиток змінився, тому регулярна перевірка — це один швидкий запит.
+ * Стежить за схемою ICTDAT в Oracle: звіряє «відбиток» схеми (лічильники +
+ * MAX(LAST_DDL_TIME) по типах об'єктів); повний збір метаданих і регенерація
+ * документації запускаються лише коли відбиток змінився, тому регулярна
+ * перевірка — це один швидкий запит.
+ *
+ * Сам аналіз не запускається автоматично — ні на старті сервера, ні за
+ * розкладом. Оновлення лише вручну через `POST /oracle/docs/refresh`.
  *
  * Снапшот зберігається локально в storage/oracle-docs/schema-snapshot.enc,
  * зашифрований AES-256-GCM ключем зі змінної ORACLE_DOCS_SECRET. Поруч лежить
@@ -82,7 +79,7 @@ export interface SnapshotMeta {
  * звірки без розшифрування.
  */
 @Injectable()
-export class OracleSchemaDocsService implements OnApplicationBootstrap {
+export class OracleSchemaDocsService {
   private readonly logger = new Logger(OracleSchemaDocsService.name);
 
   private readonly storageDir = path.join(
@@ -101,42 +98,8 @@ export class OracleSchemaDocsService implements OnApplicationBootstrap {
 
   constructor(private readonly oracle: DatabaseOracleService) {}
 
-  private get enabled(): boolean {
-    return (process.env.ORACLE_DOCS_ENABLED ?? 'true') !== 'false';
-  }
-
   private get secret(): string | undefined {
     return process.env.ORACLE_DOCS_SECRET || undefined;
-  }
-
-  onApplicationBootstrap() {
-    if (!this.enabled) {
-      this.logger.warn('⏸️ ORACLE_DOCS_ENABLED=false — аналіз схеми вимкнено.');
-      return;
-    }
-    if (!this.secret) {
-      this.logger.warn(
-        '⚠️ ORACLE_DOCS_SECRET не задано — снапшот схеми Oracle не буде збережено. Додайте секрет у .env.',
-      );
-      return;
-    }
-    // Відкладений запуск, щоб не подовжувати старт сервера: перевірка піде
-    // фоном, коли пул Oracle вже точно піднятий.
-    const delayMs =
-      Number(process.env.ORACLE_DOCS_STARTUP_DELAY_MS) || 30_000;
-    const timer = setTimeout(() => {
-      void this.checkAndUpdate('startup');
-    }, delayMs);
-    timer.unref();
-    this.logger.log(
-      `📚 Перевірку схеми Oracle заплановано через ${Math.round(delayMs / 1000)} с після старту та щодня о 20:00.`,
-    );
-  }
-
-  @Cron('0 0 20 * * *', { timeZone: 'Europe/Kyiv' })
-  async handleDailyCheck() {
-    if (!this.enabled || !this.secret) return;
-    await this.checkAndUpdate('cron-20:00');
   }
 
   /**
