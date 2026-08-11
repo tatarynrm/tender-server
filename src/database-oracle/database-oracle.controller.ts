@@ -148,6 +148,19 @@ console.log(mid,'mid')
     return result?.content || result;
   }
 
+  @Get('customer-trips/:kodZam')
+  async getCustomerTrips(
+    @Param('kodZam') kodZam: string,
+    @Query('page') page?: string,
+    @Query('perPage') perPage?: string,
+  ) {
+    return this.oracleService.getCustomerTrips(
+      kodZam,
+      Number(page) || 1,
+      Number(perPage) || 10,
+    );
+  }
+
   @Get('carrier-finance-statistic/:mid')
   async getCarrierFinanceStatistic(
     @Param('mid', ParseIntPipe) mid: number,

@@ -243,6 +243,86 @@ export class DatabaseOracleService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Виконані рейси з конкретним замовником (ZAY.KOD_ZAM = migrate_id компанії
+   * в Postgres), від нових до старих. Прямий SELECT — окремої процедури під
+   * це немає, за аналогією з kod_per у p_carrier.run для перевізників.
+   *
+   * MEN_ZAV/MEN_ROZV — наші ICT-менеджери (по завантаженні/розвантаженні,
+   * ZAY.KOD_MENZ/KOD_MENP → OS). У таблиці OS немає полів телефону/email
+   * (лише SKYPE) — контакти менеджерів тут показати нічим.
+   * KONTAKT_ZAM/KONTAKT_PER — зовнішні контакти на боці замовника/перевізника
+   * (ZAY.KOD_KONTAKTZ/KOD_KONTAKTP → KONTAKT), здебільшого NULL — заповнені
+   * не у всіх рейсах. Телефон/email цих контактів — окрема таблиця
+   * KONTAKTVAL (типізована через KONTAKTTYPE: 'Мобільний'/'Телефон'/'E-Mail'),
+   * kv_agg згортає її по KOD_KONTAKT в один рядок, щоб не розмножувати JOIN.
+   * VALUTZ_NAME/VALUTP_NAME — розшифровка коду валюти (ZAY.KOD_VALUTZ/
+   * KOD_VALUTP → VALUT.NDOV), інакше замість "грн" показувався б сирий код.
+   * CARRIER_NAME/PERSUMA — перевізник і сума, яку йому сплачено
+   * (ZAY.KOD_FIRMAP → FIRMA, ZAY.PERSUMA).
+   */
+  async getCustomerTrips(kodZam: string, page: number, perPage: number) {
+    const offset = (page - 1) * perPage;
+
+    const [rows, countRows] = await Promise.all([
+      this.executeReadOnlyQuery<any>(
+        `WITH kv_agg AS (
+           SELECT kv.KOD_KONTAKT,
+                  MIN(CASE WHEN kt.NTYPE = 'Мобільний' THEN kv.VAL END) AS MOB,
+                  MIN(CASE WHEN kt.NTYPE = 'Телефон' THEN kv.VAL END) AS TEL,
+                  MIN(CASE WHEN kt.NTYPE = 'E-Mail' THEN kv.VAL END) AS EMAIL
+           FROM KONTAKTVAL kv
+           JOIN KONTAKTTYPE kt ON kt.KOD = kv.KOD_TYPE
+           GROUP BY kv.KOD_KONTAKT
+         )
+         SELECT z.NUM, z.DATZAV, z.DATROZV, z.PUNKTZ, z.PUNKTR,
+                z.VOD1, z.VOD1TEL, z.AM, z.AMMARK,
+                z.VANTAZH, z.VANTTON,
+                z.ZAMSUMA, vz.NDOV AS VALUTZ_NAME,
+                z.PERSUMA, vp.NDOV AS VALUTP_NAME,
+                fp.NFIRMA AS CARRIER_NAME,
+                z.CODE_STATUSMEN, z.PRIMSTATUSMEN,
+                TRIM(menz.imja || ' ' || menz.prizv) AS MEN_ZAV,
+                TRIM(menp.imja || ' ' || menp.prizv) AS MEN_ROZV,
+                kz.nkontakt AS KONTAKT_ZAM,
+                COALESCE(kvz.MOB, kvz.TEL) AS KONTAKT_ZAM_TEL,
+                kvz.EMAIL AS KONTAKT_ZAM_EMAIL,
+                kp.nkontakt AS KONTAKT_PER,
+                COALESCE(kvp.MOB, kvp.TEL) AS KONTAKT_PER_TEL,
+                kvp.EMAIL AS KONTAKT_PER_EMAIL
+         FROM ZAY z
+         LEFT JOIN OS menz ON menz.kod = z.KOD_MENZ
+         LEFT JOIN OS menp ON menp.kod = z.KOD_MENP
+         LEFT JOIN KONTAKT kz ON kz.kod = z.KOD_KONTAKTZ
+         LEFT JOIN KONTAKT kp ON kp.kod = z.KOD_KONTAKTP
+         LEFT JOIN kv_agg kvz ON kvz.KOD_KONTAKT = z.KOD_KONTAKTZ
+         LEFT JOIN kv_agg kvp ON kvp.KOD_KONTAKT = z.KOD_KONTAKTP
+         LEFT JOIN VALUT vz ON vz.KOD = z.KOD_VALUTZ
+         LEFT JOIN VALUT vp ON vp.KOD = z.KOD_VALUTP
+         LEFT JOIN FIRMA fp ON fp.KOD = z.KOD_FIRMAP
+         WHERE z.KOD_ZAM = :kodZam
+           AND z.DATROZV IS NOT NULL
+         ORDER BY z.DATROZV DESC
+         OFFSET :offset ROWS FETCH NEXT :perPage ROWS ONLY`,
+        { kodZam, offset, perPage },
+      ),
+      this.executeReadOnlyQuery<{ CNT: number }>(
+        `SELECT COUNT(*) AS CNT FROM ZAY WHERE KOD_ZAM = :kodZam AND DATROZV IS NOT NULL`,
+        { kodZam },
+      ),
+    ]);
+
+    const total = Number(countRows[0]?.CNT ?? 0);
+
+    return {
+      rows,
+      total,
+      page,
+      perPage,
+      pageCount: Math.max(1, Math.ceil(total / perPage)),
+    };
+  }
+
   async onModuleDestroy() {
     if (this.pool) {
       await this.pool.close(0);

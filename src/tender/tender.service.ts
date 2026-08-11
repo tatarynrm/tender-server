@@ -19,6 +19,111 @@ export class TenderService {
     private readonly filesService: FilesService, // Added this line
   ) { }
 
+  /**
+   * Скільки тендерів проведено з цим замовником + його Oracle-код (migrate_id)
+   * для підтяжки рейсів з Oracle, і базові реквізити компанії (Postgres-бік
+   * інформації про замовника — Oracle-бік тягнеться окремо через
+   * p_tender.GetCompany). Прямий SELECT — окремої процедури під це немає.
+   */
+  public async getCustomerStats(companyName: string) {
+    const result = await this.dbservice.query(
+      `SELECT c.id, c.migrate_id, c.company_name_full, c.edrpou, c.address,
+              c.is_blocked, c.black_list, c.created_at,
+              COUNT(DISTINCT t.id)::int AS tender_count
+       FROM company c
+       LEFT JOIN tender t ON t.id_owner_company = c.id
+       WHERE c.company_name = $1
+       GROUP BY c.id, c.migrate_id, c.company_name_full, c.edrpou, c.address,
+                c.is_blocked, c.black_list, c.created_at`,
+      [companyName],
+    );
+
+    return (
+      result.rows[0] ?? { id: null, migrate_id: null, tender_count: 0 }
+    );
+  }
+
+  /**
+   * Тендери конкретного замовника з автором (наш менеджер, tender.id_author
+   * → person) і всіма ставками перевізників по кожному (tender_rate: хто
+   * з якої компанії скільки запропонував). Прямий SELECT, пагінація по
+   * тендерах — ставки не розбиваються між сторінками.
+   */
+  public async getCustomerTenderDetails(
+    companyId: number,
+    page: number,
+    perPage: number,
+  ) {
+    const offset = (page - 1) * perPage;
+
+    const [tendersResult, countResult] = await Promise.all([
+      this.dbservice.query(
+        `SELECT t.id, t.cargo, t.created_at, t.ids_status,
+                p_author.surname || ' ' || p_author.name AS author_name
+         FROM tender t
+         LEFT JOIN person p_author ON p_author.id = t.id_author
+         WHERE t.id_owner_company = $1
+         ORDER BY t.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [companyId, perPage, offset],
+      ),
+      this.dbservice.query(
+        `SELECT COUNT(*)::int AS cnt FROM tender WHERE id_owner_company = $1`,
+        [companyId],
+      ),
+    ]);
+
+    const tenderIds = tendersResult.rows.map((r: any) => r.id);
+    const bidsByTender = new Map<number, any[]>();
+
+    if (tenderIds.length > 0) {
+      const bidsResult = await this.dbservice.query(
+        `SELECT tr.id_tender, tr.id AS rate_id, tr.price_proposed, tr.car_count,
+                tr.time_add, tr.notes,
+                c.company_name AS carrier_name,
+                p_bidder.surname || ' ' || p_bidder.name AS bidder_name
+         FROM tender_rate tr
+         LEFT JOIN company c ON c.id = tr.id_company
+         LEFT JOIN person p_bidder ON p_bidder.id = tr.id_author
+         WHERE tr.id_tender = ANY($1::bigint[])
+         ORDER BY tr.time_add DESC`,
+        [tenderIds],
+      );
+
+      for (const row of bidsResult.rows) {
+        if (!bidsByTender.has(row.id_tender)) {
+          bidsByTender.set(row.id_tender, []);
+        }
+        bidsByTender.get(row.id_tender)!.push({
+          id: row.rate_id,
+          carrier_name: row.carrier_name,
+          bidder_name: row.bidder_name,
+          price_proposed: row.price_proposed,
+          car_count: row.car_count,
+          time_add: row.time_add,
+          notes: row.notes,
+        });
+      }
+    }
+
+    const total = countResult.rows[0]?.cnt ?? 0;
+
+    return {
+      rows: tendersResult.rows.map((t: any) => ({
+        id: t.id,
+        cargo: t.cargo,
+        created_at: t.created_at,
+        ids_status: t.ids_status,
+        author_name: t.author_name,
+        bids: bidsByTender.get(t.id) ?? [],
+      })),
+      total,
+      page,
+      perPage,
+      pageCount: Math.max(1, Math.ceil(total / perPage)),
+    };
+  }
+
   private getSortString(query: any): string {
     const sortBy = query.sortBy || 'time_start';
     const sortOrder = query.sortOrder || 'DESC';

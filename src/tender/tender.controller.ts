@@ -29,6 +29,22 @@ export class TenderController {
 
     return this.tenderService.tenderSetStatus(dto);
   }
+  @Get('customer-stats')
+  getCustomerStats(@Query('name') name: string) {
+    return this.tenderService.getCustomerStats(name);
+  }
+  @Get('customer-tenders')
+  getCustomerTenderDetails(
+    @Query('companyId') companyId: string,
+    @Query('page') page?: string,
+    @Query('perPage') perPage?: string,
+  ) {
+    return this.tenderService.getCustomerTenderDetails(
+      Number(companyId),
+      Number(page) || 1,
+      Number(perPage) || 10,
+    );
+  }
 
   // DASHBOARD
   @Get('client-list')
