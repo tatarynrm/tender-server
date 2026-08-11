@@ -55,15 +55,10 @@ export class TelegramService implements OnModuleInit {
 
   private async setupBotCommands() {
     try {
-      // Глобальний (default) список — лише те, що доступне всім.
-      // Рольові команди (звіти, пошта, деплой) додаються персонально
-      // через syncUserCommands із chat-скоупом — чужі команди в меню не видно.
+      // У меню бота (кнопка "/") навмисно лишаємо тільки /start —
+      // решта команд лишаються робочими, просто не показуються в списку.
       await this.bot.telegram.setMyCommands([
         { command: 'start', description: 'Запустити / Перезапустити бота' },
-        { command: 'menu', description: '📱 Головне меню' },
-        { command: 'profile', description: '👤 Мій профіль' },
-        { command: 'tenders', description: '📢 Активні тендери' },
-        { command: 'info', description: 'Інформація про бота' },
       ]);
       this.logger.log('✅ Команди бота успішно встановлено');
     } catch (error) {
@@ -72,42 +67,18 @@ export class TelegramService implements OnModuleInit {
   }
 
   /**
-   * Персональний список команд для конкретного чату — залежить від ролі.
-   * Telegram показує в меню лише те, що дозволено саме цьому користувачу;
-   * захистом це не є (хендлери перевіряють роль самі), але зайві пункти
-   * користувачі без доступу більше не бачать.
+   * Персональний (chat-scoped) список команд для конкретного чату.
+   * У меню Telegram навмисно лишаємо тільки /start незалежно від ролі —
+   * решта команд, доступних цьому користувачу, лишаються робочими,
+   * просто не підказуються в списку "/".
    */
   public async syncUserCommands(telegramId: number, access: TelegramAccess) {
-    const commands = [
-      { command: 'start', description: 'Запустити / Перезапустити бота' },
-      { command: 'menu', description: '📱 Головне меню' },
-      { command: 'profile', description: '👤 Мій профіль' },
-      { command: 'tenders', description: '📢 Активні тендери' },
-      { command: 'info', description: 'Інформація про бота' },
-    ];
-
-    if (access.isIct) {
-      commands.push({ command: 'summary', description: '📈 Зведення по тендерах' });
-    }
-    if (access.isIctAdmin) {
-      commands.push(
-        { command: 'reports', description: '📊 Звіти по тендерах (ШІ)' },
-        { command: 'exit', description: '🚪 Вийти з режиму звітів / ШІ' },
-      );
-    }
-    if (access.isSuperAdmin) {
-      commands.push(
-        { command: 'ai', description: '🧠 ШІ-База' },
-        { command: 'mail', description: '📬 Непрочитані листи' },
-        { command: 'deploy', description: '🚀 Деплой' },
-        { command: 'task', description: '🤖 Задача для Claude Code' },
-      );
-    }
-
+    void access;
     try {
-      await this.bot.telegram.setMyCommands(commands, {
-        scope: { type: 'chat', chat_id: telegramId },
-      });
+      await this.bot.telegram.setMyCommands(
+        [{ command: 'start', description: 'Запустити / Перезапустити бота' }],
+        { scope: { type: 'chat', chat_id: telegramId } },
+      );
     } catch (error) {
       this.logger.warn(
         `Не вдалося оновити персональні команди для ${telegramId}: ${error?.message}`,
