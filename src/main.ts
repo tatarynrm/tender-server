@@ -63,7 +63,8 @@ async function bootstrap() {
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://tender.ict.lviv.ua'
+    'https://tender.ict.lviv.ua',
+    'http://localhost:8081',
   ];
 
   app.enableCors({
