@@ -10,6 +10,9 @@ import { TelegramModule } from 'src/telegram/telegram.module';
 import { MailingService } from './mailing.service';
 import { BullModule } from '@nestjs/bullmq';
 import { MailingProcessor } from './processors/mailing.processor';
+import { MulterModule } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { multerFileFilter, MULTER_LIMITS } from '../config/multer-file-filter';
 
 @Module({
   imports: [
@@ -19,6 +22,12 @@ import { MailingProcessor } from './processors/mailing.processor';
     AdminUserModule,
     LoadModule,
     TelegramModule,
+    // Аплоади розсилок (Excel-адреси, вкладення) — з фільтром типів і лімітом.
+    MulterModule.register({
+      storage: memoryStorage(),
+      limits: MULTER_LIMITS,
+      fileFilter: multerFileFilter,
+    }),
     BullModule.registerQueue({
       name: 'email-mailing',
       defaultJobOptions: {

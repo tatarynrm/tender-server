@@ -48,19 +48,40 @@ export class AuthController {
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType, // ✅ типізація
   ) {}
 
+  /**
+   * Неблокуючий пошук ключів через SCAN (курсором, порціями) замість KEYS,
+   * який синхронно сканує весь keyspace і підвішує Redis на проді.
+   */
+  private async scanKeys(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor: any = 0;
+    do {
+      const reply: any = await this.redisClient.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 200,
+      });
+      cursor = reply.cursor;
+      if (reply.keys?.length) keys.push(...reply.keys);
+    } while (String(cursor) !== '0');
+    return keys;
+  }
+
   // @Recaptcha()
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 реєстрацій / хв
   @HttpCode(HttpStatus.OK)
   public async register(@Req() req: Request, @Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
   // @Recaptcha()
   @Post('pre-register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 / хв
   @HttpCode(HttpStatus.OK)
   public async preRegister(@Req() req: Request, @Body() dto: any) {
     return this.authService.preRegister(dto);
   }
   @Post('register-ict-user')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 / хв
   @HttpCode(HttpStatus.OK)
   public async registerIctUser(
     @Req() req: Request,
@@ -95,7 +116,7 @@ export class AuthController {
   async getUserSessions(@Req() req: Request) {
     const sessionPrefix =
       this.configService.get<string>('SESSION_FOLDER') || '';
-    const keys = await this.redisClient.keys(`${sessionPrefix}*`);
+    const keys = await this.scanKeys(`${sessionPrefix}*`);
 
     const sessions: SessionMeta[] = [];
     let currentSession: SessionMeta | null = null;
@@ -140,7 +161,7 @@ export class AuthController {
     const currentSessionId = req.sessionID;
     const userId = req.session.userId;
 
-    const keys = await this.redisClient.keys(`${sessionPrefix}*`);
+    const keys = await this.scanKeys(`${sessionPrefix}*`);
     const allSessions = await Promise.all(
       keys.map(async (key) => {
         const raw = await this.redisClient.get(key);

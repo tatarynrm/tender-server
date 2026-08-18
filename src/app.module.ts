@@ -9,7 +9,11 @@ import { EmailConfirmationModule } from './auth/email-confirmation/email-confirm
 import { PasswordRecoveryModule } from './auth/password-recovery/password-recovery.module';
 import { TwoFactorAuthModule } from './auth/two-factor-auth/two-factor-auth.module';
 import { DatabaseModule } from './database/database.module';
-import { RouterModule } from '@nestjs/core';
+import { RouterModule, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import Redis from 'ioredis';
+import { CustomThrottlerGuard } from './libs/common/guards/rate-limiter.guard';
 import { CompanyModule } from './company/company.module';
 import { CrmModule } from './crm/crm.module';
 import { ExternalServicesModule } from './external-services/external-services.module';
@@ -80,6 +84,24 @@ import { SocketSessionModule } from './libs/common/socket/socket-session.module'
         },
       }),
     }),
+    // Rate limiting: глобальний фолбек 120 запитів / 60с. Лічильники в Redis,
+    // щоб працювали спільно на кількох інстансах. Точкові ліміти — через
+    // @Throttle на чутливих роутах, службові — через @SkipThrottle.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [{ ttl: 60000, limit: 120 }],
+        storage: new ThrottlerStorageRedisService(
+          new Redis({
+            host: config.get<string>('REDIS_HOST'),
+            port: config.get<number>('REDIS_PORT'),
+            username: config.get<string>('REDIS_USER'),
+            password: config.get<string>('REDIS_PASSWORD'),
+          }),
+        ),
+        errorMessage: 'Забагато запитів. Спробуйте трохи згодом 🕐',
+      }),
+    }),
     HealthModule,
     AdminModule,
     AuthModule,
@@ -141,6 +163,8 @@ import { SocketSessionModule } from './libs/common/socket/socket-session.module'
     LoadGateway,
     FileCleanupService,
     DatabaseMonitorService,
+    // Глобальний rate-limit гвард (діє на всі HTTP-роути).
+    { provide: APP_GUARD, useClass: CustomThrottlerGuard },
   ],
   exports: [DatabaseModule],
 })

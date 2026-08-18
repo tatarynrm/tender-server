@@ -1,4 +1,5 @@
 import { Controller, Get, Query, Res, HttpStatus } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import axios from 'axios';
 import { URL } from 'url';
@@ -27,6 +28,7 @@ function isBlockedHost(hostname: string): boolean {
 
 @Controller('files')
 export class FilesController {
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // зовнішній проксі
   @Get('proxy')
   async proxyFile(@Query('url') url: string, @Res() res: Response) {
     if (!url) {

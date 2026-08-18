@@ -1,5 +1,6 @@
 import { Controller, Post, Body, UseInterceptors, UploadedFiles, BadRequestException } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { LogisticsParserService } from './logistics-parser.service';
 
 @Controller('ai/logistics')
@@ -7,6 +8,7 @@ export class LogisticsController {
   constructor(private readonly parserService: LogisticsParserService) { }
 
   @Post('parse-cargo')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // дорогі LLM-виклики
   @UseInterceptors(FileFieldsInterceptor([
     { name: 'images', maxCount: 10 },
     { name: 'audio', maxCount: 1 }
@@ -25,6 +27,7 @@ export class LogisticsController {
   }
 
   @Post('parse-tender')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // дорогі LLM-виклики
   @UseInterceptors(FileFieldsInterceptor([
     { name: 'images', maxCount: 10 },
     { name: 'audio', maxCount: 1 }

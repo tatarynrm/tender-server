@@ -1,9 +1,11 @@
 // database-oracle.controller.ts
-import { Controller, Get, Post, Body, Query, ParseIntPipe, Param, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, ParseIntPipe, Param, Logger, Inject } from '@nestjs/common';
+import type { RedisClientType } from 'redis';
 import { DatabaseOracleService } from './database-oracle.service';
 import { DatabaseService } from 'src/database/database.service';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 
 @Authorization()
@@ -14,7 +16,33 @@ export class DatabaseOracleController {
   constructor(
     private readonly oracleService: DatabaseOracleService,
     private readonly databaseService: DatabaseService,
+    @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
   ) { }
+
+  /**
+   * Кеш «читання-переважно» статистик у Redis. Статистики змінюються повільно,
+   * а кожен виклик синхронно б'є в Oracle — тож короткий TTL (1–5 хв) різко
+   * розвантажує БД. Збій Redis не ламає роут: помилки кешу лише логуються.
+   */
+  private async cached<T>(
+    key: string,
+    ttlSeconds: number,
+    producer: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      const hit = await this.redisClient.get(key);
+      if (hit) return JSON.parse(hit) as T;
+    } catch (e: any) {
+      this.logger.warn(`Кеш-читання ${key} впало: ${e?.message}`);
+    }
+    const value = await producer();
+    try {
+      await this.redisClient.set(key, JSON.stringify(value), { EX: ttlSeconds });
+    } catch (e: any) {
+      this.logger.warn(`Кеш-запис ${key} впав: ${e?.message}`);
+    }
+    return value;
+  }
 
   @Get('test')
   async getTest() {
@@ -37,28 +65,29 @@ export class DatabaseOracleController {
     @Param('mid', ParseIntPipe) mid: number,
     @Query() query: any,
   ) {
-    const result = await this.oracleService.executeProcedure<any>(
-      'p_carrier.run',
-      { func: 'main', kod_per: mid, body: JSON.stringify(query || {}) },
-    );
+    return this.cached(`oracle:carrier-statistic:${mid}`, 120, async () => {
+      const result = await this.oracleService.executeProcedure<any>(
+        'p_carrier.run',
+        { func: 'main', kod_per: mid, body: JSON.stringify(query || {}) },
+      );
 
-    // Статистика по тендерах живе в Postgres, а не в Oracle — доклеюємо її
-    // до оракловського content окремим полем tender_statistic. Виклик
-    // відмовостійкий навмисне: збій процедури не повинен класти весь екран
-    // статистики перевізника, фронт трактує null як нулі.
-    // вів
-    let tenderStatistic: any = null;
-    try {
-      const tenderResult =
-        await this.databaseService.callProcedure('tender_statistic',{},{});
-      tenderStatistic = tenderResult?.content ?? null;
-    } catch (error: any) {
-      this.logger.warn(`tender_statistic недоступна: ${error?.message}`);
-    }
+      // Статистика по тендерах живе в Postgres, а не в Oracle — доклеюємо її
+      // до оракловського content окремим полем tender_statistic. Виклик
+      // відмовостійкий навмисне: збій процедури не повинен класти весь екран
+      // статистики перевізника, фронт трактує null як нулі.
+      let tenderStatistic: any = null;
+      try {
+        const tenderResult =
+          await this.databaseService.callProcedure('tender_statistic', {}, {});
+        tenderStatistic = tenderResult?.content ?? null;
+      } catch (error: any) {
+        this.logger.warn(`tender_statistic недоступна: ${error?.message}`);
+      }
 
-    const content = result?.content ?? result;
+      const content = result?.content ?? result;
 
-    return { ...(content || {}), tender_statistic: tenderStatistic };
+      return { ...(content || {}), tender_statistic: tenderStatistic };
+    });
   }
 
   @Get('carrier-cooperation/:mid')
@@ -66,11 +95,13 @@ export class DatabaseOracleController {
     @Param('mid', ParseIntPipe) mid: number,
     @Query() query: any,
   ) {
-    const result = await this.oracleService.executeProcedure<any>(
-      'p_carrier.run',
-      { func: 'cooperation', kod_per: mid, body: JSON.stringify(query || {}) },
-    );
-    return result?.content || result;
+    return this.cached(`oracle:carrier-cooperation:${mid}`, 300, async () => {
+      const result = await this.oracleService.executeProcedure<any>(
+        'p_carrier.run',
+        { func: 'cooperation', kod_per: mid, body: JSON.stringify(query || {}) },
+      );
+      return result?.content || result;
+    });
   }
 
   @Get('carrier-contacts/:mid')
@@ -78,11 +109,13 @@ export class DatabaseOracleController {
     @Param('mid', ParseIntPipe) mid: number,
     @Query() query: any,
   ) {
-    const result = await this.oracleService.executeProcedure<any>(
-      'p_carrier.run',
-      { func: 'contact_list_ict', kod_per: mid, body: JSON.stringify(query || {}) },
-    );
-    return result?.content || result;
+    return this.cached(`oracle:carrier-contacts:${mid}`, 300, async () => {
+      const result = await this.oracleService.executeProcedure<any>(
+        'p_carrier.run',
+        { func: 'contact_list_ict', kod_per: mid, body: JSON.stringify(query || {}) },
+      );
+      return result?.content || result;
+    });
   }
 
   @Get('carrier-transportations/:mid')
@@ -90,11 +123,13 @@ export class DatabaseOracleController {
     @Param('mid', ParseIntPipe) mid: number,
     @Query() query: any,
   ) {
-    const result = await this.oracleService.executeProcedure<any>(
-      'p_carrier.run',
-      { func: 'perev_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
-    );
-    return result?.content || result;
+    return this.cached(`oracle:carrier-transportations:${mid}`, 120, async () => {
+      const result = await this.oracleService.executeProcedure<any>(
+        'p_carrier.run',
+        { func: 'perev_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
+      );
+      return result?.content || result;
+    });
   }
 
   @Post('carrier-transportation-list/:mid')
@@ -102,7 +137,6 @@ export class DatabaseOracleController {
     @Param('mid', ParseIntPipe) mid: number,
     @Body() body: any,
   ) {
-console.log(mid,'mid')
     const result = await this.oracleService.executeProcedure<any>(
       'p_carrier.run',
       { func: 'perev_list', kod_per: mid, body: JSON.stringify(body || {}) },
@@ -144,11 +178,13 @@ console.log(mid,'mid')
     @Param('mid', ParseIntPipe) mid: number,
     @Query() query: any,
   ) {
-    const result = await this.oracleService.executeProcedure<any>(
-      'p_carrier.run',
-      { func: 'zay_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
-    );
-    return result?.content || result;
+    return this.cached(`oracle:client-orders-statistic:${mid}`, 180, async () => {
+      const result = await this.oracleService.executeProcedure<any>(
+        'p_carrier.run',
+        { func: 'zay_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
+      );
+      return result?.content || result;
+    });
   }
 
   @Post('client-orders-list/:mid')
@@ -181,11 +217,13 @@ console.log(mid,'mid')
     @Param('mid', ParseIntPipe) mid: number,
     @Query() query: any,
   ) {
-    const result = await this.oracleService.executeProcedure<any>(
-      'p_carrier.run',
-      { func: 'rah_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
-    );
-    return result;
+    return this.cached(`oracle:carrier-finance-statistic:${mid}`, 180, async () => {
+      const result = await this.oracleService.executeProcedure<any>(
+        'p_carrier.run',
+        { func: 'rah_statistic', kod_per: mid, body: JSON.stringify(query || {}) },
+      );
+      return result;
+    });
   }
 
   @Post('carrier-finance-list/:mid')
@@ -201,6 +239,7 @@ console.log(mid,'mid')
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // публічний + б'є в Oracle
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
     if (!edrpou || edrpou.length < 8) {

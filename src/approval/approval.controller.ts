@@ -10,6 +10,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SkipThrottle } from '@nestjs/throttler';
 import { timingSafeEqual } from 'crypto';
 import { ApprovalService } from './approval.service';
 
@@ -18,6 +19,7 @@ import { ApprovalService } from './approval.service';
  * тому сесійного AuthGuard тут бути не може — замість нього спільний секрет
  * APPROVAL_SECRET у заголовку. Без нього маршрут відповідає 403.
  */
+@SkipThrottle() // локальний хук може часто опитувати статус погодження
 @Controller('approval')
 export class ApprovalController {
   constructor(

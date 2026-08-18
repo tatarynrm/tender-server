@@ -6,16 +6,17 @@ import { UserModule } from 'src/user/user.module';
 import { TenderGateway } from './tender.gateway';
 import { LoadGateway } from 'src/crm/load/load.gateway';
 import { MulterModule } from '@nestjs/platform-express';
-import { MulterConfigService } from '../config/multer.config.service';
 
 import { memoryStorage } from 'multer';
+import { multerFileFilter, MULTER_LIMITS } from '../config/multer-file-filter';
 
 @Module({
   imports: [
     UserModule,
     MulterModule.register({
       storage: memoryStorage(),
-      limits: { fileSize: 1024 * 1024 * 100 }, // 100MB
+      limits: MULTER_LIMITS, // 30MB
+      fileFilter: multerFileFilter,
     }),
   ],
   controllers: [TenderController],
