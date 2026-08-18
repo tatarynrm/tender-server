@@ -8,6 +8,16 @@ import {
 
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
+  // Throttler застосовуємо ЛИШЕ до HTTP. Для telegraf-оновлень і WS-контекстів
+  // (у них немає res.header) гвард інакше падає з "res.header is not a function",
+  // ламаючи, зокрема, /start у Telegram-боті.
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (context.getType() !== 'http') {
+      return true;
+    }
+    return super.canActivate(context);
+  }
+
   protected async throwThrottlingException(
     context: ExecutionContext,
     throttlerLimitDetail: ThrottlerLimitDetail,
