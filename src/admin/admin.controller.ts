@@ -1,10 +1,15 @@
-import { Controller, Post, Param, Body, Get, Query, UseInterceptors, UploadedFile, UploadedFiles, Delete } from '@nestjs/common';
+import { Controller, Post, Param, Body, Get, Query, UseInterceptors, UploadedFile, UploadedFiles, Delete, UseGuards } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { LoadGateway } from 'src/crm/load/load.gateway';
 import { UserService } from 'src/user/user.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { MailingService } from './mailing.service';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { IctAdminGuard } from 'src/libs/common/guards/ict-admin.guard';
 
+// Раніше контролер був відкритий без авторизації (block/notification/mailing/
+// telegram-broadcast). Тепер — лише для авторизованих адмінів ICT.
+@UseGuards(AuthGuard, IctAdminGuard)
 @Controller()
 export class AdminController {
   constructor(

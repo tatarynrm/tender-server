@@ -113,6 +113,20 @@ console.log(mid,'mid')
     return result;
   }
 
+  @Post('carrier-transportation-filter/:mid')
+  async getCarrierTransportationFilter(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Body() body: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'perev_filter', kod_per: mid, body: JSON.stringify(body || {}) },
+    );
+    // Повна відповідь разом із props.pagination — вкладка «Пошук» рахує
+    // з неї кількість сторінок. Масив лежить у content.
+    return result;
+  }
+
   @Post('carrier-transportation/:mid')
   async getCarrierTransportation(
     @Param('mid', ParseIntPipe) mid: number,

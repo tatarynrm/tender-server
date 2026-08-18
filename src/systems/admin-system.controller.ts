@@ -1,9 +1,13 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { SystemGateway } from './systems.gateway';
 import { SystemsService } from './systems.service';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { IctAdminGuard } from 'src/libs/common/guards/ict-admin.guard';
 
+// send-command розсилає FORCE_RELOAD/FORCE_LOGOUT усім сокетам — лише для
+// авторизованих адмінів ICT.
+@UseGuards(AuthGuard, IctAdminGuard)
 @Controller('admin/system')
-// @UseGuards(RolesGuard) // Не забудьте захистити цей роут!
 export class AdminSystemController {
   constructor(
     private readonly systemGateway: SystemGateway,
