@@ -55,6 +55,7 @@ import { DbEventsModule } from './modules/db-events/db-events.module';
 import { UserActivityModule } from './common/user-activity.module';
 import { MailReaderModule } from './mail-reader/mail-reader.module';
 import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
+import { SocketSessionModule } from './libs/common/socket/socket-session.module';
 
 
 @Module({
@@ -130,6 +131,7 @@ import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
     UserActivityModule,
     MailReaderModule,
     MailReaderTasksModule,
+    SocketSessionModule,
   ],
   controllers: [],
   providers: [

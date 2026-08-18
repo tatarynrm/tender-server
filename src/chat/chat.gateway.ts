@@ -34,8 +34,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    // Реєструємо socket.id для конкретного користувача в Redis
-    this.redisClient.sAdd(`chat_user:${userId}`, socket.id);
+    // Реєструємо socket.id для конкретного користувача в Redis.
+    // TTL на SET, щоб при аварійному розриві ключ не тік у Redis.
+    void this.redisClient
+      .sAdd(`chat_user:${userId}`, socket.id)
+      .then(() => this.redisClient.expire(`chat_user:${userId}`, 86400));
   }
 
   // Обробка відключення клієнта

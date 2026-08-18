@@ -33,6 +33,8 @@ export class TenderGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Зберігаємо всі сокети користувача
     await this.redisClient.sAdd(`tender_sockets:${userId}`, client.id);
+    // TTL на SET, щоб при аварійному розриві ключ не тік у Redis.
+    await this.redisClient.expire(`tender_sockets:${userId}`, 3600);
     await this.redisClient.set(`socket_user:${client.id}`, userId, {
       EX: 3600,
     });

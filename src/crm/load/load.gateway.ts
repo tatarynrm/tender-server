@@ -34,6 +34,8 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
         value: userId,
       }),
     ]);
+    // TTL на SET одразу, щоб при аварійному розриві ключ не тік у Redis.
+    await this.redisClient.expire(`load_sockets:${userId}`, 86400);
 
     const socketCount = await this.redisClient.sCard(`load_sockets:${userId}`);
     if (socketCount === 1) {
@@ -98,6 +100,8 @@ export class LoadGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('get_online_users')
   async handleGetOnlineUsers() {
     const threshold = Math.floor(Date.now() / 1000) - 120;
+    // Самоочистка протухлих записів, щоб ZSET не ріс без стелі.
+    await this.redisClient.zRemRangeByScore(this.ONLINE_TRACKER_KEY, 0, threshold);
     return await this.redisClient.zRangeByScore(
       this.ONLINE_TRACKER_KEY,
       threshold,

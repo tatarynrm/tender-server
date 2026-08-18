@@ -245,9 +245,16 @@ export class UserService {
     const users = Array.isArray(result) ? result : result.content;
     if (!users || users.length === 0) return result;
 
-    // 2. Беремо онлайн користувачів з Redis SET
-    const onlineIds: string[] =
-      await this.redisClient.sMembers('online_users_set');
+    // 2. Беремо онлайн користувачів із реального трекера присутності
+    // (ZSET online_users_active, який наповнює UserGateway). Раніше тут
+    // читався ключ online_users_set, який ніхто не наповнював, тож isOnline
+    // завжди був false. Вікно — 2 хвилини, як у get_online_users.
+    const threshold = Math.floor(Date.now() / 1000) - 120;
+    const onlineIds: string[] = await this.redisClient.zRangeByScore(
+      'online_users_active',
+      threshold,
+      '+inf',
+    );
     const onlineSet = new Set(onlineIds);
 
     // 3. Додаємо isOnline

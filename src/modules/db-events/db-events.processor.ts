@@ -83,13 +83,19 @@ export class DbEventsProcessor {
     );
 
     if (notify_part === 'TENDER') {
-      await this.tenderQueue.add('process-notification', {
-        notificationId,
-        notifyType,
-        tenderId: id_tblref,
-        content,
-        personList: final_person_list,
-      });
+      await this.tenderQueue.add(
+        'process-notification',
+        {
+          notificationId,
+          notifyType,
+          tenderId: id_tblref,
+          content,
+          personList: final_person_list,
+        },
+        // Прибираємо джоби, щоб bull:tender_notifications:* не накопичувались:
+        // виконані — одразу, провалені — тримаємо останні 500 для діагностики.
+        { removeOnComplete: true, removeOnFail: 500 },
+      );
     } else {
       this.logger.warn(`No configured queue for notify_part: ${notify_part}`);
       // Можемо також зразу замінити статус на помилку або відкладено:
