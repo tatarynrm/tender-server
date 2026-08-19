@@ -58,7 +58,8 @@ import { NotificationModule } from './notification/notification.module';
 import { DbEventsModule } from './modules/db-events/db-events.module';
 import { UserActivityModule } from './common/user-activity.module';
 import { MailReaderModule } from './mail-reader/mail-reader.module';
-import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
+// Тимчасово вимкнено: фонова перевірка пошти + сповіщення в Telegram.
+// import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
 import { SocketSessionModule } from './libs/common/socket/socket-session.module';
 
 
@@ -152,7 +153,7 @@ import { SocketSessionModule } from './libs/common/socket/socket-session.module'
     DbEventsModule,
     UserActivityModule,
     MailReaderModule,
-    MailReaderTasksModule,
+    // MailReaderTasksModule, // тимчасово вимкнено (фонова перевірка пошти)
     SocketSessionModule,
   ],
   controllers: [],
