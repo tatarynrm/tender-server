@@ -238,6 +238,22 @@ export class DatabaseOracleController {
     return result;
   }
 
+  // Пошук рахунків за фільтрами (вкладка «Пошук» у фінансах) — аналог
+  // carrier-transportation-filter, лише інша функція процедури. Body прозоро
+  // прокидається у p_carrier.run (func: rah_filter): { filter, pagination }.
+  // Повна відповідь разом із props.pagination — фронт рахує з неї сторінки.
+  @Post('carrier-finance-filter/:mid')
+  async getCarrierFinanceFilter(
+    @Param('mid', ParseIntPipe) mid: number,
+    @Body() body: any,
+  ) {
+    const result = await this.oracleService.executeProcedure<any>(
+      'p_carrier.run',
+      { func: 'rah_filter', kod_per: mid, body: JSON.stringify(body || {}) },
+    );
+    return result;
+  }
+
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // публічний + б'є в Oracle
   @Get('search-company')
