@@ -20,6 +20,7 @@ import { CompanyFillPreRegister } from './dto/company-fill-pre-register.dto';
 import { CreateUserFromCompany } from './dto/create-user-from-company.dto';
 import { UserRegisterFromPreDto } from './dto/user-register-from-pre.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { AddPhoneDto } from './dto/add-phone.dto';
 
 @Authorization()
 @Controller('users')
@@ -52,6 +53,16 @@ export class UserController {
     @Req() req: Request,
   ) {
     return this.userService.update(userId, dto);
+  }
+
+  @Authorization()
+  @HttpCode(HttpStatus.OK)
+  @Post('profile/phone')
+  public async addProfilePhone(
+    @Authorized('id') userId: string,
+    @Body() dto: AddPhoneDto,
+  ) {
+    return this.userService.addProfilePhone(userId, dto);
   }
 
   @Authorization()

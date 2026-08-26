@@ -30,7 +30,7 @@ export class UserService {
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
     private readonly telegramTokenService: TelegramTokenService,
     private readonly userGateway: UserGateway,
-  ) {}
+  ) { }
 
   public async findById(id: string | number) {
     // 1. Отримуємо основні дані юзера з процедури
@@ -41,7 +41,7 @@ export class UserService {
     );
 
     const user = existUser.content;
-
+    console.log(user, 'USER FROM ME');
     if (!user) {
       throw new NotFoundException(
         'Користувача не знайдено. Перевірте авторизаційні дані.',
@@ -58,20 +58,59 @@ export class UserService {
 
     const telegramData = telegramResult.rows[0];
 
-    // 3. Зливаємо дані: додаємо вкладений об'єкт person_telegram
+    // 3. Телефони працівника з галочками месенджерів (масив об'єктів).
+    const phoneResult = await this.pool.query(
+      `SELECT id, phone, is_telegram, is_viber, is_whatsapp
+         FROM person_phone
+        WHERE id_person = $1
+        ORDER BY id`,
+      [user.person.id],
+    );
+
+    // 4. Зливаємо дані: додаємо вкладений об'єкт person_telegram і масив телефонів.
     // Якщо telegramData немає, повертаємо null
     const enrichedUser = {
       ...user,
       person_telegram: telegramData
         ? {
-            telegram_id: telegramData.telegram_id,
-            username: telegramData.username,
-            first_name: telegramData.first_name,
-          }
+          telegram_id: telegramData.telegram_id,
+          username: telegramData.username,
+          first_name: telegramData.first_name,
+        }
         : null,
+      person_phone: phoneResult.rows,
     };
 
     return enrichedUser;
+  }
+
+  // Додати телефон працівника з галочками месенджерів (Telegram/Viber/WhatsApp).
+  public async addProfilePhone(
+    userId: string | number,
+    dto: {
+      phone: string;
+      is_telegram?: boolean;
+      is_viber?: boolean;
+      is_whatsapp?: boolean;
+    },
+  ) {
+    const user = await this.findById(userId);
+    const idPerson = user.person.id;
+
+    const result = await this.pool.query(
+      `INSERT INTO person_phone (id_person, phone, is_telegram, is_viber, is_whatsapp)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, phone, is_telegram, is_viber, is_whatsapp`,
+      [
+        idPerson,
+        dto.phone,
+        dto.is_telegram ?? false,
+        dto.is_viber ?? false,
+        dto.is_whatsapp ?? false,
+      ],
+    );
+
+    return result.rows[0];
   }
   public async findByEmail(email: string) {
     const result: QueryResult<IUserProfile> = await this.pool.query(
@@ -149,14 +188,14 @@ export class UserService {
 
   public async updateRole(userId: string, dto: { is_head_department?: boolean }) {
     const user = await this.findById(userId);
-    
+
     if (dto.is_head_department !== undefined) {
       await this.pool.query(
         `UPDATE person_role SET is_head_department = $1 WHERE id_person = $2`,
         [dto.is_head_department, user.person.id],
       );
     }
-    
+
     return { success: true };
   }
 
