@@ -67,6 +67,18 @@ export class AdminUserController {
     return this.userActivityService.getIctManagersActivitySummary();
   }
 
+  // Звіт "Активність партнерів": зовнішні (не ICT) admin/manager по компаніях
+  @Get('partners-activity')
+  async getPartnersActivity(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.userActivityService.getExternalPartnersLoginReport(
+      startDate,
+      endDate,
+    );
+  }
+
   @Get(':id/activities')
   async getUserActivities(
     @Param('id') id: string,

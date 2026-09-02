@@ -159,11 +159,11 @@ export class UserActivityRepository {
 
   async getIctManagersActivitySummary() {
     const query = `
-      SELECT 
-        u.id as id_usr, 
-        p.surname, 
-        p.name, 
-        p.last_name, 
+      SELECT
+        u.id as id_usr,
+        p.surname,
+        p.name,
+        p.last_name,
         MAX(a.created_at) as last_activity
       FROM usr u
       JOIN person p ON p.id = u.id_person
@@ -174,6 +174,56 @@ export class UserActivityRepository {
       ORDER BY last_activity ASC NULLS FIRST
     `;
     const result = await this.dbService.query(query, []);
+    return result.rows;
+  }
+
+  /**
+   * Звіт "Активність партнерів" (зовнішній онлайн).
+   *
+   * Лише ЗОВНІШНІ користувачі: не ICT (is_ict IS NOT TRUE), але мають роль
+   * адміністратора або менеджера. Рахуємо входи (action = 'LOGIN') за період
+   * [startDate; endDate]; порожній період означає "за весь час".
+   *
+   * Повертає плоскі рядки (одна на користувача) з прив'язкою до компанії —
+   * групування по компаніях робить сервіс.
+   */
+  async getExternalPartnersLoginReport(startDate?: string, endDate?: string) {
+    const query = `
+      SELECT
+        c.id                AS company_id,
+        c.company_name,
+        c.company_name_full,
+        c.edrpou,
+        u.id                AS id_usr,
+        p.surname,
+        p.name,
+        p.last_name,
+        p.position,
+        p.email,
+        pr.is_admin,
+        pr.is_manager,
+        COUNT(a.id) FILTER (WHERE a.action = 'LOGIN')::int AS login_count,
+        MAX(a.created_at) FILTER (WHERE a.action = 'LOGIN')  AS last_login,
+        MIN(a.created_at) FILTER (WHERE a.action = 'LOGIN')  AS first_login,
+        MAX(a.created_at)  AS last_activity,
+        COUNT(a.id)::int   AS activity_count
+      FROM usr u
+      JOIN person p ON p.id = u.id_person
+      JOIN person_role pr ON pr.id_person = p.id
+      LEFT JOIN company c ON c.id = u.id_company
+      LEFT JOIN usr_activities a
+        ON a.id_usr = u.id
+       AND ($1::timestamptz IS NULL OR a.created_at >= $1::timestamptz)
+       AND ($2::timestamptz IS NULL OR a.created_at <= $2::timestamptz)
+      WHERE pr.is_ict IS NOT TRUE
+        AND (pr.is_admin IS TRUE OR pr.is_manager IS TRUE)
+      GROUP BY c.id, c.company_name, c.company_name_full, c.edrpou,
+               u.id, p.surname, p.name, p.last_name, p.position, p.email,
+               pr.is_admin, pr.is_manager
+      ORDER BY c.company_name NULLS LAST, p.surname NULLS LAST
+    `;
+    const params = [startDate || null, endDate || null];
+    const result = await this.dbService.query(query, params);
     return result.rows;
   }
 }
