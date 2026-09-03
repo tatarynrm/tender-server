@@ -258,13 +258,24 @@ export class DatabaseOracleController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // публічний + б'є в Oracle
   @Get('search-company')
   async searchCompany(@Query('edrpou') edrpou: string) {
-    if (!edrpou || edrpou.length < 8) {
-      return [];
-    }
+    // Параметр історично зветься edrpou, але приймає і назву компанії.
+    // Цифри → пошук за ЄДРПОУ (префікс zkpo); текст → за назвою (входження в nur).
+    // Пошук за назвою — leading-wildcard LIKE, тому індекс не працює; захищено
+    // тротлінгом і rownum <= 20.
+    const q = (edrpou || '').trim();
+    if (!q) return [];
+
+    const isNumeric = /^\d+$/.test(q);
+    if (isNumeric ? q.length < 8 : q.length < 3) return [];
+
+    const whereClause = isNumeric
+      ? `a.zkpo like :q || '%'`
+      : `upper(a.nur) like '%' || upper(:q) || '%'`;
+
     const sql = `
-      select a.kod as "kod", 
-             a.nur as "nur", 
-             a.zkpo as "zkpo", 
+      select a.kod as "kod",
+             a.nur as "nur",
+             a.zkpo as "zkpo",
              a.fo as "fo",
              (select b.nadr
                from uradr b
@@ -273,9 +284,9 @@ export class DatabaseOracleController {
                      rownum < 2
                ) as "nadr"
       from ur a
-      where a.zkpo like :edrpou || '%'
+      where ${whereClause}
         and rownum <= 20
     `;
-    return await this.oracleService.executeQuery(sql, { edrpou });
+    return await this.oracleService.executeQuery(sql, { q });
   }
 }
