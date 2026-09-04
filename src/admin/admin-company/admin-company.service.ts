@@ -12,7 +12,14 @@ export class AdminCompanyService {
   public constructor(private readonly dbservice: DatabaseService) {}
 
   async saveCompany(dto: any) {
-    const result = await this.dbservice.callProcedure('company_save', dto, {});
+    const payload = {
+      ...dto,
+      ids_members_exp: dto.ids_members_exp || null,
+      ids_members_imp: dto.ids_members_imp || null,
+      ids_members_reg: dto.ids_members_reg || null,
+    };
+
+    const result = await this.dbservice.callProcedure('company_save', payload, {});
 
     return result;
   }
