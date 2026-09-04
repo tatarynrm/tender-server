@@ -14,6 +14,7 @@ export class AdminCompanyService {
   async saveCompany(dto: any) {
     const payload = {
       ...dto,
+      edrpou: dto.edrpou?.trim?.() ? dto.edrpou.trim() : (dto.edrpou || null),
       ids_members_exp: dto.ids_members_exp || null,
       ids_members_imp: dto.ids_members_imp || null,
       ids_members_reg: dto.ids_members_reg || null,
