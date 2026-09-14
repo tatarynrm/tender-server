@@ -18,7 +18,7 @@ export class LoadService {
     private readonly dbservice: DatabaseService,
     private readonly loadGateway: LoadGateway,
     private readonly telegramService: TelegramService,
-  ) { }
+  ) {}
 
   /**
    * Універсальний метод для еміту оновленого об'єкта вантажу
@@ -44,9 +44,9 @@ export class LoadService {
   }
   async save(dto: any) {
     const isEditing = !!dto.id;
+    console.log(dto, 'DTO CRM LOAD SAVE');
+
     const result = await this.dbservice.callProcedure('crm_load_save', dto);
-
-
 
     const loadId = isEditing ? dto.id : result.content[0];
 
@@ -142,7 +142,6 @@ export class LoadService {
     const result = await this.dbservice.callProcedure('crm_load_update', {
       id: dto.id,
     });
-
 
     await this.emitLoadUpdate(dto.id, SOCKET_EVENTS.LOAD.DATE_UPDATE);
     return result;

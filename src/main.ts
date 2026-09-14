@@ -122,6 +122,12 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
+  // Дефолтний requestTimeout Node — 5 хв; великі навчальні відео (до 2GB,
+  // /training) по повільному каналу не встигають завантажитись.
+  // headersTimeout лишається стандартним, тож slowloris на заголовках не проходить.
+  // Зміна свідомо глобальна: Node не дає задати requestTimeout для окремого роуту.
+  app.getHttpServer().requestTimeout = 30 * 60 * 1000;
+
   const port = config.get<number>('APPLICATION_PORT') || 7000;
   await app.listen(port, '0.0.0.0');
 

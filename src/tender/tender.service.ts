@@ -17,7 +17,7 @@ export class TenderService {
     private readonly tenderGateway: TenderGateway,
     private readonly loadGateway: LoadGateway,
     private readonly filesService: FilesService, // Added this line
-  ) { }
+  ) {}
 
   /**
    * Скільки тендерів проведено з цим замовником + його Oracle-код (migrate_id)
@@ -38,9 +38,7 @@ export class TenderService {
       [companyName],
     );
 
-    return (
-      result.rows[0] ?? { id: null, migrate_id: null, tender_count: 0 }
-    );
+    return result.rows[0] ?? { id: null, migrate_id: null, tender_count: 0 };
   }
 
   /**
@@ -165,6 +163,7 @@ export class TenderService {
       filter: filters,
       sort: sortString,
     });
+    console.log(result, 'result');
 
     return result;
   }
@@ -306,7 +305,6 @@ export class TenderService {
     return result;
   }
   public async tenderSetWinner(dto: any) {
-
     const result = await this.dbservice.callProcedure(
       'tender_set_winner',
 
@@ -335,7 +333,6 @@ export class TenderService {
   }
 
   public async sendCustomNotification(dto: any) {
-
     const result = await this.dbservice.callProcedure(
       'tender_notify_message',
       dto,

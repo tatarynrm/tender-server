@@ -61,6 +61,7 @@ import { MailReaderModule } from './mail-reader/mail-reader.module';
 // Тимчасово вимкнено: фонова перевірка пошти + сповіщення в Telegram.
 // import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
 import { SocketSessionModule } from './libs/common/socket/socket-session.module';
+import { TrainingModule } from './training/training.module';
 
 
 @Module({
@@ -155,6 +156,7 @@ import { SocketSessionModule } from './libs/common/socket/socket-session.module'
     MailReaderModule,
     // MailReaderTasksModule, // тимчасово вимкнено (фонова перевірка пошти)
     SocketSessionModule,
+    TrainingModule,
   ],
   controllers: [],
   providers: [
