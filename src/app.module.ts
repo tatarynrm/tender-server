@@ -62,6 +62,7 @@ import { MailReaderModule } from './mail-reader/mail-reader.module';
 // import { MailReaderTasksModule } from './mail-reader/mail-reader-tasks.module';
 import { SocketSessionModule } from './libs/common/socket/socket-session.module';
 import { TrainingModule } from './training/training.module';
+import { DocumentsModule } from './documents/documents.module';
 
 
 @Module({
@@ -157,6 +158,7 @@ import { TrainingModule } from './training/training.module';
     // MailReaderTasksModule, // тимчасово вимкнено (фонова перевірка пошти)
     SocketSessionModule,
     TrainingModule,
+    DocumentsModule,
   ],
   controllers: [],
   providers: [

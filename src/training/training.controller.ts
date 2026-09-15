@@ -19,7 +19,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 import { Authorized } from 'src/auth/decorators/authorized.decorator';
-import { TrainingAdminGuard, TrainingViewerGuard } from './guards/training-role.guards';
+import { AdminOnlyGuard, IctViewerGuard } from 'src/common/guards/role.guards';
 import { trainingMulterOptions } from './training.constants';
 import { TrainingService } from './training.service';
 
@@ -29,14 +29,14 @@ export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
 
   @Get()
-  @UseGuards(TrainingViewerGuard)
+  @UseGuards(IctViewerGuard)
   list() {
     return this.trainingService.list();
   }
 
   // Гард адміна стоїть до інтерсептора: не-адмін не зможе залити файл на диск.
   @Post()
-  @UseGuards(TrainingAdminGuard)
+  @UseGuards(AdminOnlyGuard)
   @UseInterceptors(FileInterceptor('file', trainingMulterOptions))
   create(
     @UploadedFile() file: Express.Multer.File,
@@ -47,7 +47,7 @@ export class TrainingController {
   }
 
   @Get(':id/token')
-  @UseGuards(TrainingViewerGuard)
+  @UseGuards(IctViewerGuard)
   getToken(@Param('id', ParseUUIDPipe) id: string, @Authorized() user: any) {
     return this.trainingService.createStreamToken(id, user.id);
   }
@@ -55,7 +55,7 @@ export class TrainingController {
   // Плеєр робить багато Range-запитів при перемотуванні — глобальний ліміт тут заважає.
   @SkipThrottle()
   @Get(':id/stream')
-  @UseGuards(TrainingViewerGuard)
+  @UseGuards(IctViewerGuard)
   stream(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('t') token: string,
@@ -67,13 +67,13 @@ export class TrainingController {
   }
 
   @Patch(':id')
-  @UseGuards(TrainingAdminGuard)
+  @UseGuards(AdminOnlyGuard)
   update(@Param('id', ParseUUIDPipe) id: string, @Body() body: any) {
     return this.trainingService.update(id, body);
   }
 
   @Delete(':id')
-  @UseGuards(TrainingAdminGuard)
+  @UseGuards(AdminOnlyGuard)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.trainingService.remove(id);
   }
