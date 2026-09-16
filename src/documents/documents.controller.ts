@@ -20,6 +20,7 @@ import type { Response } from 'express';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 import { Authorized } from 'src/auth/decorators/authorized.decorator';
 import { AdminOnlyGuard, IctViewerGuard } from 'src/common/guards/role.guards';
+import { XhrOnlyGuard } from 'src/common/guards/xhr-only.guard';
 import {
   DELETE_CONFIRM_WORD,
   DOCUMENTS_MAX_FILES_PER_UPLOAD,
@@ -46,19 +47,19 @@ export class DocumentsController {
   // ---------- папки ----------
 
   @Post('folders')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   createFolder(@Body() body: any, @Authorized() user: any) {
     return this.documentsService.createFolder(body, user);
   }
 
   @Patch('folders/:id')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   updateFolder(@Param('id', ParseUUIDPipe) id: string, @Body() body: any) {
     return this.documentsService.updateFolder(id, body);
   }
 
   @Delete('folders/:id')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   deleteFolder(@Param('id', ParseUUIDPipe) id: string, @Query('confirm') confirm: string) {
     this.assertDeleteConfirmed(confirm);
     return this.documentsService.deleteFolder(id);
@@ -68,7 +69,7 @@ export class DocumentsController {
 
   // Гард адміна виконується до інтерсептора — не-адмін нічого не запише на диск.
   @Post('files')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   @UseInterceptors(
     FilesInterceptor('files', DOCUMENTS_MAX_FILES_PER_UPLOAD, documentsMulterOptions),
   )
@@ -78,6 +79,20 @@ export class DocumentsController {
     @Authorized() user: any,
   ) {
     return this.documentsService.upload(files, body, user);
+  }
+
+  // Масові операції оголошені ДО `files/:id`, щоб не перехоплювались параметричним роутом.
+  @Post('files/bulk-delete')
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
+  deleteFiles(@Body() body: any) {
+    this.assertDeleteConfirmed(body?.confirm);
+    return this.documentsService.deleteFiles(body?.ids);
+  }
+
+  @Patch('files/bulk-move')
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
+  moveFiles(@Body() body: any) {
+    return this.documentsService.moveFiles(body?.ids, body?.folderId);
   }
 
   // Скачування папки архівом тягне файли по одному — глобальний ліміт тут заважає.
@@ -96,13 +111,13 @@ export class DocumentsController {
   }
 
   @Patch('files/:id')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   updateFile(@Param('id', ParseUUIDPipe) id: string, @Body() body: any) {
     return this.documentsService.updateFile(id, body);
   }
 
   @Delete('files/:id')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   deleteFile(@Param('id', ParseUUIDPipe) id: string, @Query('confirm') confirm: string) {
     this.assertDeleteConfirmed(confirm);
     return this.documentsService.deleteFile(id);

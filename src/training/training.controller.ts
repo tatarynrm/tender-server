@@ -20,6 +20,7 @@ import type { Request, Response } from 'express';
 import { Authorization } from 'src/auth/decorators/auth.decorator';
 import { Authorized } from 'src/auth/decorators/authorized.decorator';
 import { AdminOnlyGuard, IctViewerGuard } from 'src/common/guards/role.guards';
+import { XhrOnlyGuard } from 'src/common/guards/xhr-only.guard';
 import { trainingMulterOptions } from './training.constants';
 import { TrainingService } from './training.service';
 
@@ -36,7 +37,7 @@ export class TrainingController {
 
   // Гард адміна стоїть до інтерсептора: не-адмін не зможе залити файл на диск.
   @Post()
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   @UseInterceptors(FileInterceptor('file', trainingMulterOptions))
   create(
     @UploadedFile() file: Express.Multer.File,
@@ -67,13 +68,13 @@ export class TrainingController {
   }
 
   @Patch(':id')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   update(@Param('id', ParseUUIDPipe) id: string, @Body() body: any) {
     return this.trainingService.update(id, body);
   }
 
   @Delete(':id')
-  @UseGuards(AdminOnlyGuard)
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.trainingService.remove(id);
   }

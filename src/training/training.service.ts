@@ -9,6 +9,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import { createReadStream, promises as fs } from 'fs';
 import { basename, extname, join } from 'path';
@@ -39,7 +40,11 @@ export class TrainingService implements OnModuleInit {
   private readonly store = new JsonFileStore<ITrainingVideo[]>(
     () => getTrainingPaths().dbFile,
     () => [],
-    (parsed) => (Array.isArray(parsed) ? parsed : []),
+    (parsed) => {
+      // Не масив — помилка, а не порожній список: інакше наступний запис знищить дані
+      if (!Array.isArray(parsed)) throw new Error('неочікувана структура trainings.json');
+      return parsed;
+    },
     TrainingService.name,
   );
   private readonly tokenKey: Buffer;
@@ -53,6 +58,29 @@ export class TrainingService implements OnModuleInit {
   async onModuleInit() {
     const { videosDir } = getTrainingPaths();
     await fs.mkdir(videosDir, { recursive: true });
+  }
+
+  /** Відео, що лишились після обірваного завантаження (немає в JSON), старші за добу. */
+  @Cron('0 50 3 * * *', { timeZone: 'Europe/Kyiv' })
+  async cleanupOrphanVideos() {
+    const { dbFile, videosDir } = getTrainingPaths();
+    try {
+      await fs.access(dbFile); // без JSON не знаємо, які відео живі
+      const known = new Set((await this.store.read()).map((i) => i.fileName));
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      let removed = 0;
+
+      for (const name of await fs.readdir(videosDir)) {
+        if (known.has(name)) continue;
+        const stat = await fs.stat(join(videosDir, name)).catch(() => null);
+        if (!stat?.isFile() || stat.mtimeMs > cutoff) continue;
+        await fs.unlink(join(videosDir, name)).catch(() => undefined);
+        removed++;
+      }
+      if (removed) this.logger.log(`Прибрано осиротілих відео: ${removed}`);
+    } catch (e) {
+      this.logger.warn(`Прибирання відео пропущено: ${(e as Error).message}`);
+    }
   }
 
   private readAll() {

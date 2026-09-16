@@ -6,6 +6,7 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { basename, extname, join } from 'path';
@@ -40,16 +41,46 @@ export class DocumentsService implements OnModuleInit {
   private readonly store = new JsonFileStore<IDocumentsDb>(
     () => getDocumentsPaths().dbFile,
     () => ({ version: 1, folders: [], files: [] }),
-    (parsed: any) => ({
-      version: 1,
-      folders: Array.isArray(parsed?.folders) ? parsed.folders : [],
-      files: Array.isArray(parsed?.files) ? parsed.files : [],
-    }),
+    (parsed: any) => {
+      // Неочікувана структура — помилка, а не порожні дані: інакше наступний запис знищить документи
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.folders) || !Array.isArray(parsed.files)) {
+        throw new Error('неочікувана структура documents.json');
+      }
+      return { version: 1, folders: parsed.folders, files: parsed.files };
+    },
     DocumentsService.name,
   );
 
   async onModuleInit() {
     await fs.mkdir(getDocumentsPaths().filesDir, { recursive: true });
+  }
+
+  /**
+   * Файли, що лишились на диску після обірваного завантаження (є в files/, немає в JSON).
+   * Лише старші за добу — щоб не зачепити завантаження, яке саме зараз пишеться.
+   */
+  @Cron('0 40 3 * * *', { timeZone: 'Europe/Kyiv' })
+  async cleanupOrphanFiles() {
+    const { dbFile, filesDir } = getDocumentsPaths();
+    try {
+      // Немає JSON — не знаємо, які файли живі; нічого не чіпаємо
+      await fs.access(dbFile);
+      const db = await this.store.read();
+      const known = new Set(db.files.map((f) => f.storedName));
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      let removed = 0;
+
+      for (const name of await fs.readdir(filesDir)) {
+        if (known.has(name)) continue;
+        const stat = await fs.stat(join(filesDir, name)).catch(() => null);
+        if (!stat?.isFile() || stat.mtimeMs > cutoff) continue;
+        await fs.unlink(join(filesDir, name)).catch(() => undefined);
+        removed++;
+      }
+      if (removed) this.logger.log(`Прибрано осиротілих файлів документів: ${removed}`);
+    } catch (e) {
+      this.logger.warn(`Прибирання файлів документів пропущено: ${(e as Error).message}`);
+    }
   }
 
   // ---------- helpers ----------
@@ -63,9 +94,31 @@ export class DocumentsService implements OnModuleInit {
     return [p?.surname, p?.name].filter(Boolean).join(' ') || user?.email || null;
   }
 
+  /**
+   * Прибирає непарні UTF-16 сурогати — з ними encodeURIComponent кидає помилку,
+   * і файл неможливо ні переглянути, ні скачати.
+   */
+  private toWellFormed(value: string) {
+    let out = '';
+    for (let i = 0; i < value.length; i++) {
+      const code = value.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        const next = value.charCodeAt(i + 1);
+        if (next >= 0xdc00 && next <= 0xdfff) {
+          out += value[i] + value[i + 1];
+          i++;
+        }
+        continue;
+      }
+      if (code >= 0xdc00 && code <= 0xdfff) continue;
+      out += value[i];
+    }
+    return out;
+  }
+
   /** Прибирає заборонені для файлових систем символи й керівні коди. */
   private cleanName(value: unknown, what: string) {
-    const raw = typeof value === 'string' ? value : '';
+    const raw = this.toWellFormed(typeof value === 'string' ? value : '');
     const name = [...raw]
       .filter((ch) => ch.charCodeAt(0) >= 32 && !FORBIDDEN_NAME_CHARS.has(ch))
       .join('')
@@ -303,11 +356,14 @@ export class DocumentsService implements OnModuleInit {
             folderId = folder.id;
           }
 
+          // Назва приходить із клієнтського paths — розширення мусить збігатися з реальним файлом
           const ext = extname(file.filename).toLowerCase();
+          const displayName =
+            ext && extname(fileName).toLowerCase() !== ext ? `${fileName}${ext}` : fileName;
           const doc: IDocFile = {
             id: randomUUID(),
             folderId,
-            name: this.uniqueFileName(db, folderId, fileName),
+            name: this.uniqueFileName(db, folderId, displayName),
             storedName: file.filename,
             mimeType: DOCUMENT_MIME[ext] ?? 'application/octet-stream',
             size: file.size,
@@ -358,6 +414,57 @@ export class DocumentsService implements OnModuleInit {
     return this.toPublic(updated);
   }
 
+  private normalizeIds(value: unknown): string[] {
+    if (!Array.isArray(value) || !value.length) throw new BadRequestException('Не вибрано жодного файлу');
+    if (value.length > 5000) throw new BadRequestException('Забагато файлів за один раз');
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!value.every((id) => typeof id === 'string' && uuid.test(id))) {
+      throw new BadRequestException('Некоректний список файлів');
+    }
+    return [...new Set(value as string[])];
+  }
+
+  /**
+   * Масове видалення одним записом JSON: без ліміту запитів на кожен файл і без
+   * «наполовину виконаної» операції. Уже відсутні файли просто пропускаються.
+   */
+  async deleteFiles(ids: unknown) {
+    const list = this.normalizeIds(ids);
+    const removed = await this.store.mutate((db) => {
+      const wanted = new Set(list);
+      const files = db.files.filter((f) => wanted.has(f.id));
+      db.files = db.files.filter((f) => !wanted.has(f.id));
+      return files;
+    });
+    await this.unlinkStored(removed.map((f) => f.storedName));
+    return { deleted: removed.length, missing: list.length - removed.length };
+  }
+
+  /** Масове переміщення; однакові назви в папці призначення отримують суфікс « (1)». */
+  async moveFiles(ids: unknown, folderIdRaw: unknown) {
+    const list = this.normalizeIds(ids);
+    const folderId = this.normalizeFolderId(folderIdRaw);
+
+    return this.store.mutate((db) => {
+      this.assertFolder(db, folderId);
+      const wanted = new Set(list);
+      const now = new Date().toISOString();
+      let found = 0;
+      let moved = 0;
+
+      for (const file of db.files) {
+        if (!wanted.has(file.id)) continue;
+        found++;
+        if (file.folderId === folderId) continue;
+        file.name = this.uniqueFileName(db, folderId, file.name, file.id);
+        file.folderId = folderId;
+        file.updatedAt = now;
+        moved++;
+      }
+      return { moved, missing: list.length - found };
+    });
+  }
+
   async deleteFile(id: string) {
     const removed = await this.store.mutate((db) => {
       const index = db.files.findIndex((f) => f.id === id);
@@ -370,7 +477,8 @@ export class DocumentsService implements OnModuleInit {
 
   // ---------- віддача файлу ----------
 
-  private contentDisposition(type: 'inline' | 'attachment', name: string) {
+  private contentDisposition(type: 'inline' | 'attachment', rawName: string) {
+    const name = this.toWellFormed(rawName); // для назв, збережених до появи очищення
     const fallback = [...name]
       .map((ch) => (ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) < 127 && ch !== '"' ? ch : '_'))
       .join('');
