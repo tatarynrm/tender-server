@@ -352,12 +352,19 @@ export class UserService {
   // }
 
   public async getUserListIct() {
-
+    // usr_list_ict перевіряє лише права того, хто викликає (env_is_admin + env_is_ict),
+    // і повертає всіх користувачів. Працівників ICT відбираємо фільтром по person_role.
     const result = await this.dbservice.callProcedure(
       'usr_list_ict',
-
-      {},
-
+      {
+        filter: [
+          {
+            type: 'where',
+            expression:
+              'exists (select 1 from person_role pr where pr.id_person = a.id_person and pr.is_ict)',
+          },
+        ],
+      },
       {},
     );
 
