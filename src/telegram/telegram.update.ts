@@ -20,6 +20,10 @@ import {
   formatCompanyRates,
   formatCompanyWins,
   formatIctSummary,
+  formatIctRolesList,
+  buildIctRolesListMenu,
+  formatIctRoleUser,
+  buildIctRoleUserMenu,
 } from './telegram.menu';
 
 // --- Режим «ШІ-База» (тільки для головного адміністратора) ---
@@ -389,6 +393,96 @@ export class TelegramUpdate {
     );
   }
 
+  // --- Ролі ICT: видача/зміна is_admin, is_manager лише для person_role.is_ict ---
+  // Доступно виключно головному адміну бота (TELEGRAM_ADMIN_ID), так само як /deploy.
+  // is_ict тут не чіпаємо — лише is_admin/is_manager тим, хто вже в ICT.
+
+  @Action('manage_ict_roles')
+  async handleManageIctRoles(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.answerCbQuery('⛔️ Немає прав');
+    }
+    try { await ctx.answerCbQuery(); } catch {}
+
+    try {
+      const users = await this.telegramService.getIctUsersForRoles();
+      const text = formatIctRolesList(users as any);
+      const keyboard = buildIctRolesListMenu(users as any);
+      try {
+        await ctx.editMessageText(text, { parse_mode: 'HTML', ...keyboard });
+      } catch {
+        await ctx.reply(text, { parse_mode: 'HTML', ...keyboard });
+      }
+    } catch (err) {
+      console.error('handleManageIctRoles error:', err);
+      await ctx.reply('❌ Не вдалося отримати список працівників ICT.', BACK_TO_MENU_KEYBOARD);
+    }
+  }
+
+  @Action(/^ict_role_user_\d+$/)
+  async handleIctRoleUser(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.answerCbQuery('⛔️ Немає прав');
+    }
+    try { await ctx.answerCbQuery(); } catch {}
+
+    const data = (ctx.callbackQuery as any)?.data as string;
+    const match = data?.match(/^ict_role_user_(\d+)$/);
+    if (!match) return;
+
+    await this.renderIctRoleUser(ctx, Number(match[1]));
+  }
+
+  @Action(/^ict_role_toggle_(admin|manager)_\d+$/)
+  async handleIctRoleToggle(ctx: Context) {
+    const telegramId = ctx.from?.id;
+    if (!telegramId || !this.telegramService.isAdmin(telegramId)) {
+      return ctx.answerCbQuery('⛔️ Немає прав');
+    }
+
+    const data = (ctx.callbackQuery as any)?.data as string;
+    const match = data?.match(/^ict_role_toggle_(admin|manager)_(\d+)$/);
+    if (!match) return;
+
+    const field = match[1] === 'admin' ? 'is_admin' : 'is_manager';
+    const personId = Number(match[2]);
+
+    try {
+      const updated = await this.telegramService.toggleIctUserRole(personId, field);
+      if (!updated) {
+        await ctx.answerCbQuery('Користувача не знайдено серед працівників ICT');
+        return;
+      }
+      await ctx.answerCbQuery(updated[field] ? 'Роль видано' : 'Роль знято');
+      await this.renderIctRoleUser(ctx, personId, updated);
+    } catch (err) {
+      console.error('handleIctRoleToggle error:', err);
+      await ctx.answerCbQuery('❌ Помилка зміни ролі');
+    }
+  }
+
+  private async renderIctRoleUser(ctx: Context, personId: number, preloaded?: any) {
+    const user = preloaded ?? (await this.telegramService.getIctUserForRoles(personId));
+    if (!user) {
+      const text = '⚠️ Користувача не знайдено серед працівників ICT.';
+      try {
+        await ctx.editMessageText(text, BACK_TO_MENU_KEYBOARD);
+      } catch {
+        await ctx.reply(text, BACK_TO_MENU_KEYBOARD);
+      }
+      return;
+    }
+
+    const text = formatIctRoleUser(user);
+    const keyboard = buildIctRoleUserMenu(user);
+    try {
+      await ctx.editMessageText(text, { parse_mode: 'HTML', ...keyboard });
+    } catch {
+      await ctx.reply(text, { parse_mode: 'HTML', ...keyboard });
+    }
+  }
 
   /**
    * `/task [server|front] <опис>` — автономна задача Claude Code.

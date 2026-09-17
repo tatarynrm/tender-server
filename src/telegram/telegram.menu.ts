@@ -75,6 +75,7 @@ export function buildMainMenu(access: TelegramAccess, portalUrl: string) {
       Markup.button.callback('📬 Непрочитані листи', 'check_unread_mail'),
       Markup.button.callback('🚀 Деплой', 'run_deploy'),
     ]);
+    rows.push([Markup.button.callback('👔 Ролі ICT', 'manage_ict_roles')]);
   }
 
   rows.push([
@@ -204,4 +205,74 @@ export function formatIctSummary(s: any): string {
     `• нових тендерів: ${s.tenders_7d}`,
     `• ставок перевізників: ${s.rates_7d}`,
   ].join('\n');
+}
+
+/**
+ * Керування ролями працівників ICT — доступне лише головному адміну
+ * (TELEGRAM_ADMIN_ID). Показує/змінює is_admin та is_manager виключно тим,
+ * у кого person_role.is_ict = true; is_ict тут не чіпаємо.
+ */
+export interface IctRoleUser {
+  person_id: number;
+  name?: string;
+  surname?: string;
+  last_name?: string;
+  is_admin: boolean;
+  is_manager: boolean;
+  is_ict: boolean;
+}
+
+function ictRoleUserFullName(u: IctRoleUser): string {
+  return [u.surname, u.name, u.last_name].filter(Boolean).join(' ') || `#${u.person_id}`;
+}
+
+function ictRoleUserBadge(u: IctRoleUser): string {
+  return u.is_admin ? '👑' : u.is_manager ? '🧑‍💼' : '👤';
+}
+
+export function formatIctRolesList(users: IctRoleUser[]): string {
+  if (!users.length) {
+    return '👔 <b>Ролі ICT</b>\n\nПрацівників ICT не знайдено.';
+  }
+  return `👔 <b>Ролі ICT</b> (${users.length})\n\nОберіть користувача, щоб видати чи змінити роль:`;
+}
+
+export function buildIctRolesListMenu(users: IctRoleUser[]) {
+  const rows = users.map((u) => [
+    Markup.button.callback(
+      `${ictRoleUserBadge(u)} ${esc(ictRoleUserFullName(u))}`,
+      `ict_role_user_${u.person_id}`,
+    ),
+  ]);
+  rows.push([Markup.button.callback('⬅️ Меню', 'main_menu')]);
+  return Markup.inlineKeyboard(rows);
+}
+
+export function formatIctRoleUser(u: IctRoleUser): string {
+  return [
+    `👔 <b>${esc(ictRoleUserFullName(u))}</b>`,
+    '',
+    `Адміністратор: ${u.is_admin ? '✅ так' : '⬜️ ні'}`,
+    `Менеджер: ${u.is_manager ? '✅ так' : '⬜️ ні'}`,
+    '',
+    'Натисніть роль, щоб видати або зняти її.',
+  ].join('\n');
+}
+
+export function buildIctRoleUserMenu(u: IctRoleUser) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback(
+        `${u.is_admin ? '✅' : '⬜️'} Адміністратор`,
+        `ict_role_toggle_admin_${u.person_id}`,
+      ),
+    ],
+    [
+      Markup.button.callback(
+        `${u.is_manager ? '✅' : '⬜️'} Менеджер`,
+        `ict_role_toggle_manager_${u.person_id}`,
+      ),
+    ],
+    [Markup.button.callback('⬅️ До списку', 'manage_ict_roles')],
+  ]);
 }

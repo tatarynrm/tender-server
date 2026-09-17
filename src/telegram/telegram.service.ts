@@ -424,6 +424,28 @@ export class TelegramService implements OnModuleInit {
     return this.repository.getIctSummary();
   }
 
+  // --- Керування ролями працівників ICT (меню «👔 Ролі ICT» для головного адміна) ---
+
+  public getIctUsersForRoles() {
+    return this.repository.getIctUsersForRoleMenu();
+  }
+
+  public getIctUserForRoles(personId: number) {
+    return this.repository.getIctUserForRoleMenu(personId);
+  }
+
+  /** Перемикає is_admin/is_manager і повертає оновлений запис (null — персону не знайдено серед ICT). */
+  public async toggleIctUserRole(
+    personId: number,
+    field: 'is_admin' | 'is_manager',
+  ) {
+    const user = await this.repository.getIctUserForRoleMenu(personId);
+    if (!user) return null;
+
+    await this.repository.setIctUserRoleFlag(personId, field, !user[field]);
+    return this.repository.getIctUserForRoleMenu(personId);
+  }
+
   /** Email адміністратора з його профілю в БД (person.email). */
   public async getAdminEmail(telegramId: number): Promise<string | null> {
     const profile = await this.repository.getProfileByTelegramId(telegramId);

@@ -354,6 +354,53 @@ export class TelegramRepository implements OnModuleInit {
     return rows;
   }
 
+  // --- Керування ролями працівників ICT (лише для головного адміна бота) ---
+
+  /** Усі працівники ICT (person_role.is_ict = true) для меню керування ролями. */
+  async getIctUsersForRoleMenu() {
+    const { rows } = await this.pool.query(`
+      SELECT
+        p.id AS person_id,
+        p.name, p.surname, p.last_name,
+        pr.is_admin, pr.is_manager, pr.is_ict
+      FROM person p
+      JOIN person_role pr ON pr.id_person = p.id
+      WHERE pr.is_ict = true
+      ORDER BY p.surname ASC, p.name ASC
+    `);
+    return rows;
+  }
+
+  /** Один працівник ICT за id персони — для екрана деталей ролі. */
+  async getIctUserForRoleMenu(personId: number) {
+    const { rows } = await this.pool.query(
+      `
+      SELECT
+        p.id AS person_id,
+        p.name, p.surname, p.last_name,
+        pr.is_admin, pr.is_manager, pr.is_ict
+      FROM person p
+      JOIN person_role pr ON pr.id_person = p.id
+      WHERE p.id = $1 AND pr.is_ict = true
+      `,
+      [personId],
+    );
+    return rows[0] || null;
+  }
+
+  /** Перемикає is_admin/is_manager лише для персон із person_role.is_ict = true. */
+  async setIctUserRoleFlag(
+    personId: number,
+    field: 'is_admin' | 'is_manager',
+    value: boolean,
+  ) {
+    const column = field === 'is_admin' ? 'is_admin' : 'is_manager';
+    await this.pool.query(
+      `UPDATE person_role SET ${column} = $1 WHERE id_person = $2 AND is_ict = true`,
+      [value, personId],
+    );
+  }
+
   /** Лічильники активності для зведення менеджерів ІСТ. */
   async getIctSummary() {
     const { rows } = await this.pool.query(`
