@@ -57,8 +57,12 @@ export class CompanyService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} company`;
+  async findOne(id: number) {
+    const result = await this.pool.query(
+      'SELECT * FROM company WHERE id = $1',
+      [id],
+    );
+    return result.rows[0] || null;
   }
 
   // update(id: number, updateCompanyDto: UpdateCompanyDto) {
