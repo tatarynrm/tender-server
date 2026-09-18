@@ -20,11 +20,23 @@ export function getTrainingPaths() {
   return {
     root,
     videosDir: join(root, 'videos'),
+    /** Незавершені завантаження частинами: <uploadId>.part + <uploadId>.json. */
+    partsDir: join(root, 'parts'),
     dbFile: join(root, 'trainings.json'),
   };
 }
 
 export const TRAINING_MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+
+/**
+ * Великі відео вантажаться частинами: один запит на весь файл впирається
+ * в ліміт тіла запиту на проксі та в requestTimeout на повільному каналі
+ * (на практиці обривалось близько 600MB). Шматок у 32MB проходить за секунди.
+ */
+export const TRAINING_UPLOAD_CHUNK = 32 * 1024 * 1024; // 32MB
+
+/** Скільки живе незавершене завантаження частинами, перш ніж його прибере крон. */
+export const TRAINING_UPLOAD_TTL_MS = 24 * 60 * 60 * 1000; // доба
 
 /** Максимальний шматок відео за один Range-запит — файл цілком одним запитом не віддаємо. */
 export const TRAINING_STREAM_CHUNK = 8 * 1024 * 1024; // 8MB

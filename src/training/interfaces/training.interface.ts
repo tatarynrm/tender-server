@@ -17,6 +17,27 @@ export interface ITrainingVideo {
 
 export type ITrainingVideoPublic = Omit<ITrainingVideo, 'fileName'>;
 
+/** Стан завантаження частинами — storage/training/parts/<uploadId>.json. */
+export interface ITrainingUploadSession {
+  uploadId: string;
+  userId: number;
+  originalName: string;
+  ext: string;
+  size: number;
+  chunkSize: number;
+  totalChunks: number;
+  received: number[];
+  title: string;
+  topic: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface ITrainingUploadInit extends ITrainingVideoInput {
+  fileName?: string;
+  size?: number | string;
+}
+
 export interface ITrainingVideoInput {
   topic?: string;
   title?: string;

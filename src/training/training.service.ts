@@ -11,8 +11,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
-import { createReadStream, promises as fs } from 'fs';
+import { createReadStream, createWriteStream, promises as fs } from 'fs';
 import { basename, extname, join } from 'path';
+import { Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 import type { Request, Response } from 'express';
 import {
   decodeMulterFileName,
@@ -20,11 +22,16 @@ import {
 } from 'src/common/json-store/json-file-store';
 import {
   getTrainingPaths,
+  TRAINING_MAX_FILE_SIZE,
   TRAINING_STREAM_CHUNK,
   TRAINING_TOKEN_TTL_MS,
+  TRAINING_UPLOAD_CHUNK,
+  TRAINING_UPLOAD_TTL_MS,
   TRAINING_VIDEO_MIME,
 } from './training.constants';
 import {
+  ITrainingUploadInit,
+  ITrainingUploadSession,
   ITrainingVideo,
   ITrainingVideoInput,
   ITrainingVideoPublic,
@@ -81,6 +88,24 @@ export class TrainingService implements OnModuleInit {
     } catch (e) {
       this.logger.warn(`Прибирання відео пропущено: ${(e as Error).message}`);
     }
+
+    await this.cleanupStaleUploads();
+  }
+
+  /** Покинуті завантаження частинами (вкладку закрили посеред процесу). */
+  private async cleanupStaleUploads() {
+    const { partsDir } = getTrainingPaths();
+    const names = await fs.readdir(partsDir).catch(() => [] as string[]);
+    const cutoff = Date.now() - TRAINING_UPLOAD_TTL_MS;
+    let removed = 0;
+
+    for (const name of names) {
+      const stat = await fs.stat(join(partsDir, name)).catch(() => null);
+      if (!stat?.isFile() || stat.mtimeMs > cutoff) continue;
+      await fs.unlink(join(partsDir, name)).catch(() => undefined);
+      removed++;
+    }
+    if (removed) this.logger.log(`Прибрано файлів незавершених завантажень: ${removed}`);
   }
 
   private readAll() {
@@ -132,43 +157,236 @@ export class TrainingService implements OnModuleInit {
     return { status: 'ok', content };
   }
 
+  private readMeta(body: ITrainingVideoInput | undefined) {
+    return {
+      title: this.cleanText(body?.title, 'Назва', 200, true),
+      topic: this.cleanText(body?.topic, 'Тема', 100, true),
+      description: this.cleanText(body?.description, 'Опис', 3000, false),
+    };
+  }
+
+  /** Запис відео, файл якого вже лежить у videos/. */
+  private async saveRecord(
+    file: { fileName: string; originalName: string; size: number },
+    meta: { title: string; topic: string; description: string },
+    user: any,
+  ) {
+    const ext = extname(file.fileName).toLowerCase();
+    const created = await this.mutate((items) => {
+      const lastOrder = items
+        .filter((i) => i.topic === meta.topic)
+        .reduce((max, i) => Math.max(max, i.order), 0);
+      const now = new Date().toISOString();
+      const item: ITrainingVideo = {
+        id: randomUUID(),
+        topic: meta.topic,
+        title: meta.title,
+        description: meta.description,
+        fileName: file.fileName,
+        originalName: file.originalName,
+        mimeType: TRAINING_VIDEO_MIME[ext] ?? 'video/mp4',
+        size: file.size,
+        order: lastOrder + 1,
+        createdAt: now,
+        updatedAt: now,
+        createdBy: this.personName(user),
+      };
+      items.push(item);
+      return item;
+    });
+    return this.toPublic(created);
+  }
+
   async create(file: Express.Multer.File | undefined, body: ITrainingVideoInput, user: any) {
     if (!file) throw new BadRequestException('Файл відео не передано');
 
     try {
-      const title = this.cleanText(body?.title, 'Назва', 200, true);
-      const topic = this.cleanText(body?.topic, 'Тема', 100, true);
-      const description = this.cleanText(body?.description, 'Опис', 3000, false);
-      const ext = extname(file.filename).toLowerCase();
-
-      const created = await this.mutate((items) => {
-        const lastOrder = items
-          .filter((i) => i.topic === topic)
-          .reduce((max, i) => Math.max(max, i.order), 0);
-        const now = new Date().toISOString();
-        const item: ITrainingVideo = {
-          id: randomUUID(),
-          topic,
-          title,
-          description,
+      return await this.saveRecord(
+        {
           fileName: file.filename,
           originalName: decodeMulterFileName(file.originalname),
-          mimeType: TRAINING_VIDEO_MIME[ext] ?? 'video/mp4',
           size: file.size,
-          order: lastOrder + 1,
-          createdAt: now,
-          updatedAt: now,
-          createdBy: this.personName(user),
-        };
-        items.push(item);
-        return item;
-      });
-
-      return this.toPublic(created);
+        },
+        this.readMeta(body),
+        user,
+      );
     } catch (e) {
       await this.removeFile(file.filename);
       throw e;
     }
+  }
+
+  // ---------- Завантаження частинами ----------
+
+  private sessionPaths(uploadId: string) {
+    const { partsDir } = getTrainingPaths();
+    const id = basename(uploadId);
+    return {
+      part: join(partsDir, `${id}.part`),
+      meta: join(partsDir, `${id}.json`),
+    };
+  }
+
+  private async readSession(uploadId: string, user: any) {
+    const { meta } = this.sessionPaths(uploadId);
+    const raw = await fs.readFile(meta, 'utf8').catch(() => null);
+    if (!raw) throw new NotFoundException('Завантаження не знайдено або вже завершене');
+    const session = JSON.parse(raw) as ITrainingUploadSession;
+    if (Number(session.userId) !== Number(user?.id)) {
+      throw new ForbiddenException('Це завантаження розпочав інший користувач');
+    }
+    return session;
+  }
+
+  private async writeSession(session: ITrainingUploadSession) {
+    const { meta } = this.sessionPaths(session.uploadId);
+    // Через тимчасовий файл і rename — обрив посеред запису не лишить битий JSON
+    const tmp = `${meta}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(session), 'utf8');
+    await fs.rename(tmp, meta);
+  }
+
+  private async dropSession(uploadId: string) {
+    const { part, meta } = this.sessionPaths(uploadId);
+    await Promise.all([
+      fs.unlink(part).catch(() => undefined),
+      fs.unlink(meta).catch(() => undefined),
+    ]);
+  }
+
+  async initUpload(body: ITrainingUploadInit, user: any) {
+    const meta = this.readMeta(body);
+
+    const originalName = this.cleanText(body?.fileName, 'Файл', 255, true);
+    const ext = extname(originalName).toLowerCase();
+    if (!TRAINING_VIDEO_MIME[ext]) {
+      throw new BadRequestException(
+        `Недозволений формат відео: ${originalName}. Дозволено: mp4, webm, mov`,
+      );
+    }
+
+    const size = Number(body?.size);
+    if (!Number.isInteger(size) || size <= 0) {
+      throw new BadRequestException('Некоректний розмір файлу');
+    }
+    if (size > TRAINING_MAX_FILE_SIZE) {
+      throw new BadRequestException('Файл завеликий (максимум 2 ГБ)');
+    }
+
+    const { partsDir } = getTrainingPaths();
+    await fs.mkdir(partsDir, { recursive: true });
+
+    const session: ITrainingUploadSession = {
+      uploadId: randomUUID(),
+      userId: Number(user?.id),
+      originalName,
+      ext,
+      size,
+      chunkSize: TRAINING_UPLOAD_CHUNK,
+      totalChunks: Math.ceil(size / TRAINING_UPLOAD_CHUNK),
+      received: [],
+      ...meta,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Порожній файл потрібного розміру: кожен шматок пишеться на своє місце,
+    // тож повтор обірваного шматка просто перезаписує ту саму ділянку.
+    const handle = await fs.open(this.sessionPaths(session.uploadId).part, 'w');
+    try {
+      await handle.truncate(size);
+    } finally {
+      await handle.close();
+    }
+    await this.writeSession(session);
+
+    return {
+      uploadId: session.uploadId,
+      chunkSize: session.chunkSize,
+      totalChunks: session.totalChunks,
+    };
+  }
+
+  async uploadChunk(uploadId: string, indexRaw: string, req: Request, user: any) {
+    const session = await this.readSession(uploadId, user);
+
+    const index = Number(indexRaw);
+    if (!Number.isInteger(index) || index < 0 || index >= session.totalChunks) {
+      throw new BadRequestException('Некоректний номер частини');
+    }
+
+    const start = index * session.chunkSize;
+    const expected = Math.min(session.chunkSize, session.size - start);
+    let written = 0;
+
+    const counter = new Transform({
+      transform(chunk: Buffer, _enc, cb) {
+        written += chunk.length;
+        if (written > expected) {
+          cb(new BadRequestException('Частина більша, ніж очікувалось'));
+          return;
+        }
+        cb(null, chunk);
+      },
+    });
+
+    await pipeline(
+      req,
+      counter,
+      createWriteStream(this.sessionPaths(uploadId).part, { flags: 'r+', start }),
+    );
+
+    if (written !== expected) {
+      throw new BadRequestException(
+        `Частина ${index + 1} прийшла не повністю — повторіть завантаження`,
+      );
+    }
+
+    // Перечитуємо сесію: між початком і кінцем запису її могли видалити (скасування)
+    const fresh = await this.readSession(uploadId, user);
+    if (!fresh.received.includes(index)) fresh.received.push(index);
+    await this.writeSession(fresh);
+
+    return { received: fresh.received.length, totalChunks: fresh.totalChunks };
+  }
+
+  async completeUpload(uploadId: string, user: any) {
+    const session = await this.readSession(uploadId, user);
+
+    if (session.received.length !== session.totalChunks) {
+      throw new BadRequestException(
+        `Завантажено ${session.received.length} з ${session.totalChunks} частин`,
+      );
+    }
+
+    const { part } = this.sessionPaths(uploadId);
+    const stat = await fs.stat(part).catch(() => null);
+    if (!stat || stat.size !== session.size) {
+      throw new BadRequestException('Розмір зібраного файлу не збігається з оригіналом');
+    }
+
+    const { videosDir } = getTrainingPaths();
+    await fs.mkdir(videosDir, { recursive: true });
+    const fileName = `${randomUUID()}${session.ext}`;
+    // parts/ і videos/ в одній папці storage — rename без копіювання
+    await fs.rename(part, join(videosDir, fileName));
+    await this.dropSession(uploadId);
+
+    try {
+      return await this.saveRecord(
+        { fileName, originalName: session.originalName, size: session.size },
+        { title: session.title, topic: session.topic, description: session.description },
+        user,
+      );
+    } catch (e) {
+      await this.removeFile(fileName);
+      throw e;
+    }
+  }
+
+  async abortUpload(uploadId: string, user: any) {
+    await this.readSession(uploadId, user);
+    await this.dropSession(uploadId);
+    return { uploadId };
   }
 
   async update(id: string, body: ITrainingVideoInput) {

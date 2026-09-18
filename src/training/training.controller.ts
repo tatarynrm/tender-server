@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -45,6 +46,49 @@ export class TrainingController {
     @Authorized() user: any,
   ) {
     return this.trainingService.create(file, body, user);
+  }
+
+  // ---------- Завантаження частинами (великі відео) ----------
+  // Один запит на весь файл обривався на проксі / requestTimeout (~600MB),
+  // тому фронт ріже файл на шматки по TRAINING_UPLOAD_CHUNK.
+
+  @Post('upload/init')
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
+  initUpload(@Body() body: any, @Authorized() user: any) {
+    return this.trainingService.initUpload(body, user);
+  }
+
+  // Тіло — сирі байти (application/octet-stream): body-parser їх не чіпає,
+  // сервіс читає потік запиту сам і пише на потрібне місце у файлі.
+  // Шматків багато, а маршрут лише для адміна — глобальний ліміт запитів тут заважає.
+  @SkipThrottle()
+  @Put('upload/:uploadId/chunks/:index')
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
+  uploadChunk(
+    @Param('uploadId', ParseUUIDPipe) uploadId: string,
+    @Param('index') index: string,
+    @Req() req: Request,
+    @Authorized() user: any,
+  ) {
+    return this.trainingService.uploadChunk(uploadId, index, req, user);
+  }
+
+  @Post('upload/:uploadId/complete')
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
+  completeUpload(
+    @Param('uploadId', ParseUUIDPipe) uploadId: string,
+    @Authorized() user: any,
+  ) {
+    return this.trainingService.completeUpload(uploadId, user);
+  }
+
+  @Delete('upload/:uploadId')
+  @UseGuards(XhrOnlyGuard, AdminOnlyGuard)
+  abortUpload(
+    @Param('uploadId', ParseUUIDPipe) uploadId: string,
+    @Authorized() user: any,
+  ) {
+    return this.trainingService.abortUpload(uploadId, user);
   }
 
   @Get(':id/token')
