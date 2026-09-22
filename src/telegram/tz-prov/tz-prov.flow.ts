@@ -9,7 +9,16 @@ import { TzCarrier, TzItem, TzKind, TzProvService, TzTooManyError } from './tz-p
 export const TZ_PROV_SEARCH_SCENE = 'tzprov_search';
 
 const PAGE_SIZE = 10;
-const PERIODS = [30, 90, 180, 365];
+const PERIODS = [2, 30, 90, 180, 365];
+
+/** «2 дні», «30 днів» — українське узгодження з числом. */
+function daysLabel(d: number): string {
+  const n10 = d % 10;
+  const n100 = d % 100;
+  if (n10 === 1 && n100 !== 11) return `${d} день`;
+  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return `${d} дні`;
+  return `${d} днів`;
+}
 
 interface TzProvState {
   kind?: TzKind;
@@ -157,8 +166,9 @@ export class TzProvFlow {
       ctx,
       `${KIND_TEXT[kind].icon} <b>${KIND_TEXT[kind].many}</b>\n\nЗа який період брати проведені заявки?`,
       [
-        PERIODS.slice(0, 2).map((d) => Markup.button.callback(`${d} днів`, `tzp:days:${d}`)),
-        PERIODS.slice(2).map((d) => Markup.button.callback(`${d} днів`, `tzp:days:${d}`)),
+        [Markup.button.callback('🕐 Останні 2 дні (сьогодні й учора)', 'tzp:days:2')],
+        PERIODS.slice(1, 3).map((d) => Markup.button.callback(daysLabel(d), `tzp:days:${d}`)),
+        PERIODS.slice(3).map((d) => Markup.button.callback(daysLabel(d), `tzp:days:${d}`)),
         [Markup.button.callback('⬅️ Назад', 'tzp:start')],
       ],
     );
@@ -189,7 +199,7 @@ export class TzProvFlow {
       ]);
     }
 
-    const head = `${KIND_TEXT[kind].icon} <b>${KIND_TEXT[kind].many}</b> · ${days} днів\n\n`;
+    const head = `${KIND_TEXT[kind].icon} <b>${KIND_TEXT[kind].many}</b> · ${daysLabel(days)}\n\n`;
     const text = carriers.length
       ? head + `Перевізники, у яких є непроведені ${KIND_TEXT[kind].genitive} (у дужках — скільки):`
       : head + `За цей період непроведених ${KIND_TEXT[kind].genitive} немає. Можна знайти перевізника вручну.`;
@@ -291,7 +301,7 @@ export class TzProvFlow {
       return this.render(
         ctx,
         `✅ У перевізника <b>${esc(st.perName)}</b> немає непроведених ${KIND_TEXT[kind].genitive} ` +
-          `із заявок за ${days} днів.`,
+          `із заявок за ${daysLabel(days)}.`,
         [[Markup.button.callback('⬅️ Інший перевізник', `tzp:days:${days}`)], this.menuRow()],
       );
     }
@@ -340,7 +350,7 @@ export class TzProvFlow {
     await this.render(
       ctx,
       `${kt.icon} <b>${esc(st.perName)}</b>\n` +
-        `${kt.many} з проведених заявок за ${st.days} днів, яких ще немає в транспорті перевізника: <b>${items.length}</b>\n` +
+        `${kt.many} з проведених заявок за ${daysLabel(st.days!)}, яких ще немає в транспорті перевізника: <b>${items.length}</b>\n` +
         `Вибрано: <b>${selected.size}</b>\n\nПозначте потрібні номери й натисніть «Провести вибрані».`,
       rows,
     );

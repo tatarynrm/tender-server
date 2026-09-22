@@ -63,7 +63,8 @@ export class TzProvService {
                  FROM ictdat.zay z
                 WHERE z.kod_per IS NOT NULL
                   AND z.${k.zayCol} IS NOT NULL
-                  AND z.datprov >= TRUNC(SYSDATE) - :days
+                  -- N днів = сьогодні + (N-1) попередніх календарних днів (2 дні = сьогодні й учора)
+                  AND z.datprov >= TRUNC(SYSDATE) - :days + 1
                   AND z.datprov <= SYSDATE) x
          JOIN ${k.table} t ON t.kod_ur = x.kod_per AND t.dernom = x.dernom
          JOIN ictdat.ur u ON u.kod = x.kod_per
@@ -113,7 +114,8 @@ export class TzProvService {
     let kods: string | null;
     try {
       const out = await this.oracle.executePlsql<{ ret: string | null }>(
-        `BEGIN :ret := ${k.listFn}(:per, TRUNC(SYSDATE) - :days, SYSDATE); END;`,
+        // Той самий відлік днів, що й у carriersWithPending — інакше лічильник і список розійдуться
+        `BEGIN :ret := ${k.listFn}(:per, TRUNC(SYSDATE) - :days + 1, SYSDATE); END;`,
         {
           ret: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 4000 },
           per: Number(kodPer),
