@@ -30,6 +30,10 @@ export interface TzItem {
   /** kod у TZAM/TZPR — лише для hist */
   kod?: string;
   /** Номер (найменший) непроведеної заявки з цим номером і скільки їх — лише для new */
+  /**
+   * Остання заявка перевізника з цим номером за період (new — непроведена, hist — проведена)
+   * і скільки всього таких заявок — щоб біля номера машини було видно № заявки.
+   */
   zayNum?: string;
   zayCount?: number;
 }
@@ -47,7 +51,7 @@ export interface TzProvResult {
   requested: number;
   /** Вибрані, але вже не непроведені (провів хтось інший / змінились дані) */
   skipped: string[];
-  applied: { dernom: string; notOwned: boolean; source: TzSource }[];
+  applied: { dernom: string; notOwned: boolean; source: TzSource; zayNum?: string }[];
   failed: string[];
   error?: string;
 }
@@ -66,18 +70,22 @@ const ADD_CHUNK = 150;
 
 /**
  * Номери з непроведених заявок (new). Скасовані заявки (статус менеджера CANCEL*) не беремо.
+ * Перевізників з UR.ENABLEAM=1 («Дозволити їхати АМ без перевірки») теж: ErrorIfNoUs їх не
+ * перевіряє, тож їхні номери нічого не блокують і вносити їх як «власні» не треба.
  * Номер — лише звичайного вигляду: поле причепа в заявці до 500 символів і інколи містить
  * кілька номерів, а URTP.DERNOM — 50 байт.
  */
 function newPlatesSql(col: string, markCol: string, perFilter: boolean) {
   return `
-    SELECT x.kod_per, x.dernom, x.marka, x.num_min, x.cnt
+    SELECT x.kod_per, x.dernom, x.marka, x.num_last, x.cnt
       FROM (SELECT z.kod_per,
                    ictdat.p_main.dernom(z.${col}) dernom,
                    MAX(z.${markCol}) marka,
-                   MIN(z.num) num_min,
+                   -- № найсвіжішої заявки з цим номером (номери заявок повторюються з року в рік)
+                   MAX(z.num) KEEP (DENSE_RANK LAST ORDER BY z.dat, z.kod) num_last,
                    COUNT(*) cnt
               FROM ictdat.zay z
+              JOIN ictdat.ur u ON u.kod = z.kod_per AND NVL(u.enableam, 0) = 0
              WHERE z.datprov IS NULL
                AND z.kod_per IS NOT NULL
                ${perFilter ? 'AND z.kod_per = :per' : ''}
@@ -224,12 +232,37 @@ export class TzProvService {
           ORDER BY dernom, kod`,
         { per: Number(kodPer), kods },
       );
+      // № останньої проведеної заявки перевізника з цим номером за період — показуємо біля номера.
+      // Порівняння як в AmToTP: zay.am/pr = dernom довідника, без нормалізації.
+      const zays = await this.oracle.executeReadOnlyQuery<any>(
+        `SELECT z.${k.zayCol} dernom,
+                MAX(z.num) KEEP (DENSE_RANK LAST ORDER BY z.datprov, z.kod) num_last,
+                COUNT(*) cnt
+           FROM ictdat.zay z
+          WHERE z.kod_per = :per
+            AND z.${k.zayCol} IS NOT NULL
+            AND z.datprov >= TRUNC(SYSDATE) - :days + 1
+            AND z.datprov <= SYSDATE
+          GROUP BY z.${k.zayCol}`,
+        { per: Number(kodPer), days },
+      );
+      const zayByPlate = new Map(zays.map((z) => [String(z.DERNOM), z]));
+
       for (const r of rows) {
         const dernom = String(r.DERNOM);
         // Дубль номера в довіднику (у TZPR немає унікального ключа) — AddPrToTP впав би на другому
         if (seen.has(dernom)) continue;
         seen.add(dernom);
-        items.push({ key: `h${r.KOD}`, dernom, marka: r.MARKA ?? null, source: 'hist', kod: String(r.KOD) });
+        const z = zayByPlate.get(dernom);
+        items.push({
+          key: `h${r.KOD}`,
+          dernom,
+          marka: r.MARKA ?? null,
+          source: 'hist',
+          kod: String(r.KOD),
+          zayNum: z?.NUM_LAST != null ? String(z.NUM_LAST) : undefined,
+          zayCount: z ? Number(z.CNT) : undefined,
+        });
       }
     }
 
@@ -246,7 +279,7 @@ export class TzProvService {
         dernom,
         marka: r.MARKA ?? null,
         source: 'new',
-        zayNum: r.NUM_MIN != null ? String(r.NUM_MIN) : undefined,
+        zayNum: r.NUM_LAST != null ? String(r.NUM_LAST) : undefined,
         zayCount: Number(r.CNT),
       });
     }
@@ -332,7 +365,12 @@ export class TzProvService {
     const inUrtp = new Map(rows.map((r) => [String(r.DERNOM), Number(r.NOVL) === 1]));
     for (const item of toApply) {
       if (inUrtp.has(item.dernom)) {
-        result.applied.push({ dernom: item.dernom, notOwned: inUrtp.get(item.dernom)!, source: item.source });
+        result.applied.push({
+          dernom: item.dernom,
+          notOwned: inUrtp.get(item.dernom)!,
+          source: item.source,
+          zayNum: item.zayNum,
+        });
       } else {
         result.failed.push(item.dernom);
       }

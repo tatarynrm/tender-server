@@ -59,12 +59,17 @@ function short(s: string, max: number) {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
+/** « · заявка №5827 +2» — № останньої заявки з цим номером (і скільки ще), якщо є. */
+function zayLabel(zayNum?: string, zayCount?: number): string {
+  if (!zayNum) return '';
+  const more = zayCount && zayCount > 1 ? ` +${zayCount - 1}` : '';
+  return ` · заявка №${zayNum}${more}`;
+}
+
 function itemLabel(it: TzItem): string {
-  if (it.source === 'new') {
-    const more = it.zayCount && it.zayCount > 1 ? ` +${it.zayCount - 1}` : '';
-    return `🆕 ${it.dernom} · заявка №${it.zayNum ?? '?'}${more}`;
-  }
-  return `${it.dernom}${it.marka ? ` · ${short(it.marka, 20)}` : ''}`;
+  const zay = zayLabel(it.zayNum, it.zayCount);
+  if (it.source === 'new') return `🆕 ${it.dernom}${zay}`;
+  return `${it.dernom}${zay}${it.marka ? ` · ${short(it.marka, 14)}` : ''}`;
 }
 
 /**
@@ -472,7 +477,8 @@ export class TzProvFlow {
       );
       for (const a of res.applied.slice(0, 40)) {
         lines.push(
-          `• ${a.source === 'new' ? '🆕 ' : ''}${esc(a.dernom)}${a.notOwned ? ' — як «не власність» (номер уже числиться власним в іншого перевізника)' : ''}`,
+          `• ${a.source === 'new' ? '🆕 ' : ''}${esc(a.dernom)}${esc(zayLabel(a.zayNum))}` +
+            `${a.notOwned ? ' — як «не власність» (номер уже числиться власним в іншого перевізника)' : ''}`,
         );
       }
       if (res.applied.length > 40) lines.push(`…і ще ${res.applied.length - 40}`);
@@ -496,7 +502,12 @@ export class TzProvFlow {
         `🚛 <b>Проведення номерів (бот)</b>\n` +
           `Хто: ${esc(who)}\nПеревізник: ${esc(snap.perName)} (#${esc(snap.kodPer)})\n` +
           `${kt.many}: внесено ${res.applied.length} з ${res.requested}` +
-          (res.applied.length ? `\n${res.applied.slice(0, 30).map((a) => esc(a.dernom)).join(', ')}` : '') +
+          (res.applied.length
+            ? `\n${res.applied
+                .slice(0, 30)
+                .map((a) => esc(a.dernom) + (a.zayNum ? ` (№${esc(a.zayNum)})` : ''))
+                .join(', ')}`
+            : '') +
           (res.failed.length ? `\nНе внесено: ${res.failed.map(esc).join(', ')}` : '') +
           (res.error ? `\nПомилка: ${esc(res.error)}` : ''),
       );
