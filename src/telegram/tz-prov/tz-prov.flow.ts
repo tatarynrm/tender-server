@@ -39,7 +39,8 @@ interface TzProvState {
     perName: string;
     kind: TzKind;
     days: number;
-    kods: string[];
+    /** Ключі вибору (TzItem.key) */
+    keys: string[];
   };
 }
 
@@ -56,6 +57,14 @@ function esc(s: unknown): string {
 
 function short(s: string, max: number) {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+function itemLabel(it: TzItem): string {
+  if (it.source === 'new') {
+    const more = it.zayCount && it.zayCount > 1 ? ` +${it.zayCount - 1}` : '';
+    return `🆕 ${it.dernom} · заявка №${it.zayNum ?? '?'}${more}`;
+  }
+  return `${it.dernom}${it.marka ? ` · ${short(it.marka, 20)}` : ''}`;
 }
 
 /**
@@ -142,9 +151,10 @@ export class TzProvFlow {
     await this.render(
       ctx,
       '🚛 <b>Проведення номерів</b>\n\n' +
-        'Бот вносить у транспорт перевізника тягачі чи причепи з уже проведених заявок, ' +
-        'яких ще немає в його списку, — так само, як функція в програмі. Після цього заявки ' +
-        'з цими номерами проходять перевірку транспорту.\n\nЩо проводимо?',
+        'Бот вносить у транспорт перевізника тягачі чи причепи із заявок, яких ще немає в його списку: ' +
+        'нові номери з непроведених заявок (🆕 — саме через них заявка не проводиться) і номери з уже ' +
+        'проведених заявок (як функція в програмі). Після цього заявки з цими номерами проходять ' +
+        'перевірку транспорту.\n\nЩо проводимо?',
       [
         [
           Markup.button.callback(`${KIND_TEXT.am.icon} ${KIND_TEXT.am.many}`, 'tzp:kind:am'),
@@ -164,7 +174,7 @@ export class TzProvFlow {
     st.days = undefined;
     await this.render(
       ctx,
-      `${KIND_TEXT[kind].icon} <b>${KIND_TEXT[kind].many}</b>\n\nЗа який період брати проведені заявки?`,
+      `${KIND_TEXT[kind].icon} <b>${KIND_TEXT[kind].many}</b>\n\nЗа який період брати заявки?`,
       [
         [Markup.button.callback('🕐 Останні 2 дні (сьогодні й учора)', 'tzp:days:2')],
         PERIODS.slice(1, 3).map((d) => Markup.button.callback(daysLabel(d), `tzp:days:${d}`)),
@@ -201,12 +211,15 @@ export class TzProvFlow {
 
     const head = `${KIND_TEXT[kind].icon} <b>${KIND_TEXT[kind].many}</b> · ${daysLabel(days)}\n\n`;
     const text = carriers.length
-      ? head + `Перевізники, у яких є непроведені ${KIND_TEXT[kind].genitive} (у дужках — скільки):`
+      ? head + `Перевізники, у яких є непроведені ${KIND_TEXT[kind].genitive} (у дужках — скільки; 🆕 — нові номери з непроведених заявок):`
       : head + `За цей період непроведених ${KIND_TEXT[kind].genitive} немає. Можна знайти перевізника вручну.`;
 
     await this.render(ctx, text, [
       ...carriers.map((c) => [
-        Markup.button.callback(`${short(c.name, 38)} (${c.count})`, `tzp:car:${c.kod}`),
+        Markup.button.callback(
+          `${c.newCount ? '🆕 ' : ''}${short(c.name, 34)} (${c.count}${c.newCount ? ` · нових ${c.newCount}` : ''})`,
+          `tzp:car:${c.kod}`,
+        ),
       ]),
       [Markup.button.callback('🔍 Знайти перевізника (назва / ЄДРПОУ)', 'tzp:search')],
       [Markup.button.callback('⬅️ Назад', `tzp:kind:${kind}`)],
@@ -321,7 +334,7 @@ export class TzProvFlow {
     const from = page * PAGE_SIZE;
     const rows: Btn[][] = items.slice(from, from + PAGE_SIZE).map((it, i) => [
       Markup.button.callback(
-        `${selected.has(it.kod) ? '✅' : '⬜'} ${it.dernom}${it.marka ? ` · ${short(it.marka, 20)}` : ''}`,
+        `${selected.has(it.key) ? '✅' : '⬜'} ${itemLabel(it)}`,
         `tzp:tog:${from + i}`,
       ),
     ]);
@@ -350,7 +363,10 @@ export class TzProvFlow {
     await this.render(
       ctx,
       `${kt.icon} <b>${esc(st.perName)}</b>\n` +
-        `${kt.many} з проведених заявок за ${daysLabel(st.days!)}, яких ще немає в транспорті перевізника: <b>${items.length}</b>\n` +
+        `${kt.many} із заявок за ${daysLabel(st.days!)}, яких ще немає в транспорті перевізника: <b>${items.length}</b>\n` +
+        (items.some((i) => i.source === 'new')
+          ? '🆕 — новий номер із непроведеної заявки (саме він блокує її проведення)\n'
+          : '') +
         `Вибрано: <b>${selected.size}</b>\n\nПозначте потрібні номери й натисніть «Провести вибрані».`,
       rows,
     );
@@ -361,8 +377,8 @@ export class TzProvFlow {
     const item = st.items?.[index];
     if (!item) return this.showSelection(ctx);
     const selected = new Set(st.selected ?? []);
-    if (selected.has(item.kod)) selected.delete(item.kod);
-    else selected.add(item.kod);
+    if (selected.has(item.key)) selected.delete(item.key);
+    else selected.add(item.key);
     st.selected = [...selected];
     st.pending = undefined;
     return this.showSelection(ctx);
@@ -370,7 +386,7 @@ export class TzProvFlow {
 
   async selectAll(ctx: Context, all: boolean) {
     const st = this.state(ctx);
-    st.selected = all ? (st.items ?? []).map((i) => i.kod) : [];
+    st.selected = all ? (st.items ?? []).map((i) => i.key) : [];
     st.pending = undefined;
     return this.showSelection(ctx);
   }
@@ -385,7 +401,7 @@ export class TzProvFlow {
   async confirm(ctx: Context) {
     const st = this.state(ctx);
     if (!st.kind || !st.items || !st.kodPer) return this.start(ctx);
-    const chosen = st.items.filter((i) => st.selected?.includes(i.kod));
+    const chosen = st.items.filter((i) => st.selected?.includes(i.key));
     if (!chosen.length) return this.showSelection(ctx);
 
     const nonce = randomBytes(4).toString('hex');
@@ -395,13 +411,13 @@ export class TzProvFlow {
       perName: st.perName ?? '',
       kind: st.kind,
       days: st.days!,
-      kods: chosen.map((i) => i.kod),
+      keys: chosen.map((i) => i.key),
     };
 
     const kt = KIND_TEXT[st.kind];
     const list = chosen
       .slice(0, 30)
-      .map((i) => `• ${esc(i.dernom)}${i.marka ? ` (${esc(i.marka)})` : ''}`)
+      .map((i) => `• ${esc(itemLabel(i))}`)
       .join('\n');
     const more = chosen.length > 30 ? `\n…і ще ${chosen.length - 30}` : '';
 
@@ -440,8 +456,8 @@ export class TzProvFlow {
     const who = `${ctx.from?.id} (${name})`;
 
     try {
-      await this.render(ctx, `⏳ Проводжу ${snap.kods.length} ${kt.genitive}…`, []);
-      const res = await this.service.provesti(snap.kodPer, snap.kind, snap.days, snap.kods, `tg:${ctx.from?.id}`);
+      await this.render(ctx, `⏳ Проводжу ${snap.keys.length} ${kt.genitive}…`, []);
+      const res = await this.service.provesti(snap.kodPer, snap.kind, snap.days, snap.keys, `tg:${ctx.from?.id}`);
       this.logger.log(
         `Проведення номерів: tg ${who}, перевізник ${snap.kodPer} (${snap.perName}), ${snap.kind}, ` +
           `запит ${res.requested}, внесено ${res.applied.length}, пропущено ${res.skipped.length}, ` +
@@ -456,7 +472,7 @@ export class TzProvFlow {
       );
       for (const a of res.applied.slice(0, 40)) {
         lines.push(
-          `• ${esc(a.dernom)}${a.notOwned ? ' — як «не власність» (номер уже числиться власним в іншого перевізника)' : ''}`,
+          `• ${a.source === 'new' ? '🆕 ' : ''}${esc(a.dernom)}${a.notOwned ? ' — як «не власність» (номер уже числиться власним в іншого перевізника)' : ''}`,
         );
       }
       if (res.applied.length > 40) lines.push(`…і ще ${res.applied.length - 40}`);
