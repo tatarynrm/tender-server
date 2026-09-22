@@ -1,4 +1,4 @@
-import { Action, Command, Hears, InjectBot, Start, Update, On } from 'nestjs-telegraf';
+import { Action, Command, Ctx, Hears, InjectBot, Next, Start, Update, On } from 'nestjs-telegraf';
 import { Context, Telegraf, Markup } from 'telegraf';
 import { TelegramService } from './telegram.service';
 import { MESSAGES } from './common/telegram.messages';
@@ -10,6 +10,7 @@ import {
 import { ApprovalService } from 'src/approval/approval.service';
 import { ClaudeAgentService } from 'src/claude-agent/claude-agent.service';
 import { ReportFileService } from './report-file.service';
+import { TZ_PROV_SEARCH_SCENE, TzProvFlow } from './tz-prov/tz-prov.flow';
 import {
   TelegramAccess,
   buildMainMenu,
@@ -50,6 +51,7 @@ export class TelegramUpdate {
     private readonly approvalService: ApprovalService,
     private readonly claudeAgentService: ClaudeAgentService,
     private readonly reportFileService: ReportFileService,
+    private readonly tzProvFlow: TzProvFlow,
   ) {}
 
   // --- Погодження дій Claude Code -----------------------------------------
@@ -838,12 +840,12 @@ export class TelegramUpdate {
   }
 
   @On('message')
-  async handleAllMessages(ctx: Context) {
+  async handleAllMessages(@Ctx() ctx: Context, @Next() next: () => Promise<void>) {
     const session = (ctx as any).session;
     const scene = session?.scene;
-    if (!session || (scene !== 'ai' && scene !== 'report')) {
-      // Не в режимі ШІ/звітів — пропускаємо повідомлення далі
-      return;
+    if (!session || (scene !== 'ai' && scene !== 'report' && scene !== TZ_PROV_SEARCH_SCENE)) {
+      // Не в режимі ШІ/звітів/пошуку перевізника — віддаємо далі (напр. /myid, /numbers з TzProvUpdate)
+      return next();
     }
 
     const telegramId = ctx.from?.id;
@@ -852,6 +854,17 @@ export class TelegramUpdate {
     const message: any = ctx.message;
     const text = message?.text;
     const voiceFileId = message?.voice?.file_id;
+
+    // «Провести номери»: очікуємо назву/ЄДРПОУ перевізника (доступ перевіряє flow)
+    if (scene === TZ_PROV_SEARCH_SCENE) {
+      // Команда замість назви — виходимо з пошуку й даємо їй відпрацювати
+      if (typeof text === 'string' && text.startsWith('/')) {
+        session.scene = undefined;
+        return next();
+      }
+      await this.tzProvFlow.handleSearchText(ctx, text);
+      return;
+    }
 
     if (scene === 'report') {
       await this.handleReportMessage(ctx, text, voiceFileId);

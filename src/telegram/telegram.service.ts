@@ -8,6 +8,7 @@ import { TelegramGateway } from './telegram.gateway';
 import { AiService } from '../ai/ai.service';
 import { DatabaseOracleService } from '../database-oracle/database-oracle.service';
 import { TelegramAccess } from './telegram.menu';
+import { canProvTz as canProvTzAccess } from './tz-prov/tz-prov.access';
 import { MailService } from 'src/libs/common/mail/mail.service';
 import axios from 'axios';
 
@@ -382,10 +383,11 @@ export class TelegramService implements OnModuleInit {
    */
   public async getAccess(telegramId: number): Promise<TelegramAccess> {
     const isSuperAdmin = this.isAdmin(telegramId);
+    const canProvTz = canProvTzAccess(telegramId);
     const profile = await this.repository.getProfileByTelegramId(telegramId);
 
     if (!profile) {
-      return { registered: false, isIct: false, isIctAdmin: false, isSuperAdmin };
+      return { registered: false, isIct: false, isIctAdmin: false, isSuperAdmin, canProvTz };
     }
 
     const isIct = !!profile.is_ict;
@@ -394,6 +396,7 @@ export class TelegramService implements OnModuleInit {
       isIct,
       isIctAdmin: isIct && !!profile.is_admin,
       isSuperAdmin,
+      canProvTz,
       personId: Number(profile.person_id),
       companyId: profile.company_id ? Number(profile.company_id) : undefined,
       fullName: [profile.surname, profile.name, profile.last_name]

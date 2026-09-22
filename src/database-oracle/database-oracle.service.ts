@@ -206,6 +206,58 @@ export class DatabaseOracleService implements OnModuleInit, OnModuleDestroy {
     }
   }
   /**
+   * Виконання анонімного PL/SQL-блоку (BEGIN ... END;) з bind-змінними — для
+   * виклику готових процедур/функцій ICTDAT, які не повертають JSON.
+   * Нічого не комітить сам: якщо процедура комітить усередині (як
+   * UR_$$PKG.AddAmToTP) — це її рішення; незакомічене відкочується при close().
+   */
+  async executePlsql<T = Record<string, any>>(
+    sql: string,
+    binds: oracledb.BindParameters = {},
+    /**
+     * Мітка сесії для аудиту в Oracle (v$session / журнали): хто насправді виконав
+     * дію — бо всі запити бекенда йдуть від одного технічного акаунта.
+     */
+    tag?: { clientId?: string; module?: string; action?: string },
+  ): Promise<T> {
+    let connection: oracledb.Connection | undefined;
+
+    try {
+      connection = await this.pool.getConnection();
+      if (tag) {
+        connection.clientId = tag.clientId ?? '';
+        connection.module = tag.module ?? '';
+        connection.action = tag.action ?? '';
+      }
+      await connection.execute(`ALTER SESSION SET CURRENT_SCHEMA = ICTDAT`);
+      const result = await connection.execute(sql, binds);
+      return (result.outBinds ?? {}) as T;
+    } catch (err) {
+      this.logger.error(`Error executing PL/SQL block: ${sql}`, err);
+      throw err;
+    } finally {
+      if (connection) {
+        try {
+          // З'єднання повертається в пул — мітку не лишаємо наступним запитам
+          if (tag) {
+            connection.clientId = '';
+            connection.module = '';
+            connection.action = '';
+            await connection.ping();
+          }
+        } catch {
+          // не критично
+        }
+        try {
+          await connection.close();
+        } catch (closeErr) {
+          this.logger.error('Error closing connection', closeErr);
+        }
+      }
+    }
+  }
+
+  /**
    * Виконання SELECT-запиту в транзакції READ ONLY — для SQL, згенерованого ШІ.
    * Oracle сам відхилить будь-яку спробу запису (включно з SELECT ... FOR UPDATE),
    * незалежно від того, що саме згенерувала модель. Після запиту — rollback.

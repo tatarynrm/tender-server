@@ -47,6 +47,9 @@ import { DatabaseOracleModule } from 'src/database-oracle/database-oracle.module
 import { MailReaderModule } from 'src/mail-reader/mail-reader.module';
 import { ApprovalModule } from 'src/approval/approval.module';
 import { ClaudeAgentModule } from 'src/claude-agent/claude-agent.module';
+import { TzProvService } from './tz-prov/tz-prov.service';
+import { TzProvFlow } from './tz-prov/tz-prov.flow';
+import { TzProvUpdate } from './tz-prov/tz-prov.update';
 
 @Module({
   imports: [
@@ -72,6 +75,12 @@ import { ClaudeAgentModule } from 'src/claude-agent/claude-agent.module';
   ],
   controllers: [TelegramController],
   providers: [
+    // «Провести номери» (тягачі/причепи в транспорт перевізника, Oracle).
+    // TzProvUpdate — ДО TelegramUpdate: його /myid і /numbers реєструються раніше
+    // за загальний @On('message') у TelegramUpdate.
+    TzProvService,
+    TzProvFlow,
+    TzProvUpdate,
     TelegramService,
     TelegramUpdate,
     TelegramGateway,

@@ -14,6 +14,8 @@ export interface TelegramAccess {
   isIct: boolean;
   isIctAdmin: boolean;
   isSuperAdmin: boolean;
+  /** Telegram ID є в tz-prov.access.ts — може проводити номери авто/причепів */
+  canProvTz?: boolean;
   personId?: number;
   companyId?: number;
   fullName?: string;
@@ -60,6 +62,10 @@ export function buildMainMenu(access: TelegramAccess, portalUrl: string) {
       Markup.button.callback('💰 Мої ставки', 'my_rates'),
       Markup.button.callback('🏆 Перемоги', 'my_wins'),
     ]);
+  }
+
+  if (access.canProvTz) {
+    rows.push([Markup.button.callback('🚛 Провести номери авто / причепів', 'tzp:start')]);
   }
 
   rows.push([Markup.button.callback('👤 Мій профіль', 'my_profile')]);
