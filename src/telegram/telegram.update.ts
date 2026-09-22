@@ -150,6 +150,11 @@ export class TelegramUpdate {
 
       const access = await this.telegramService.getAccess(telegramId);
       if (!access.registered) {
+        // Без акаунта на порталі, але в списку доступу до проведення номерів — коротке меню
+        if (access.canProvTz) {
+          await this.showTzOnlyMenu(ctx);
+          return;
+        }
         const unregistered = MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!);
         await ctx.reply(unregistered.text, unregistered.options);
         return;
@@ -212,11 +217,39 @@ export class TelegramUpdate {
 
     const access = await this.telegramService.getAccess(telegramId);
     if (!access.registered) {
+      if (access.canProvTz) {
+        await this.showTzOnlyMenu(ctx, Boolean((ctx as any).callbackQuery));
+        return null;
+      }
       const unregistered = MESSAGES.UNREGISTERED_USER(process.env.ALLOWED_ORIGIN!);
       await ctx.reply(unregistered.text, unregistered.options);
       return null;
     }
     return access;
+  }
+
+  /**
+   * Меню для Telegram ID зі списку tz-prov.access.ts, не прив'язаного до акаунта на
+   * порталі: доступне лише проведення номерів (решта розділів потребує акаунта).
+   */
+  private async showTzOnlyMenu(ctx: Context, edit = false) {
+    if ((ctx as any).session) (ctx as any).session.scene = undefined;
+    const text =
+      '🚛 <b>Меню</b>\n\n' +
+      'Ваш Telegram не прив\'язаний до акаунта на порталі, тому тут доступне лише ' +
+      'проведення номерів авто / причепів.';
+    const keyboard = Markup.inlineKeyboard([
+      [Markup.button.callback('🚛 Провести номери авто / причепів', 'tzp:start')],
+    ]);
+    if (edit) {
+      try {
+        await ctx.editMessageText(text, { parse_mode: 'HTML', ...keyboard });
+        return;
+      } catch {
+        // повідомлення змінити не вдалося — шлемо нове
+      }
+    }
+    await ctx.reply(text, { parse_mode: 'HTML', ...keyboard });
   }
 
   @Command('menu')
