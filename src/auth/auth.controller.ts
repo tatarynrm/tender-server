@@ -55,6 +55,8 @@ export class AuthController {
   private async scanKeys(pattern: string): Promise<string[]> {
     const keys: string[] = [];
     let cursor: any = 0;
+    // console.log();
+
     do {
       const reply: any = await this.redisClient.scan(cursor, {
         MATCH: pattern,
