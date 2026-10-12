@@ -68,8 +68,10 @@ import { TzProvUpdate } from './tz-prov/tz-prov.update';
       useFactory: (config: ConfigService) => ({
         token: config.get<string>('TELEGRAM_BOT_TOKEN')!,
         middlewares: [session()],
-        // Важливо: ми нічого не передаємо в launchOptions,
-        // щоб уникнути конфлікту з ручним Webhook
+        // launchOptions: false — бібліотека не запускає бота сама: її bot.launch()
+        // без catch валить увесь процес, коли api.telegram.org недоступний.
+        // Запуск (polling) робить TelegramService.launchBot() з повторами.
+        launchOptions: false,
       }),
     }),
   ],

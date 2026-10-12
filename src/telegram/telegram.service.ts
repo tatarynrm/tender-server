@@ -50,8 +50,26 @@ export class TelegramService implements OnModuleInit {
 
 
   async onModuleInit() {
+    // Не await: недоступний Telegram не повинен блокувати старт бекенда.
+    void this.launchBot();
     await this.setupWebhookMode();
     await this.setupBotCommands();
+  }
+
+  /** Запуск polling із повторами: збій мережі до Telegram не валить процес. */
+  private async launchBot() {
+    const RETRY_MS = 30_000;
+    for (;;) {
+      try {
+        await this.bot.launch();
+        return;
+      } catch (error) {
+        this.logger.warn(
+          `Telegram-бот не запустився (${error?.message}). Повтор через ${RETRY_MS / 1000} с`,
+        );
+        await new Promise((r) => setTimeout(r, RETRY_MS));
+      }
+    }
   }
 
   private async setupBotCommands() {

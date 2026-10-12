@@ -141,4 +141,12 @@ async function bootstrap() {
 
 
 
+// Мережевий збій зовнішнього сервісу (Telegram, Gemini, S3...) не повинен
+// валити весь бекенд разом із сесіями й тендерами.
+process.on('unhandledRejection', (reason) => {
+  new Logger('UnhandledRejection').error(
+    reason instanceof Error ? reason.stack || reason.message : String(reason),
+  );
+});
+
 bootstrap();
