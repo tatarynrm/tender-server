@@ -70,6 +70,14 @@ export class CrmLoadListDto {
   @IsString()
   manager?: string;
 
+  // Фільтр «Відділ» (department_dropdown). Без цього поля глобальний
+  // ValidationPipe (whitelist + forbidNonWhitelisted) відхиляв увесь запит
+  // списку з 400, щойно менеджер застосовував фільтр по відділу.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  department?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
