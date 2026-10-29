@@ -140,6 +140,7 @@ export class TenderService {
   public async getList(query: any) {
     const filters: FilterItem[] = buildFiltersFromQuery(query);
     const sortString = this.getSortString(query);
+    console.log(filters, 'Filters tender');
 
     const result = await this.dbservice.callProcedure('tender_list_ict', {
       pagination: {
