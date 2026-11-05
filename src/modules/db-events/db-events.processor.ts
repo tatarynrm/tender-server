@@ -82,7 +82,7 @@ export class DbEventsProcessor {
       `Dispatching notification type: ${notifyType} for part: ${notify_part} for table: ${tblref} to queue`,
     );
 
-    if (notify_part === 'TENDER') {
+    if (notify_part === 'TENDER' || notify_part === 'TENDER_RATE') {
       await this.tenderQueue.add(
         'process-notification',
         {

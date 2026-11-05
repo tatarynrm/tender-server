@@ -21,6 +21,32 @@ export class NotificationController {
   async getFormData() {
     return this.notificationService.getFormData();
   }
+
+  @Get('getNotificationRate')
+  async getNotificationRateSettings() {
+    return this.notificationService.getNotificationRateSettings();
+  }
+
+  @Post('updateNotificationRate')
+  async updateNotificationRateSettings(@Body() body: any) {
+    return this.notificationService.updateNotificationRateSettings(body);
+  }
+
+  // Дзвіночок: список сповіщень поточного користувача.
+  @Get('user-notifications')
+  async getUserNotifications() {
+    return this.notificationService.getUserNotifications();
+  }
+
+  @Post('seen')
+  async markNotificationSeen(@Body() body: { id: number }) {
+    return this.notificationService.markNotificationSeen(body?.id);
+  }
+
+  @Post('seen-all')
+  async markAllNotificationsSeen() {
+    return this.notificationService.markAllNotificationsSeen();
+  }
 }
 
 // notification

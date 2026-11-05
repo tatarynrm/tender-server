@@ -290,6 +290,21 @@ ${content.managerMessage || content.message || content.notes || 'Будь лас
 
 ${details}`;
 
+    case 'TENDER_RATE_CARRIER':
+    case 'TENDER_RATE_MANAGER': {
+      const actor =
+        notifyType === 'TENDER_RATE_CARRIER' ? 'перевізника' : 'менеджера ICT';
+      const bidLine = content.best_bid
+        ? `\n💸 Поточна найкраща ставка: <b>${content.best_bid} ${currency}</b>`
+        : '';
+      return `
+🔔 <b>Нова ставка від ${actor}</b> у тендері <a href="${tenderUrl}">№${content.id}</a>${bidLine}
+
+Деталі тендеру:
+
+${details}`;
+    }
+
     default:
       return `📢 <b>Подія по тендеру <a href="${tenderUrl}">№${content.id}</a></b>\nТип: ${notifyType}`;
   }
@@ -403,6 +418,18 @@ ${content.managerMessage || 'Див. деталі'}`.trim();
 ${content.managerMessage || content.message || content.notes || 'Нова інформація від менеджера'}
 `.trim();
 
+    case 'TENDER_RATE_CARRIER':
+    case 'TENDER_RATE_MANAGER': {
+      const actor =
+        notifyType === 'TENDER_RATE_CARRIER' ? 'перевізника' : 'менеджера';
+      const bidLine = content.best_bid
+        ? `\n💸 Найкраща ${content.best_bid} ${currency}`
+        : '';
+      return `
+🔔 Нова ставка від ${actor}. Тендер №${content.id}
+${commonInfo}${bidLine}${buyoutInfo}`.trim();
+    }
+
     default:
       return `📢 Тендер №${content.id}`;
   }
@@ -473,6 +500,10 @@ export function getEmailData(
         '—',
       resultText: winnerText,
       tenderType: content.tender_type || 'Редукціон',
+      bestBid:
+        content.best_bid && content.best_bid > 0
+          ? `${content.best_bid} ${content.ids_valut || 'EUR'}`
+          : null,
       url: tenderUrl,
     },
   };

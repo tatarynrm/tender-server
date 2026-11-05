@@ -23,7 +23,9 @@ interface TenderNotificationProps {
     | 'TENDER_PROLONGATION'
     | 'TENDER_CLOSED'
     | 'TENDER_RESULT'
-    | 'TENDER_MESSAGE_ANY';
+    | 'TENDER_MESSAGE_ANY'
+    | 'TENDER_RATE_CARRIER'
+    | 'TENDER_RATE_MANAGER';
   tenderId: string | number;
   domain: string;
   data: {
@@ -39,6 +41,7 @@ interface TenderNotificationProps {
     isWinner?: boolean;
     lotInfo?: string;
     tenderType?: string; // e.g. "Редукціон", "Аукціон"
+    bestBid?: string | null; // поточна найкраща ставка, для TENDER_RATE_*
   };
 }
 
@@ -94,6 +97,18 @@ export const TenderNotificationTemplate = ({
           preview: `Нове повідомлення по тендеру №${tenderId}`,
           mainText: `Повідомляємо Вам важливу інформацію по тендеру №${tenderId}:`,
         };
+      case 'TENDER_RATE_CARRIER':
+        return {
+          title: 'Нова ставка від перевізника',
+          preview: `Нова ставка у тендері №${tenderId}`,
+          mainText: `Повідомляємо, що у тендері №${tenderId} перевізник подав нову ставку.`,
+        };
+      case 'TENDER_RATE_MANAGER':
+        return {
+          title: 'Нова ставка від менеджера',
+          preview: `Нова ставка у тендері №${tenderId}`,
+          mainText: `Повідомляємо, що у тендері №${tenderId} менеджер ICT подав нову ставку.`,
+        };
     }
   };
 
@@ -133,6 +148,14 @@ export const TenderNotificationTemplate = ({
                 Нова дата закінчення тендеру: <b>{data.endDate}</b>
               </Text>
             )}
+
+            {(type === 'TENDER_RATE_CARRIER' ||
+              type === 'TENDER_RATE_MANAGER') &&
+              data.bestBid && (
+                <Text style={highlightText}>
+                  Поточна найкраща ставка: <b>{data.bestBid}</b>
+                </Text>
+              )}
 
             {type === 'TENDER_CLOSED' && (
               <Text style={subtext}>

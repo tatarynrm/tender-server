@@ -58,6 +58,14 @@ export class TenderWorker extends WorkerHost {
             notifyType,
           );
           break;
+        case 'TENDER_RATE_MANAGER':
+        case 'TENDER_RATE_CARRIER':
+          await this.handlePersonalBulkNotification(
+            personList,
+            content,
+            notifyType,
+          );
+          break;
         default:
           this.logger.warn(`Unknown notifyType: ${notifyType}`);
       }
@@ -73,9 +81,12 @@ export class TenderWorker extends WorkerHost {
 
       return { status: 'success' };
     } catch (e) {
+      console.log('-----------------------------------------------------');
       this.logger.error(
         `Error processing notification ${notificationId}: ${e.message}`,
       );
+      console.log('-----------------------------------------------------');
+
       await this.pgPool.query(
         "UPDATE notify SET ids_status = 'FAILED' WHERE id = $1",
         [notificationId],

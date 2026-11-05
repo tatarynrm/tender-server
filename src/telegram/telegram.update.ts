@@ -180,7 +180,22 @@ export class TelegramUpdate {
   // Кожен хендлер перевіряє роль сам — наявність кнопки не є захистом.
 
   private portalUrl(): string {
-    return (process.env.ALLOWED_ORIGIN || 'https://tender.ict.lviv.ua').replace(/\/+$/, '');
+    const fallback = 'https://tender.ict.lviv.ua';
+    const raw = (process.env.ALLOWED_ORIGIN || '').replace(/\/+$/, '');
+    if (!raw) return fallback;
+    // Telegram відхиляє localhost/невалідні URL в inline-кнопках — у деві
+    // підставляємо публічний портал, щоб меню не падало.
+    try {
+      const host = new URL(raw).hostname;
+      const isLocal =
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '::1' ||
+        host.endsWith('.localhost');
+      return isLocal ? fallback : raw;
+    } catch {
+      return fallback;
+    }
   }
 
   private async showMainMenu(ctx: Context, access: TelegramAccess, edit = false) {

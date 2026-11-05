@@ -11,6 +11,7 @@ import type { Socket } from 'socket.io';
  */
 export interface ISocketSession {
   userId: string;
+  personId: string | null;
   ict: boolean;
 }
 
@@ -58,7 +59,12 @@ export class SocketSessionService {
       const userId = session?.userId;
       if (userId === undefined || userId === null) return null;
 
-      return { userId: String(userId), ict: !!session?.ict };
+      const personId =
+        session?.personId !== undefined && session?.personId !== null
+          ? String(session.personId)
+          : null;
+
+      return { userId: String(userId), personId, ict: !!session?.ict };
     } catch (err) {
       this.logger.warn(
         `Не вдалося розпізнати сесію сокета: ${(err as Error).message}`,

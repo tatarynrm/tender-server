@@ -154,6 +154,8 @@ export class AuthService {
   public async saveSession(req: Request, user: IUserProfile) {
     return new Promise((resolve, reject) => {
       req.session.userId = user.id;
+      // person-id для приватних сокет-кімнат (сповіщення шлються на id_person).
+      req.session.personId = user.person?.id;
       req.session.ict = user.role.is_ict;
       req.session.email = user.email;
       req.session.id_company = user.company.id; // Парсимо User-Agent

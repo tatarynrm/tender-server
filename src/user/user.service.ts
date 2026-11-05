@@ -30,7 +30,7 @@ export class UserService {
     @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
     private readonly telegramTokenService: TelegramTokenService,
     private readonly userGateway: UserGateway,
-  ) { }
+  ) {}
 
   public async findById(id: string | number) {
     // 1. Отримуємо основні дані юзера з процедури
@@ -41,7 +41,7 @@ export class UserService {
     );
 
     const user = existUser.content;
-    console.log(user, 'USER FROM ME');
+
     if (!user) {
       throw new NotFoundException(
         'Користувача не знайдено. Перевірте авторизаційні дані.',
@@ -73,10 +73,10 @@ export class UserService {
       ...user,
       person_telegram: telegramData
         ? {
-          telegram_id: telegramData.telegram_id,
-          username: telegramData.username,
-          first_name: telegramData.first_name,
-        }
+            telegram_id: telegramData.telegram_id,
+            username: telegramData.username,
+            first_name: telegramData.first_name,
+          }
         : null,
       person_phone: phoneResult.rows,
     };
@@ -186,7 +186,10 @@ export class UserService {
     return updateUserTest;
   }
 
-  public async updateRole(userId: string, dto: { is_head_department?: boolean }) {
+  public async updateRole(
+    userId: string,
+    dto: { is_head_department?: boolean },
+  ) {
     const user = await this.findById(userId);
 
     if (dto.is_head_department !== undefined) {
@@ -221,7 +224,6 @@ export class UserService {
 
   // Створити користувача який є в передреєстрації!
   public async createPreRegisterUser(dto: UserRegisterFromPreDto) {
-
     const usersPreRegister = await this.dbservice.callProcedure(
       'usr_register_from_pre',
 

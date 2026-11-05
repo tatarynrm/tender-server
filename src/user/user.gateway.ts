@@ -40,7 +40,16 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!userId) return client.disconnect(true);
 
     const isIct = session?.ict ?? client.handshake.auth?.ict === true;
+    // person-id для приватних сповіщень: воркер шле на user_room:${id_person},
+    // а не на id_usr. Беремо з сесії (новий логін), а як запасний варіант — з
+    // handshake, куди фронт кладе person.id у auth.userId (працює без перелогіну).
+    const personId =
+      session?.personId ??
+      client.handshake.auth?.personId?.toString() ??
+      client.handshake.auth?.userId?.toString() ??
+      null;
     client.data.userId = userId;
+    client.data.personId = personId;
     client.data.ict = isIct;
 
     const socketKey = `socket_user:${client.id}`;
@@ -54,6 +63,11 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Особиста кімната для приватних повідомлень
     client.join(`user_room:${userId}`);
+    // Кімната за person-id: саме туди шле воркер сповіщень (id_person).
+    // Якщо person-id збігається з user-id — друге приєднання no-op.
+    if (personId && personId !== userId) {
+      client.join(`user_room:${personId}`);
+    }
     // Розділення каналів під майбутні сповіщення «лише для нас».
     client.join(isIct ? this.ROOM_ICT : this.ROOM_CARRIER);
 
