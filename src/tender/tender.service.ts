@@ -292,6 +292,30 @@ export class TenderService {
     return result;
   }
 
+  /**
+   * Видалення власної ставки менеджера ICT (процедура tender_rate_delete).
+   * Вхід: { id } — id ставки (tender_rate.id).
+   * Кому дозволено видаляти — вирішує процедура, не NestJS.
+   */
+  public async tenderRateDelete(dto: { id: number }) {
+    const result = await this.dbservice.callProcedure(
+      'tender_rate_delete',
+      { id: dto.id },
+      {},
+    );
+
+    const content = Array.isArray(result.content)
+      ? result.content[0]
+      : result.content;
+    const updatedTenderId = content?.id_tender ?? content?.tender_id;
+
+    // Якщо процедура повернула id тендера — оновлюємо його в усіх клієнтів.
+    if (updatedTenderId) {
+      this.tenderGateway.emitToAll('tender_status_updated', updatedTenderId);
+    }
+    return result;
+  }
+
   public async tenderSetStatus(dto: any) {
     const result = await this.dbservice.callProcedure(
       'tender_set_status',
