@@ -293,13 +293,14 @@ export class TenderService {
   }
 
   /**
-   * Видалення власної ставки менеджера ICT (процедура tender_rate_delete).
+   * Скасування власної ставки менеджера ICT (процедура tender_rate_cancel).
+   * Ставка фізично лишається в списку, у неї виставляється time_canceled.
    * Вхід: { id } — id ставки (tender_rate.id).
-   * Кому дозволено видаляти — вирішує процедура, не NestJS.
+   * Кому дозволено скасовувати — вирішує процедура, не NestJS.
    */
-  public async tenderRateDelete(dto: { id: number }) {
+  public async tenderRateCancel(dto: { id: number }) {
     const result = await this.dbservice.callProcedure(
-      'tender_rate_delete',
+      'tender_rate_cancel',
       { id: dto.id },
       {},
     );

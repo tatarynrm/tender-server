@@ -87,9 +87,9 @@ export class TenderController {
 
     return this.tenderService.tenderSetWinner(dto);
   }
-  @Post('del-rate')
-  tenderRateDelete(@Body() dto: any) {
-    return this.tenderService.tenderRateDelete(dto);
+  @Post('cancel-rate')
+  tenderRateCancel(@Body() dto: any) {
+    return this.tenderService.tenderRateCancel(dto);
   }
   @Post('del-winner')
   tenderDelWinner(@Body() dto: any) {
