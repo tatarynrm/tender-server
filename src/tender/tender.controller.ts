@@ -110,6 +110,11 @@ export class TenderController {
     return this.tenderService.tenderSetAgree(dto);
   }
 
+  @Post('prolongation')
+  tenderProlongation(@Body() dto: any) {
+    return this.tenderService.tenderProlongation(dto);
+  }
+
   @Post('notify-prolongation')
   tenderNotifyProlongation(@Body() dto: any) {
     return this.tenderService.tenderNotifyProlongation(dto);

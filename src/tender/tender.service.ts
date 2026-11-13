@@ -382,6 +382,23 @@ export class TenderService {
     );
     return result;
   }
+  /**
+   * Пролонгація активного тендера (процедура tender_prolongation).
+   * Вхід: { id_tender, time } — новий час завершення (timestamptz, ISO).
+   * Обмеження (макс. +24 год від поточного завершення) перевіряє процедура.
+   */
+  public async tenderProlongation(dto: { id_tender: number; time: string }) {
+    const result = await this.dbservice.callProcedure(
+      'tender_prolongation',
+      { id_tender: dto.id_tender, time: dto.time },
+      {},
+    );
+
+    // Оновлюємо тендер в усіх клієнтів.
+    this.tenderGateway.emitToAll('tender_status_updated', dto.id_tender);
+    return result;
+  }
+
   public async tenderNotifyProlongation(dto: any) {
     const result = await this.dbservice.callProcedure(
       'tender_notify_prolongation',
