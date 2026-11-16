@@ -37,6 +37,21 @@ export class AdminCompanyController {
     return this.userActivityService.getCompanyManagersActivitySummary(Number(id), startDate, endDate);
   }
 
+  // NORIS: компанії без migrate_id + кандидати з Oracle
+  @Get('noris/unlinked')
+  async norisUnlinked(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminCompanyService.norisUnlinked(page, limit);
+  }
+
+  // NORIS: встановити migrate_id (kod з Oracle), migrate_company = 'ICT'
+  @Post('noris/link')
+  async norisLink(@Body() dto: { id: number; migrate_id: number | string }) {
+    return this.adminCompanyService.norisLink(dto);
+  }
+
   @Get('all')
   async findAll(@Query() query: any) {
     // query тепер містить всі ваші фільтри та пагінацію
