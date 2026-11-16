@@ -115,11 +115,6 @@ export class TenderController {
     return this.tenderService.tenderProlongation(dto);
   }
 
-  @Post('notify-prolongation')
-  tenderNotifyProlongation(@Body() dto: any) {
-    return this.tenderService.tenderNotifyProlongation(dto);
-  }
-
   @Post(':id/notify-results')
   sendResultNotification(@Param('id') id: string) {
     return this.tenderService.sendResultNotification(id);
