@@ -83,13 +83,21 @@ export class DbEventsProcessor {
     );
 
     if (notify_part === 'TENDER' || notify_part === 'TENDER_RATE') {
+      const actualTenderId =
+        content?.id || content?.id_tender || content?.tender_docnum || id_tblref;
+
+      const normalizedContent = {
+        ...content,
+        id: actualTenderId,
+      };
+
       await this.tenderQueue.add(
         'process-notification',
         {
           notificationId,
           notifyType,
-          tenderId: id_tblref,
-          content,
+          tenderId: actualTenderId,
+          content: normalizedContent,
           personList: final_person_list,
         },
         // Прибираємо джоби, щоб bull:tender_notifications:* не накопичувались:

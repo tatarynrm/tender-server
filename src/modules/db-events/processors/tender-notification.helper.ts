@@ -1,5 +1,9 @@
 export interface NotificationContent {
-  id: number;
+  id?: number;
+  id_tender?: number;
+  tender_docnum?: number;
+  price_proposed?: number;
+  time_add?: string;
   cargo?: string;
   volume?: number;
   weight?: number;
@@ -91,7 +95,44 @@ export function formatTenderDate(
   }
 }
 
-export function getTenderMetadata(content: NotificationContent) {
+export function resolveTenderId(
+  content: NotificationContent | any,
+): number | string | undefined {
+  return content?.id || content?.id_tender || content?.tender_docnum;
+}
+
+export function formatCurrencyName(valut?: string): string {
+  if (!valut || valut === 'UAH' || valut === 'ГРН') return 'грн';
+  return valut;
+}
+
+export function formatRateDateTime(dateStr?: string | Date): string {
+  if (!dateStr) {
+    return formatRateDateTime(new Date());
+  }
+  try {
+    const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+    if (isNaN(d.getTime())) return String(dateStr);
+    const formatter = new Intl.DateTimeFormat('uk-UA', {
+      timeZone: 'Europe/Kyiv',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(d);
+    const getPart = (type: string) =>
+      parts.find((p) => p.type === type)?.value || '00';
+    return `${getPart('day')}.${getPart('month')}.${getPart('year')} ${getPart('hour')}:${getPart('minute')}`;
+  } catch {
+    return String(dateStr);
+  }
+}
+
+export function getTenderMetadata(content: NotificationContent | any) {
+  const tenderId = resolveTenderId(content);
   const from =
     (content.load_from || [])
       .map((f: any) => `${f.city || '—'} (${f.country || 'UA'})`)
@@ -142,7 +183,7 @@ export function getTenderMetadata(content: NotificationContent) {
     vatStatus,
     tempRegime,
     carCount: content.car_count || 1,
-    tenderUrl: `${process.env.APP_CLIENT_URL || 'https://tender.ict.lviv.ua'}/dashboard/tender/${content.id}`,
+    tenderUrl: `${process.env.APP_CLIENT_URL || 'https://tender.ict.lviv.ua'}/dashboard/tender/${tenderId || ''}`,
   };
 }
 
@@ -294,11 +335,13 @@ ${details}`;
     case 'TENDER_RATE_MANAGER': {
       const actor =
         notifyType === 'TENDER_RATE_CARRIER' ? 'перевізника' : 'менеджера ICT';
-      const bidLine = content.best_bid
-        ? `\n💸 Поточна найкраща ставка: <b>${content.best_bid} ${currency}</b>`
+      const tenderId = resolveTenderId(content);
+      const ratePrice = content.price_proposed ?? content.best_bid;
+      const bidLine = ratePrice
+        ? `\n💸 Ставка: <b>${ratePrice} ${currency}</b>`
         : '';
       return `
-🔔 <b>Нова ставка від ${actor}</b> у тендері <a href="${tenderUrl}">№${content.id}</a>${bidLine}
+🔔 <b>Нова ставка від ${actor}</b> у тендері <a href="${tenderUrl}">№${tenderId}</a>${bidLine}
 
 Деталі тендеру:
 
@@ -422,11 +465,13 @@ ${content.managerMessage || content.message || content.notes || 'Нова інф
     case 'TENDER_RATE_MANAGER': {
       const actor =
         notifyType === 'TENDER_RATE_CARRIER' ? 'перевізника' : 'менеджера';
-      const bidLine = content.best_bid
-        ? `\n💸 Найкраща ${content.best_bid} ${currency}`
+      const tenderId = resolveTenderId(content);
+      const ratePrice = content.price_proposed ?? content.best_bid;
+      const bidLine = ratePrice
+        ? `\n💸 Ставка ${ratePrice} ${currency}`
         : '';
       return `
-🔔 Нова ставка від ${actor}. Тендер №${content.id}
+🔔 Нова ставка від ${actor}. Тендер №${tenderId}
 ${commonInfo}${bidLine}${buyoutInfo}`.trim();
     }
 
@@ -436,10 +481,14 @@ ${commonInfo}${bidLine}${buyoutInfo}`.trim();
 }
 
 export function getEmailData(
-  content: NotificationContent,
+  content: NotificationContent | any,
   notifyType: string,
   person: any,
 ) {
+  const tenderId = resolveTenderId(content);
+  if (content && !content.id && tenderId) {
+    content.id = tenderId;
+  }
   const { routeInfo, trailer, loads, tenderUrl } = getTenderMetadata(content);
   const isWinner = (content?.car_count ?? 0) > 0;
   const winnerText = isWinner
@@ -473,11 +522,31 @@ export function getEmailData(
       .filter(Boolean)
       .join(', ') || '—';
 
+  const rawBid = content.price_proposed ?? content.best_bid;
+  const currencyName = formatCurrencyName(
+    content.valut_name || content.ids_valut,
+  );
+  const bidFormatted =
+    rawBid !== null && rawBid !== undefined
+      ? `${rawBid} ${currencyName}`
+      : null;
+
+  const rateTime = formatRateDateTime(content.time_add);
+
+  const isRate =
+    notifyType === 'TENDER_RATE_CARRIER' ||
+    notifyType === 'TENDER_RATE_MANAGER';
+
+  const subject = isRate
+    ? `Оновлення ставки у тендері №${tenderId}`
+    : `Сповіщення по тендеру №${tenderId}`;
+
   return {
     type: notifyType,
-    tenderId: content.id,
+    tenderId,
+    subject,
     data: {
-      id: content.id,
+      id: tenderId,
       date: combinedDates,
       endDate: content.time_end
         ? formatTenderDate(content.time_end)
@@ -500,10 +569,9 @@ export function getEmailData(
         '—',
       resultText: winnerText,
       tenderType: content.tender_type || 'Редукціон',
-      bestBid:
-        content.best_bid && content.best_bid > 0
-          ? `${content.best_bid} ${content.ids_valut || 'EUR'}`
-          : null,
+      bestBid: bidFormatted,
+      bidFormatted,
+      rateTime,
       url: tenderUrl,
     },
   };

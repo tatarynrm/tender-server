@@ -91,19 +91,27 @@ export class MailService {
   public async sendTenderNotification(email: string, payload: any) {
     const domain = this.configService.getOrThrow<string>('APP_CLIENT_URL');
     const { type, tenderId, subject, data } = payload;
+    const resolvedTenderId = tenderId || data?.id;
 
     const html = await render(
       TenderNotificationTemplate({
         type,
-        tenderId,
+        tenderId: resolvedTenderId,
         domain,
         data,
       }),
     );
 
+    const isRate =
+      type === 'TENDER_RATE_CARRIER' || type === 'TENDER_RATE_MANAGER';
+
+    const defaultSubject = isRate
+      ? `Оновлення ставки у тендері №${resolvedTenderId}`
+      : `Сповіщення по тендеру №${resolvedTenderId}`;
+
     return this.sendMail(
       email,
-      subject || `Сповіщення по тендеру №${tenderId}`,
+      subject || defaultSubject,
       html,
     );
   }

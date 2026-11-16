@@ -29,6 +29,7 @@ interface TenderNotificationProps {
   tenderId: string | number;
   domain: string;
   data: {
+    id?: string | number;
     date?: string;
     endDate?: string;
     cargo?: string;
@@ -42,6 +43,9 @@ interface TenderNotificationProps {
     lotInfo?: string;
     tenderType?: string; // e.g. "Редукціон", "Аукціон"
     bestBid?: string | null; // поточна найкраща ставка, для TENDER_RATE_*
+    bidFormatted?: string | null;
+    rateTime?: string;
+    url?: string;
   };
 }
 
@@ -51,63 +55,68 @@ export const TenderNotificationTemplate = ({
   domain,
   data,
 }: TenderNotificationProps) => {
-  const tenderUrl = `${domain}/dashboard/tender/active`; // Or specific link if available
+  const isRateNotification =
+    type === 'TENDER_RATE_CARRIER' || type === 'TENDER_RATE_MANAGER';
+
+  const resolvedTenderId = tenderId || data?.id || '—';
+  const tenderUrl =
+    data?.url ||
+    (resolvedTenderId && resolvedTenderId !== '—'
+      ? `${domain}/dashboard/tender/${resolvedTenderId}`
+      : `${domain}/dashboard/tender/active`);
+
+  const bidAmount = data?.bidFormatted || data?.bestBid || '—';
 
   const getHeaderInfo = () => {
     switch (type) {
       case 'TENDER_PLAN':
         return {
           title: 'Тендер заплановано',
-          preview: `Повідомляємо про запланований тендер №${tenderId}`,
-          mainText: `Повідомляємо, що ${data.date || ''} заплановано проведення тендеру №${tenderId}.`,
+          preview: `Повідомляємо про запланований тендер №${resolvedTenderId}`,
+          mainText: `Повідомляємо, що ${data.date || ''} заплановано проведення тендеру №${resolvedTenderId}.`,
         };
       case 'TENDER_ACTUAL':
         return {
           title: `${data.tenderType || 'Редукціон'} запущено`,
-          preview: `Запущено ${data.tenderType || 'редукціон'} №${tenderId}`,
-          mainText: `Повідомляємо, що по замовленню №${tenderId} запущено ${data.tenderType || 'редукціон'}.`,
+          preview: `Запущено ${data.tenderType || 'редукціон'} №${resolvedTenderId}`,
+          mainText: `Повідомляємо, що по замовленню №${resolvedTenderId} запущено ${data.tenderType || 'редукціон'}.`,
         };
       case 'TENDER_CHANGED':
         return {
           title: 'Зміни у тендері',
-          preview: `В тендері №${tenderId} відбулися зміни`,
-          mainText: `Повідомляємо Вам, що в тендері №${tenderId} відбулися зміни:`,
+          preview: `В тендері №${resolvedTenderId} відбулися зміни`,
+          mainText: `Повідомляємо Вам, що в тендері №${resolvedTenderId} відбулися зміни:`,
         };
       case 'TENDER_PROLONGATION':
         return {
           title: 'Пролонгація тендеру',
-          preview: `По тендеру №${tenderId} змінено часові рамки`,
-          mainText: `Повідомляємо Вам, що по тендеру №${tenderId} змінено часові рамки.`,
+          preview: `По тендеру №${resolvedTenderId} змінено часові рамки`,
+          mainText: `Повідомляємо Вам, що по тендеру №${resolvedTenderId} змінено часові рамки.`,
         };
       case 'TENDER_CLOSED':
         return {
           title: 'Прийом пропозицій завершено',
-          preview: `Тендер №${tenderId} завершено`,
-          mainText: `Повідомляємо, що прийом пропозицій по тендеру №${tenderId} завершено.`,
+          preview: `Тендер №${resolvedTenderId} завершено`,
+          mainText: `Повідомляємо, що прийом пропозицій по тендеру №${resolvedTenderId} завершено.`,
         };
       case 'TENDER_RESULT':
         return {
           title: 'Результати тендеру',
-          preview: `Результати тендеру №${tenderId}: ${data.route}`,
-          mainText: `Вдячні Вам за участь у тендері №${tenderId} (${data.route || ''}, ${data.cargo || ''}).`,
+          preview: `Результати тендеру №${resolvedTenderId}: ${data.route}`,
+          mainText: `Вдячні Вам за участь у тендері №${resolvedTenderId} (${data.route || ''}, ${data.cargo || ''}).`,
         };
       case 'TENDER_MESSAGE_ANY':
         return {
           title: 'Повідомлення по тендеру',
-          preview: `Нове повідомлення по тендеру №${tenderId}`,
-          mainText: `Повідомляємо Вам важливу інформацію по тендеру №${tenderId}:`,
+          preview: `Нове повідомлення по тендеру №${resolvedTenderId}`,
+          mainText: `Повідомляємо Вам важливу інформацію по тендеру №${resolvedTenderId}:`,
         };
       case 'TENDER_RATE_CARRIER':
-        return {
-          title: 'Нова ставка від перевізника',
-          preview: `Нова ставка у тендері №${tenderId}`,
-          mainText: `Повідомляємо, що у тендері №${tenderId} перевізник подав нову ставку.`,
-        };
       case 'TENDER_RATE_MANAGER':
         return {
-          title: 'Нова ставка від менеджера',
-          preview: `Нова ставка у тендері №${tenderId}`,
-          mainText: `Повідомляємо, що у тендері №${tenderId} менеджер ICT подав нову ставку.`,
+          title: `Оновлення ставки у тендері №${resolvedTenderId}`,
+          preview: `Оновлення ставки у тендері №${resolvedTenderId}`,
+          mainText: `Повідомляємо, що подано нову ставку ${bidAmount} до тендеру №${resolvedTenderId}.`,
         };
     }
   };
@@ -131,108 +140,135 @@ export const TenderNotificationTemplate = ({
           </Section>
 
           <Section style={content}>
-            <Heading style={h1}>{info.title}</Heading>
-            <Text style={text}>{info.mainText}</Text>
+            {isRateNotification ? (
+              <>
+                <Heading style={h1}>
+                  Оновлення ставки у тендері №{resolvedTenderId}
+                </Heading>
 
-            {(type === 'TENDER_CHANGED' ||
-              type === 'TENDER_PROLONGATION' ||
-              type === 'TENDER_MESSAGE_ANY') &&
-              data.message && (
-                <Section style={messageBox}>
-                  <Text style={messageText}>{data.message}</Text>
+                <Section style={rateMessageContainer}>
+                  <Text style={paragraph}>Добрий день!</Text>
+                  <Text style={paragraph}>
+                    Повідомляємо, що подано нову ставку <b>{bidAmount}</b> до
+                    тендеру <b>№{resolvedTenderId}</b>.
+                  </Text>
+                  {data.rateTime && (
+                    <Text style={paragraph}>
+                      Дата та час подання: <b>{data.rateTime}</b>
+                    </Text>
+                  )}
+                  <Text style={paragraph}>
+                    Деталі та історію змін можна переглянути в{' '}
+                    <Link href={tenderUrl} style={inlineLink}>
+                      картці тендера №{resolvedTenderId}
+                    </Link>.
+                  </Text>
                 </Section>
-              )}
 
-            {type === 'TENDER_PROLONGATION' && data.endDate && (
-              <Text style={highlightText}>
-                Нова дата закінчення тендеру: <b>{data.endDate}</b>
-              </Text>
-            )}
+                <Section style={btnContainer}>
+                  <Link style={button} href={tenderUrl}>
+                    Переглянути тендер
+                  </Link>
+                </Section>
+              </>
+            ) : (
+              <>
+                <Heading style={h1}>{info.title}</Heading>
+                <Text style={text}>{info.mainText}</Text>
 
-            {(type === 'TENDER_RATE_CARRIER' ||
-              type === 'TENDER_RATE_MANAGER') &&
-              data.bestBid && (
-                <Text style={highlightText}>
-                  Поточна найкраща ставка: <b>{data.bestBid}</b>
-                </Text>
-              )}
+                {(type === 'TENDER_CHANGED' ||
+                  type === 'TENDER_PROLONGATION' ||
+                  type === 'TENDER_MESSAGE_ANY') &&
+                  data.message && (
+                    <Section style={messageBox}>
+                      <Text style={messageText}>{data.message}</Text>
+                    </Section>
+                  )}
 
-            {type === 'TENDER_CLOSED' && (
-              <Text style={subtext}>
-                Просимо вас слідкувати за подальшими етапами тендеру у системі
-                або звертати увагу на повідомлення, які надходитимуть на вашу
-                електронну адресу.
-              </Text>
-            )}
-
-            {type === 'TENDER_RESULT' && (
-              <Section style={resultBox}>
-                <Text style={resultBold}>
-                  {data.isWinner
-                    ? '🎉 Після ретельного розгляду всіх пропозицій було прийнято рішення обрати Вас переможцем!'
-                    : 'По терезультатам тендеру було обрано переможцем іншого учасника.'}
-                </Text>
-                <Text style={subtext}>
-                  Будемо раді бачити Вас у наступних тендерах і сподіваємося на
-                  подальшу співпрацю.
-                </Text>
-              </Section>
-            )}
-
-            <Section style={btnContainer}>
-              <Link style={button} href={tenderUrl}>
-                {type === 'TENDER_RESULT'
-                  ? 'Переглянути закупівлю'
-                  : 'Переглянути тендер'}
-              </Link>
-            </Section>
-
-            {/* Details Table */}
-            {type !== 'TENDER_CLOSED' &&
-              type !== 'TENDER_CHANGED' &&
-              type !== 'TENDER_MESSAGE_ANY' && (
-              <Section style={detailsContainer}>
-                <Text style={detailsTitle}>Деталі тендеру:</Text>
-                <Hr style={hr} />
-
-                <Row style={detailRow}>
-                  <Col style={detailColLabel} width="40%">
-                    Вантаж:
-                  </Col>
-                  <Col style={detailColValue}>{data.cargo || '—'}</Col>
-                </Row>
-                <Row style={detailRow}>
-                  <Col style={detailColLabel}>Вимоги ТЗ:</Col>
-                  <Col style={detailColValue}>{data.requirements || '—'}</Col>
-                </Row>
-                <Row style={detailRow}>
-                  <Col style={detailColLabel}>Маршрут:</Col>
-                  <Col style={detailColValue}>{data.route || '—'}</Col>
-                </Row>
-
-                {data.duration && (
-                  <Row style={detailRow}>
-                    <Col style={detailColLabel}>Тривалість:</Col>
-                    <Col style={detailColValue}>{data.duration}</Col>
-                  </Row>
+                {type === 'TENDER_PROLONGATION' && data.endDate && (
+                  <Text style={highlightText}>
+                    Нова дата закінчення тендеру: <b>{data.endDate}</b>
+                  </Text>
                 )}
 
-                {data.step && (
-                  <Row style={detailRow}>
-                    <Col style={detailColLabel}>Крок ставки:</Col>
-                    <Col style={detailColValue}>{data.step}</Col>
-                  </Row>
+                {type === 'TENDER_CLOSED' && (
+                  <Text style={subtext}>
+                    Просимо вас слідкувати за подальшими етапами тендеру у системі
+                    або звертати увагу на повідомлення, які надходитимуть на вашу
+                    електронну адресу.
+                  </Text>
                 )}
 
-                {data.buyout !== undefined && (
-                  <Row style={detailRow}>
-                    <Col style={detailColLabel}>Можливість викупу:</Col>
-                    <Col style={detailColValue}>
-                      {data.buyout ? 'Так ✅' : 'Ні'}
-                    </Col>
-                  </Row>
+                {type === 'TENDER_RESULT' && (
+                  <Section style={resultBox}>
+                    <Text style={resultBold}>
+                      {data.isWinner
+                        ? '🎉 Після ретельного розгляду всіх пропозицій було прийнято рішення обрати Вас переможцем!'
+                        : 'По терезультатам тендеру було обрано переможцем іншого учасника.'}
+                    </Text>
+                    <Text style={subtext}>
+                      Будемо раді бачити Вас у наступних тендерах і сподіваємося на
+                      подальшу співпрацю.
+                    </Text>
+                  </Section>
                 )}
-              </Section>
+
+                <Section style={btnContainer}>
+                  <Link style={button} href={tenderUrl}>
+                    {type === 'TENDER_RESULT'
+                      ? 'Переглянути закупівлю'
+                      : 'Переглянути тендер'}
+                  </Link>
+                </Section>
+
+                {/* Details Table */}
+                {type !== 'TENDER_CLOSED' &&
+                  type !== 'TENDER_CHANGED' &&
+                  type !== 'TENDER_MESSAGE_ANY' && (
+                  <Section style={detailsContainer}>
+                    <Text style={detailsTitle}>Деталі тендеру:</Text>
+                    <Hr style={hr} />
+
+                    <Row style={detailRow}>
+                      <Col style={detailColLabel} width="40%">
+                        Вантаж:
+                      </Col>
+                      <Col style={detailColValue}>{data.cargo || '—'}</Col>
+                    </Row>
+                    <Row style={detailRow}>
+                      <Col style={detailColLabel}>Вимоги ТЗ:</Col>
+                      <Col style={detailColValue}>{data.requirements || '—'}</Col>
+                    </Row>
+                    <Row style={detailRow}>
+                      <Col style={detailColLabel}>Маршрут:</Col>
+                      <Col style={detailColValue}>{data.route || '—'}</Col>
+                    </Row>
+
+                    {data.duration && (
+                      <Row style={detailRow}>
+                        <Col style={detailColLabel}>Тривалість:</Col>
+                        <Col style={detailColValue}>{data.duration}</Col>
+                      </Row>
+                    )}
+
+                    {data.step && (
+                      <Row style={detailRow}>
+                        <Col style={detailColLabel}>Крок ставки:</Col>
+                        <Col style={detailColValue}>{data.step}</Col>
+                      </Row>
+                    )}
+
+                    {data.buyout !== undefined && (
+                      <Row style={detailRow}>
+                        <Col style={detailColLabel}>Можливість викупу:</Col>
+                        <Col style={detailColValue}>
+                          {data.buyout ? 'Так ✅' : 'Ні'}
+                        </Col>
+                      </Row>
+                    )}
+                  </Section>
+                )}
+              </>
             )}
 
             <Hr style={hr} />
@@ -418,3 +454,21 @@ const unsubscribeLink = {
   color: "#64748b",
   textDecoration: "underline",
 } as const;
+
+const rateMessageContainer = {
+  margin: '24px 0',
+  textAlign: 'left' as const,
+};
+
+const paragraph = {
+  color: '#334155',
+  fontSize: '15px',
+  lineHeight: '24px',
+  margin: '0 0 16px',
+};
+
+const inlineLink = {
+  color: '#1e40af',
+  textDecoration: 'underline',
+  fontWeight: '600',
+};
