@@ -157,19 +157,8 @@ export const TenderNotificationTemplate = ({
                       Дата та час подання: <b>{data.rateTime}</b>
                     </Text>
                   )}
-                  <Text style={paragraph}>
-                    Деталі та історію змін можна переглянути в{' '}
-                    <Link href={tenderUrl} style={inlineLink}>
-                      картці тендера №{resolvedTenderId}
-                    </Link>.
-                  </Text>
                 </Section>
-
-                <Section style={btnContainer}>
-                  <Link style={button} href={tenderUrl}>
-                    Переглянути тендер
-                  </Link>
-                </Section>
+                {/* Лише інформація: без посилання на картку тендера й без кнопок */}
               </>
             ) : (
               <>
@@ -467,8 +456,3 @@ const paragraph = {
   margin: '0 0 16px',
 };
 
-const inlineLink = {
-  color: '#1e40af',
-  textDecoration: 'underline',
-  fontWeight: '600',
-};
