@@ -8,6 +8,15 @@ import {
   FilterItem,
 } from 'src/shared/utils/build-filters';
 import { CrmLoadListDto } from './dto/crm-load-list.dto';
+import { CrmLoadCarrierListDto } from './dto/crm-load-carrier-list.dto';
+
+/** Фільтр типу `field` для процедур із filter_by_field (crm_load_per_list). */
+interface CrmLoadFieldFilter {
+  type: 'field';
+  field_name: string;
+  rule: '=' | '!=' | '>' | '>=' | '<' | '<=' | 'contains' | 'not_contains';
+  value: string;
+}
 import { TelegramService } from 'src/telegram/telegram.service';
 
 @Injectable()
@@ -173,6 +182,59 @@ export class LoadService {
       pagination: { per_page: query.limit, page: query.page },
       filter: filters,
     });
+
+    return result;
+  }
+
+  /**
+   * Екран заявок перевізника (crm_load_per_list).
+   *
+   * Процедура НЕ читає authObject і не фільтрує рядки по ролі — обсяг даних
+   * визначаємо тут. Вона розуміє лише фільтри типу `field` (field_name через
+   * %I, value через %L — екрануються) і `where` (сирий SQL). `query`-фільтри
+   * з buildFiltersFromQuery вона ігнорує, тому їх не використовуємо, а `where`
+   * свідомо не передаємо, щоб жоден параметр від клієнта не потрапив у SQL.
+   */
+  async getCarrierList(query: CrmLoadCarrierListDto) {
+    const filter: CrmLoadFieldFilter[] = [
+      // Лише активні заявки — те саме визначення, що й `active` у crm_load_list.
+      {
+        type: 'field',
+        field_name: 'car_count_actual',
+        rule: '>',
+        value: '0',
+      },
+    ];
+
+    if (query.transit === 'M') {
+      // Міжнародні = експорт + імпорт + транзит, тобто все, крім регіональних.
+      filter.push({
+        type: 'field',
+        field_name: 'ids_transit_type',
+        rule: '!=',
+        value: 'R',
+      });
+    } else if (query.transit) {
+      filter.push({
+        type: 'field',
+        field_name: 'ids_transit_type',
+        rule: '=',
+        value: query.transit,
+      });
+    }
+
+    const result = await this.dbservice.callProcedure('crm_load_per_list', {
+      pagination: { per_page: query.limit, page: query.page },
+      filter,
+    });
+
+    // load_info — внутрішня інформація ICT по заявці, перевізникам не віддаємо
+    // навіть у відповіді API (не лише ховаємо на фронті).
+    if (Array.isArray(result.content)) {
+      result.content = result.content.map(
+        ({ load_info, ...rest }: Record<string, any>) => rest,
+      );
+    }
 
     return result;
   }

@@ -18,6 +18,7 @@ import { Authorization } from 'src/auth/decorators/auth.decorator';
 import { CreateLoadDto } from './dto/create-load.dto';
 import { UpdateLoadDto } from './dto/update-load.dto';
 import { CrmLoadListDto } from './dto/crm-load-list.dto';
+import { CrmLoadCarrierListDto } from './dto/crm-load-carrier-list.dto';
 
 @ApiTags('CRM Loads')
 @Authorization()
@@ -31,6 +32,12 @@ export class LoadController {
   @ApiOperation({ summary: 'Отримати список вантажів з фільтрацією' })
   getList(@Query() query: CrmLoadListDto) {
     return this.loadService.getList(query);
+  }
+
+  @Get('carrier-list')
+  @ApiOperation({ summary: 'Екран заявок перевізника (crm_load_per_list)' })
+  getCarrierList(@Query() query: CrmLoadCarrierListDto) {
+    return this.loadService.getCarrierList(query);
   }
 
   @Get('one/:id')
