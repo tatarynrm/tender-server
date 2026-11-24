@@ -264,7 +264,8 @@ export class LoadService {
     });
 
     // load_info — внутрішня інформація ICT по заявці, перевізникам не віддаємо
-    // навіть у відповіді API (не лише ховаємо на фронті).
+    // навіть у відповіді API (не лише ховаємо на фронті). Контакти менеджера
+    // (email, manager_phone) навпаки потрібні перевізнику — їх пропускаємо.
     if (Array.isArray(result.content)) {
       result.content = result.content.map(
         ({ load_info, ...rest }: Record<string, any>) => rest,
