@@ -187,7 +187,7 @@ export class LoadService {
   }
 
   /**
-   * Екран заявок перевізника (crm_load_per_list).
+   * Екран заявок перевізника (crm_load_list_per, раніше crm_load_per_list).
    *
    * Процедура НЕ читає authObject і не фільтрує рядки по ролі — обсяг даних
    * визначаємо тут. Вона розуміє лише фільтри типу `field` (field_name через
@@ -223,9 +223,21 @@ export class LoadService {
       });
     }
 
-    const result = await this.dbservice.callProcedure('crm_load_per_list', {
+    // Швидкі фільтри процедури — ключі верхнього рівня body; порожні не шлемо.
+    // УВАГА: формат передачі s_* не звірений із тілом crm_load_list_per
+    // (БД була недоступна) — перевірити з Тарасом Драганом.
+    const quick: Record<string, string | number> = {};
+    if (query.s_day) quick.s_day = query.s_day;
+    if (query.s_crm_load_number)
+      quick.s_crm_load_number = query.s_crm_load_number;
+    if (query.s_manager?.trim()) quick.s_manager = query.s_manager.trim();
+    if (query.s_from?.trim()) quick.s_from = query.s_from.trim();
+    if (query.s_to?.trim()) quick.s_to = query.s_to.trim();
+
+    const result = await this.dbservice.callProcedure('crm_load_list_per', {
       pagination: { per_page: query.limit, page: query.page },
       filter,
+      ...quick,
     });
 
     // load_info — внутрішня інформація ICT по заявці, перевізникам не віддаємо

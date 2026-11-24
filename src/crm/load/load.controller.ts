@@ -35,7 +35,7 @@ export class LoadController {
   }
 
   @Get('carrier-list')
-  @ApiOperation({ summary: 'Екран заявок перевізника (crm_load_per_list)' })
+  @ApiOperation({ summary: 'Екран заявок перевізника (crm_load_list_per)' })
   getCarrierList(@Query() query: CrmLoadCarrierListDto) {
     return this.loadService.getCarrierList(query);
   }
