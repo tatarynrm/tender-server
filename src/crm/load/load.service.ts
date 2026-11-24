@@ -10,12 +10,30 @@ import {
 import { CrmLoadListDto } from './dto/crm-load-list.dto';
 import { CrmLoadCarrierListDto } from './dto/crm-load-carrier-list.dto';
 
-/** Фільтр типу `field` для процедур із filter_by_field (crm_load_per_list). */
-interface CrmLoadFieldFilter {
-  type: 'field';
-  field_name: string;
-  rule: '=' | '!=' | '>' | '>=' | '<' | '<=' | 'contains' | 'not_contains';
-  value: string;
+/** Фільтри crm_load_list_per: `field` (екранується в БД) і `query` (швидкий пошук s_*). */
+type CrmLoadFieldFilter =
+  | {
+      type: 'field';
+      field_name: string;
+      rule: '=' | '!=' | '>' | '>=' | '<' | '<=' | 'contains' | 'not_contains';
+      value: string;
+    }
+  | { type: 'query'; key: string; value: string };
+
+/**
+ * Текст для швидкого пошуку, що йде в crm_load_list_per_filter без екранування.
+ * Лишаємо тільки літери, цифри, пробіл, кому (розділювач значень), крапку й
+ * дефіс. Апострофи (', ’, ʼ) замінюємо на `_` — у ilike це «будь-який символ»,
+ * тож «Кам'янець» знайдеться, а вийти з SQL-літерала неможливо.
+ */
+function sanitizeQuickSearch(value?: string): string | undefined {
+  if (!value) return undefined;
+  const clean = value
+    .replace(/['’ʼ`]/g, '_')
+    .replace(/[^\p{L}\p{N}\s,.\-_]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clean || undefined;
 }
 import { TelegramService } from 'src/telegram/telegram.service';
 
@@ -190,10 +208,9 @@ export class LoadService {
    * Екран заявок перевізника (crm_load_list_per, раніше crm_load_per_list).
    *
    * Процедура НЕ читає authObject і не фільтрує рядки по ролі — обсяг даних
-   * визначаємо тут. Вона розуміє лише фільтри типу `field` (field_name через
-   * %I, value через %L — екрануються) і `where` (сирий SQL). `query`-фільтри
-   * з buildFiltersFromQuery вона ігнорує, тому їх не використовуємо, а `where`
-   * свідомо не передаємо, щоб жоден параметр від клієнта не потрапив у SQL.
+   * визначаємо тут. Фільтри: `field` (field_name через %I, value через %L —
+   * екрануються), `where` (сирий SQL — свідомо не передаємо) і `query` —
+   * лише ключі s_* швидкого пошуку (crm_load_list_per_filter), значення чистимо.
    */
   async getCarrierList(query: CrmLoadCarrierListDto) {
     const filter: CrmLoadFieldFilter[] = [
@@ -223,21 +240,27 @@ export class LoadService {
       });
     }
 
-    // Швидкі фільтри процедури — ключі верхнього рівня body; порожні не шлемо.
-    // УВАГА: формат передачі s_* не звірений із тілом crm_load_list_per
-    // (БД була недоступна) — перевірити з Тарасом Драганом.
-    const quick: Record<string, string | number> = {};
-    if (query.s_day) quick.s_day = query.s_day;
-    if (query.s_crm_load_number)
-      quick.s_crm_load_number = query.s_crm_load_number;
-    if (query.s_manager?.trim()) quick.s_manager = query.s_manager.trim();
-    if (query.s_from?.trim()) quick.s_from = query.s_from.trim();
-    if (query.s_to?.trim()) quick.s_to = query.s_to.trim();
+    // Швидкі фільтри: crm_load_list_per читає їх лише як елементи filter
+    // {type:'query', key, value} (ключі верхнього рівня body ігнорує).
+    // crm_load_list_per_filter вклеює value в SQL БЕЗ екранування, тому:
+    // числові поля вже провалідовані DTO як цілі числа, а текстові чистимо тут.
+    const quick: [string, string | undefined][] = [
+      ['s_day', query.s_day ? String(query.s_day) : undefined],
+      [
+        's_crm_load_number',
+        query.s_crm_load_number ? String(query.s_crm_load_number) : undefined,
+      ],
+      ['s_manager', sanitizeQuickSearch(query.s_manager)],
+      ['s_from', sanitizeQuickSearch(query.s_from)],
+      ['s_to', sanitizeQuickSearch(query.s_to)],
+    ];
+    quick.forEach(([key, value]) => {
+      if (value) filter.push({ type: 'query', key, value });
+    });
 
     const result = await this.dbservice.callProcedure('crm_load_list_per', {
       pagination: { per_page: query.limit, page: query.page },
       filter,
-      ...quick,
     });
 
     // load_info — внутрішня інформація ICT по заявці, перевізникам не віддаємо
